@@ -1,0 +1,1 @@
+spring-cloud microservice with redis, activemq, hibernate, mysql

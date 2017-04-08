@@ -4,12 +4,12 @@ import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 /**
  * Created by Administrator on 2017/3/16.
@@ -23,14 +23,14 @@ public class UserController {
     @Autowired
     private UserDao userDao;
 
-    @RequestMapping(value="/queryUser",method= RequestMethod.GET)
-    public void queryUser(HttpServletResponse response, User user){
-        logger.info("queryUser start, parameter:" + user.toString());
+    @RequestMapping(value="/queryUsers",method = {RequestMethod.GET,RequestMethod.POST})
+    public void queryUsers(HttpServletResponse response, @RequestBody User user){
+        logger.info("queryUsers start, parameter:" + user.toString());
 
-        User dbUser = userDao.queryUser(user);
-        logger.info("queryUser end, result:" + dbUser.toString());
+        List<User> users = userDao.queryUsers(user);
+        logger.info("queryUsers end, result size:" + users.size());
 
-        Writer.writeObjectToJson(response, dbUser);
+        Writer.writeObjectToJson(response, users);
     }
 
     @RequestMapping(value="/updateUser",method= RequestMethod.GET)

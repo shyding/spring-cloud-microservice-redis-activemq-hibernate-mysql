@@ -1,0 +1,60 @@
+server:
+  port: 8050
+
+spring:
+  application:
+    name: microservice-comsumer
+
+  mvc:
+     view:
+       prefix: /WEB-INF/jsp/
+       suffix: .jsp
+
+  jpa:
+    generate-ddl: false
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/test
+    username: root
+    password: root
+    driver-class-name: com.mysql.jdbc.Driver
+    tomcat:
+      max-wait: 10000   # Number of ms to wait before throwing an exception if no connection is available
+      max-active: 20   # Maximum number of active connections that can be allocated from this pool at the same time
+      test-on-borrow: true # Validate the connection before borrowing it from the pool
+
+  activemq:
+    broker-url: tcp://192.168.31.128:61616
+    password: admin
+    pool:
+      max-connections: 2
+
+hibernate:
+    dialect: org.hibernate.dialect.MySQL5Dialect
+    show_sql: true
+    current_session_context_class: thread
+
+redis:
+  cluster:
+    nodes: 192.168.31.128:7000;192.168.31.128:7001;192.168.31.128:7002;192.168.31.128:7003;192.168.31.128:7004;192.168.31.128:7005
+    max-redirects: 5
+  pool:
+    max-total: 40
+    max-idle: 25
+    max-wait: 10000
+    test-on-borrow: true
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka
+  instance:
+    hostname: cumtomer1                 # 此处，preferIpAddress不设置或者设为false，不能设为true，否则影响turbine的测试。turbine存在的问题：eureka.instance.hostname一致时只能检测到一个节点，会造成turbine数据不完整
+ribbon:
+  eureka:
+    enabled: true         # 默认为true。如果设置为false，Ribbon将不会从Eureka中获得服务列表，而是使用静态配置的服务列表。静态服务列表可使用：<client>.ribbon.listOfServers来指定。参考：http://projects.spring.io/spring-cloud/docs/1.0.3/spring-cloud.html#spring-cloud-ribbon-without-eureka
+
+### 参考：https://spring.io/guides/gs/client-side-load-balancing/

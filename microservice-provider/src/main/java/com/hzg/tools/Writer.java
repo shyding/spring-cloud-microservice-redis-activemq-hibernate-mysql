@@ -12,7 +12,7 @@ import java.io.PrintWriter;
  */
 public class Writer {
 
-    Logger logger = Logger.getLogger(Writer.class);
+    static Logger logger = Logger.getLogger(Writer.class);
 
     public static Gson gson = new Gson();
 
@@ -25,6 +25,8 @@ public class Writer {
     }
 
     public static void writeStringToJson(HttpServletResponse response, String string) {
+        logger.info("the string to response:" + string);
+
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json; charset=utf-8");
         PrintWriter out = null;

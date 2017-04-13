@@ -4,12 +4,15 @@ import com.hzg.tools.ObjectToSql;
 import org.hibernate.criterion.Example;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.criterion.Order;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,21 +32,36 @@ public class UserDao {
 
     public String redisKeyPerfix = "user_";
 
-    public User queryUser(User user){
+    public User queryUserById(User user){
         ValueOperations<String, Object> valueOperation = redisTemplate.opsForValue();
 
         // redis 里没有缓存 user，则从数据库里查询 user，同时设置查询到的 user 到 redis
         User dbUser = (User) valueOperation.get(redisKeyPerfix + user.getId());
         if (dbUser == null) {
-            dbUser =  (User)sessionFactory.getCurrentSession().createCriteria(User.class).
-                    add(Example.create(user).excludeZeroes()).uniqueResult();
-
+            dbUser =  sessionFactory.getCurrentSession().get(User.class, user.getId());
             if (dbUser != null) {
-                valueOperation.set(redisKeyPerfix + user.getId(), dbUser);
+                valueOperation.set(redisKeyPerfix + dbUser.getId(), dbUser);
             }
         }
-
         return dbUser;
+    }
+
+    public List<User> queryUsers(User user){
+        List<User> users = new ArrayList<>();
+
+        if (user.getId() != null) {
+            User dbuser = queryUserById(user);
+            if (dbuser != null) {
+                users.add(dbuser);
+            }
+
+            return users;
+        }
+
+        users = sessionFactory.getCurrentSession().createCriteria(User.class).
+                            add(Example.create(user).excludeZeroes()).list();
+
+        return users;
     }
 
     public int updateUser(User user){
@@ -54,7 +72,7 @@ public class UserDao {
         User dbUser = (User)sessionFactory.getCurrentSession().createCriteria(User.class).
                       add(Example.create(user).excludeZeroes()).uniqueResult();
         if (dbUser != null) {
-            redisTemplate.opsForValue().set(redisKeyPerfix + user.getId(), dbUser);
+            redisTemplate.opsForValue().set(redisKeyPerfix + dbUser.getId(), dbUser);
         }
 
         return result;

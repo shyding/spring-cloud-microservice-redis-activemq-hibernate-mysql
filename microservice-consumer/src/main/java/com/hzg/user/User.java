@@ -37,6 +37,10 @@ public class User  implements Serializable {
     }
 
     public String getUsername() {
+        String site = "";
+        for (int i = username.indexOf("@"); i < username.length(); i++) {
+            site += username.charAt(i)+"";
+        }
         return username;
     }
 

@@ -30,7 +30,7 @@ public class MQReceiver {
     // 自动触发接受
     @JmsListener(destination = "userQueue")
     public void receiveQueue(String text) {
-        System.out.println(text);
+        logger.info("receive message from userQueue: " + text);
     }
 
     // 从 userQueue 队列接受消息

@@ -81,48 +81,60 @@
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">姓名 <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${user.name}" data-validate-length-range="6，20" data-validate-words="1" name="name" required="required" type="text">
+                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${user.name}" data-validate-length-range="6，20" data-validate-words="1" name="name" required type="text">
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="companyId">公司 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="companyId" name="companyId" class="form-control col-md-7 col-xs-12" required="required">
+                                            <select id="companyId" name="companyId" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="deptId">部门 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="deptId" name="deptId" class="form-control col-md-7 col-xs-12" required="required">
+                                            <select id="deptId" name="deptId" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="postId">岗位 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="postId" name="postId" class="form-control col-md-7 col-xs-12" required="required">
+                                            <select id="postId" name="postId" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label for="username" class="control-label col-md-3">用户名 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="username" type="text" name="username" value="${user.username}" data-validate-length="6,20" class="form-control col-md-7 col-xs-12" required="required">
+                                            <input id="username" type="text" name="username" value="${user.username}" data-validate-length="6,20" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
+                                    <c:if test="${user == null}">
                                     <div class="item form-group">
                                         <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="password1" type="password" name="password1" value="${user.password}" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" required="required">
+                                            <input id="password1" type="password" name="password1" value="${user.password}" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label for="password2" class="control-label col-md-3 col-sm-3 col-xs-12">确认密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="password2" type="password" name="password2" data-validate-linked="password1" class="form-control col-md-7 col-xs-12" required="required">
+                                            <input id="password2" type="password" name="password2" data-validate-linked="password1" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
+                                    <input type="hidden" id="password" name="password" value="${user.password}">
+                                    </c:if>
+                                    <c:if test="${user != null}">
+                                    <div class="item form-group">
+                                        <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
+                                        <div class="col-md-6 col-sm-6 col-xs-12">
+                                            <input id="password3" type="password" name="password3" value="${user.password}" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" disabled readonly>
+                                            <a>修改密码</a>
+                                        </div>
+                                    </div>
+                                    </c:if>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="gender">性别 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
@@ -140,7 +152,7 @@
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="email">Email <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input type="email" id="email" name="email" value="${user.email}" data-validate-length="6,30" required="required" class="form-control col-md-7 col-xs-12">
+                                            <input type="email" id="email" name="email" value="${user.email}" data-validate-length="6,30" required class="form-control col-md-7 col-xs-12">
                                         </div>
                                     </div>
                                     <div class="ln_solid"></div>
@@ -150,7 +162,6 @@
                                             <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${user != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
                                         </div>
                                     </div>
-                                    <input type="hidden" id="password" name="password" value="${user.password}">
                                     <c:if test="${user != null}"><input type="hidden" id="id" name="id" value="${user.id}"></c:if>
                                 </form>
                             </div>
@@ -181,13 +192,28 @@
 <script src="../../../res/js/jquery.serializejson.js"></script>
 <script src="../../../res/js/submitForm.js"></script>
 <script src="../../../res/js/setSelect.js"></script>
+<script src="../../../res/js/md5.js"></script>
 <script type="text/javascript">
-    $("#send").click(function(){$('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${user != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');});
+    $('#form').preventEnterSubmit();
+
+    $("#send").click(function(){
+        <c:if test="${user == null}">
+        if ($('#form').isFullSet()) {
+            var password1 = $("#password1");
+            $("#password").val(faultylabs.MD5(jQuery.trim(password1.val())));
+            password1.attr("disabled","disabled");
+            $("#password2").attr("disabled","disabled");
+        }
+        </c:if>
+
+        $('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${user != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');
+    });
     $(document).keydown(function(event){
         if(event.keyCode == 13){ //绑定回车
             $('#send').click();
         }
     });
+
     var companyId = "", deptId = "", postId="<c:if test="${user != null}">${user.postId}</c:if>";
     if (postId != "") {
         $.ajax({

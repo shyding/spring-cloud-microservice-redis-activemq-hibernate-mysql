@@ -1,6 +1,3 @@
-/**
- * Created by Administrator on 2017/4/17.
- */
 (function($){
     "use strict";
     var preFormJson = "";
@@ -37,5 +34,33 @@
         });
 
         preFormJson = formJson;
+    },
+
+    $.fn.isFullSet = function(){
+        var isFullSet = true;
+        var nameValues = {};
+
+        this.find(':input').filter('[required=required], .required, .optional').not('[disabled=disabled]').each(function() {
+            if (nameValues[$(this).attr("name")] == null || nameValues[$(this).attr("name")] == undefined) {
+                nameValues[$(this).attr("name")] = $(this).val();
+            }
+        });
+
+        for (var key in nameValues ){
+            if ($.trim(key) == "") {
+                isFullSet = false;
+                break;
+            }
+        }
+
+        return isFullSet;
+    },
+
+    $.fn.preventEnterSubmit = function(){
+        this.keypress(function(e){
+            if(e.keyCode==13){
+                e.preventDefault();
+            }
+        });
     }
 })(jQuery);

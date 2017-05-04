@@ -1,6 +1,8 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
+import com.hzg.tools.DateUtil;
 import com.hzg.tools.Writer;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -8,23 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author smjie
- * @version 1.00
- * @Date 2017/3/16
- */
 @Controller
 @RequestMapping("/sys")
 public class SysController {
 
     Logger logger = Logger.getLogger(SysController.class);
-
-    public String redisKeyPerfixSys = "sys_";
 
     @Autowired
     private SysDao sysDao;
@@ -48,24 +45,35 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             User user = writer.gson.fromJson(json, User.class);
-            user.setInputDate(inputDate);
-            user.setState(0);
-            result = sysDao.save(user, User.class,redisKeyPerfixSys+User.class.getSimpleName());
+
+            if (!isUsernameExist(user.getId(), user.getUsername())) {
+                user.setInputDate(inputDate);
+                user.setState(0);
+
+                if (user.getPassword().length() < 32) {
+                    user.setPassword(DigestUtils.md5Hex(user.getPassword()).toUpperCase());
+                }
+
+                result = sysDao.save(user);
+
+            } else {
+                result = "用户名已经存在";
+            }
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
             post.setInputDate(inputDate);
-            result = sysDao.save(post, Post.class,redisKeyPerfixSys+Post.class.getSimpleName());
+            result = sysDao.save(post);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
             Dept dept = writer.gson.fromJson(json, Dept.class);
             dept.setInputDate(inputDate);
-            result = sysDao.save(dept, Dept.class,redisKeyPerfixSys+Dept.class.getSimpleName());
+            result = sysDao.save(dept);
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
             company.setInputDate(inputDate);
-            result = sysDao.save(company, Company.class,redisKeyPerfixSys+Company.class.getSimpleName());
+            result = sysDao.save(company);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -79,53 +87,158 @@ public class SysController {
 
         String result = "fail";
 
-        if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
+        if (entity.equalsIgnoreCase(User.class.getSimpleName()) ) {
             User user = writer.gson.fromJson(json, User.class);
-            result = sysDao.updateById(user.getId(), user, User.class,redisKeyPerfixSys+User.class.getSimpleName());
+            if (!isUsernameExist(user.getId(), user.getUsername())) {
+
+                List<Integer> relateIds = new ArrayList<>();
+                for (Post post : user.getPosts()) {
+                    relateIds.add(post.getId());
+                }
+
+                User dbUser = (User) sysDao.queryById(user.getId(), User.class);
+                List<Integer> unRelateIds = new ArrayList<>();
+                for (Post post : dbUser.getPosts()) {
+                    unRelateIds.add(post.getId());
+                }
+
+                /**
+                 * 由于保存实体后，就马上从数据库查询该实体，导致关联关系还是旧的关联关系，
+                 * 所以先重置关联关系，再保存实体，这样查询出来的关联关系就是最新的
+                 */
+                sysDao.updateRelateId(user.getId(), relateIds, unRelateIds, User.class);
+                result = sysDao.updateById(user.getId(), user);
+            } else {
+                result = "用户名已经存在";
+            }
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
-            result = sysDao.updateById(post.getId(), post, Post.class,redisKeyPerfixSys+Post.class.getSimpleName());
+            result = sysDao.updateById(post.getId(), post);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
             Dept dept = writer.gson.fromJson(json, Dept.class);
-            result = sysDao.updateById(dept.getId(), dept, Dept.class,redisKeyPerfixSys+Dept.class.getSimpleName());
+            result = sysDao.updateById(dept.getId(), dept);
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
-            result = sysDao.updateById(company.getId(), company, Company.class,redisKeyPerfixSys+Company.class.getSimpleName());
+            result = sysDao.updateById(company.getId(), company);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
         logger.info("update end, result:" + result);
     }
 
-    @PostMapping("/query")
+    @RequestMapping(value = "/query", method = {RequestMethod.GET, RequestMethod.POST})
     public void query(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("query start, parameter:" + entity + ":" + json);
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             User user = writer.gson.fromJson(json, User.class);
-            List<User> users = sysDao.query(user.getId(), user, User.class,redisKeyPerfixSys+User.class.getSimpleName());
+            List<User> users = sysDao.query(user);
+            for (User user1 : users) {
+                user1.setPassword(null);
+            }
+
             writer.writeObjectToJson(response, users);
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
-            List<Post> posts = sysDao.query(post.getId(), post, Post.class,redisKeyPerfixSys+Post.class.getSimpleName());
+            List<Post> posts = sysDao.query(post);
             writer.writeObjectToJson(response, posts);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
             Dept dept = writer.gson.fromJson(json, Dept.class);
-            List<Dept> depts = sysDao.query(dept.getId(), dept, Dept.class,redisKeyPerfixSys+Dept.class.getSimpleName());
+            List<Dept> depts = sysDao.query(dept);
             writer.writeObjectToJson(response, depts);
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
-            List<Company> companies = sysDao.query(company.getId(), company, Company.class,redisKeyPerfixSys+Company.class.getSimpleName());
+            List<Company> companies = sysDao.query(company);
             writer.writeObjectToJson(response, companies);
         }
 
         logger.info("query end");
     }
 
+    @RequestMapping(value = "/suggest", method = {RequestMethod.GET, RequestMethod.POST})
+    public void suggest(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("suggest start, parameter:" + entity + ":" + json);
+
+        if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
+            User user = writer.gson.fromJson(json, User.class);
+            List<User> users = sysDao.suggest(user);
+            for (User user1 : users) {
+                user1.setPassword(null);
+            }
+
+            writer.writeObjectToJson(response, users);
+
+        }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
+            Post post = writer.gson.fromJson(json, Post.class);
+            List<Post> posts = sysDao.suggest(post);
+            writer.writeObjectToJson(response, posts);
+
+        }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
+            Dept dept = writer.gson.fromJson(json, Dept.class);
+            List<Dept> depts = sysDao.suggest(dept);
+            writer.writeObjectToJson(response, depts);
+
+        }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
+            Company company = writer.gson.fromJson(json, Company.class);
+            List<Company> companies = sysDao.suggest(company);
+            writer.writeObjectToJson(response, companies);
+        }
+
+        logger.info("suggest end");
+    }
+
+    @RequestMapping(value = "/complexQuery", method = {RequestMethod.GET, RequestMethod.POST})
+    public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
+        logger.info("suggest start, parameter:" + entity + ":" + json);
+
+        if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
+            User user = writer.gson.fromJson(json, User.class);
+            List<User> users = sysDao.complexQuery(user, position, rowNum);
+            for (User user1 : users) {
+                user1.setPassword(null);
+            }
+            writer.writeObjectToJson(response, users);
+
+        }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
+            Post post = writer.gson.fromJson(json, Post.class);
+            List<Post> posts = sysDao.complexQuery(post, position, rowNum);
+            writer.writeObjectToJson(response, posts);
+
+        }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
+            Dept dept = writer.gson.fromJson(json, Dept.class);
+            List<Dept> depts = sysDao.complexQuery(dept, position, rowNum);
+            writer.writeObjectToJson(response, depts);
+
+        }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
+            Company company = writer.gson.fromJson(json, Company.class);
+            List<Company> companies = sysDao.complexQuery(company, position, rowNum);
+            writer.writeObjectToJson(response, companies);
+        }
+
+        logger.info("suggest end");
+    }
+
+    boolean isUsernameExist(Integer id, String username) {
+        boolean isExist = true;
+
+        User user = new User();
+        user.setUsername(username);
+        List<User> users = sysDao.query(user);
+
+        if (users.size() == 0) {
+            isExist = false;
+        } else if (users.size() == 1) {
+            if (id == users.get(0).getId()) {
+                isExist = false;
+            }
+        }
+
+        return isExist;
+    }
 }

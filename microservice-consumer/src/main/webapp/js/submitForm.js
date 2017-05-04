@@ -1,12 +1,3 @@
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: submitForm.js
- *类的详细说明
- *
- * @author smjie
- * @Date  2017/4/22
- * @version 1.00
- */
 (function($){
     "use strict";
     var preFormJson = "";
@@ -16,7 +7,7 @@
         if (!validator.checkAll(this)) {
             return;
         }
-        var formJson = JSON.stringify(this.serializeJSON());
+        var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
         $.ajax({
             type: "post",
             url: url,
@@ -51,9 +42,17 @@
 
         this.find(':input').filter('[required=required], .required, .optional').not('[disabled=disabled]').each(function() {
             if (nameValues[$(this).attr("name")] == null || nameValues[$(this).attr("name")] == undefined) {
-                nameValues[$(this).attr("name")] = "";
+                if ($(this).val() == null || $(this).val() == undefined) {
+                    nameValues[$(this).attr("name")] = "";
+
+                } else {
+                    nameValues[$(this).attr("name")] = $(this).val();
+                }
+
             } else {
-                nameValues[$(this).attr("name")] += $(this).val()
+                if ($(this).val() != null || $(this).val() != undefined) {
+                    nameValues[$(this).attr("name")] += $(this).val();
+                }
             }
         });
 

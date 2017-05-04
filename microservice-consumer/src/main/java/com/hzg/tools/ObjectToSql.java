@@ -8,9 +8,6 @@ import org.apache.log4j.Logger;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 
-/**
- * Created by Administrator on 2017/3/24.
- */
 @Component
 public class ObjectToSql {
     private Logger logger = Logger.getLogger(ObjectToSql.class);

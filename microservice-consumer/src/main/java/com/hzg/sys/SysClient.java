@@ -1,4 +1,4 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
 import com.hzg.base.Client;
 import org.springframework.cloud.netflix.feign.FeignClient;
@@ -8,11 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-/**
- * @author smjie
- * @version 1.00
- * @Date 2017/3/16
- */
 @FeignClient(name = "microservice-provider-sys", fallback = SysClient.SysClientFallback.class)
 public interface SysClient extends Client {
     org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(SysClient.class);

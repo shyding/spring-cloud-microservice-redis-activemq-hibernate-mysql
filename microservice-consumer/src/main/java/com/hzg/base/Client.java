@@ -1,15 +1,10 @@
-﻿package com.hzg.base;
+package com.hzg.base;
 
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-/**
- * @author smjie
- * @version 1.00
- * @Date 2017/4/20
- */
 public interface Client {
     org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(Client.class);
 
@@ -22,11 +17,17 @@ public interface Client {
     @RequestMapping(value = "/sys/save", method = RequestMethod.POST)
     String save(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/sys/suggest", method = RequestMethod.POST)
+    String suggest(@RequestParam("entity") String entity, @RequestBody String json);
+
+    @RequestMapping(value = "/sys/complexQuery", method = RequestMethod.POST)
+    String complexQuery(@RequestParam("entity") String entity, @RequestBody String json, @RequestParam("position") int position, @RequestParam("rowNum") int rowNum);
+
     class ClientFallback implements Client {
         @Override
         public String query(String entity, String json) {
             log.info("query 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
-            return "{}";
+            return "[{}]";
         }
 
         @Override
@@ -39,6 +40,18 @@ public interface Client {
         public String save(String entity, String json) {
             log.info("save 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
             return "{\"result\":\"系统异常，保存出错\"}";
+        }
+
+        @Override
+        public String suggest(String entity, String json) {
+            log.info("suggest 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
+            return "{\"result\":\"系统异常，保存出错\"}";
+        }
+
+        @Override
+        public String complexQuery(String entity, String json, int position, int rowNum) {
+            log.info("doSome 异常发生，进入fallback方法，接收的参数：" + entity + ", " + json + ", " + position + ", " + rowNum);
+            return "[{}]";
         }
     }
 }

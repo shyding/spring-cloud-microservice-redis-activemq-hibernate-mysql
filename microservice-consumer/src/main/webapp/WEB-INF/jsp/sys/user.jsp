@@ -85,23 +85,23 @@
                                         </div>
                                     </div>
                                     <div class="item form-group">
-                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="companyId">公司 <span class="required">*</span></label>
+                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="company[id]">公司 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="companyId" name="companyId" class="form-control col-md-7 col-xs-12" required>
+                                            <select id="company[id]" name="company[id]" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
-                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="deptId">部门 <span class="required">*</span></label>
+                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="dept[id]">部门 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="deptId" name="deptId" class="form-control col-md-7 col-xs-12" required>
+                                            <select id="dept[id]" name="dept[id]" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
-                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="postId">岗位 <span class="required">*</span></label>
+                                        <label class="control-label col-md-3 col-sm-3 col-xs-12" for="posts[][id]">岗位 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="postId" name="postId" class="form-control col-md-7 col-xs-12" required>
+                                            <select id="posts[][id]" name="posts[][id]" class="form-control col-md-7 col-xs-12" required>
                                             </select>
                                         </div>
                                     </div>
@@ -115,7 +115,7 @@
                                     <div class="item form-group">
                                         <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="password1" type="password" name="password1" value="${user.password}" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" required>
+                                            <input id="password1" type="password" name="password1" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
                                     <div class="item form-group">
@@ -124,13 +124,13 @@
                                             <input id="password2" type="password" name="password2" data-validate-linked="password1" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
-                                    <input type="hidden" id="password" name="password" value="${user.password}">
+                                    <input type="hidden" id="password" name="password">
                                     </c:if>
                                     <c:if test="${user != null}">
                                     <div class="item form-group">
                                         <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="password3" type="password" name="password3" value="${user.password}" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" disabled readonly>
+                                            <input id="password3" type="password" name="password3" value="*********" data-validate-length="6,32" class="form-control col-md-7 col-xs-12" disabled readonly>
                                             <a>修改密码</a>
                                         </div>
                                     </div>
@@ -214,44 +214,41 @@
         }
     });
 
-    var companyId = "", deptId = "", postId="<c:if test="${user != null}">${user.postId}</c:if>";
+    <c:set var="postIds" value="" />
+    <c:set var="deptId" value="" />
+    <c:if test="${user != null}">
+        <c:forEach var="post" items="${user.posts}" varStatus="status">
+            <c:set var="postIds" value="${postIds + post.id}" />
+            <c:set var="deptId" value="${post.dept.id}" />
+        </c:forEach>
+    </c:if>
+
+    var companyId = "${companyId}", deptId = "${deptId}", postId = "${postIds}";
     if (postId != "") {
         $.ajax({
             type: "get",
-            url: '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>',
+            url: '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
             contentType: "application/x-www-form-urlencoded; charset=utf-8",
-            data: {json: '{"id":"' + postId + '"}'},
+            data: {json: '{"id":"' + deptId + '"}'},
             dataType: "json",
 
             success: function(items){
-                deptId = items[0].deptId;
+                companyId = items[0].company.id;
 
-                $.ajax({
-                    type: "get",
-                    url: '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-                    contentType: "application/x-www-form-urlencoded; charset=utf-8",
-                    data: {json: '{"id":"' + deptId + '"}'},
-                    dataType: "json",
-
-                    success: function(items){
-                        companyId = items[0].companyId;
-
-                        selector.setSelect(['#companyId', '#deptId', '#postId'], ['name', 'name', 'name'], ['id', 'id', 'id'],
-                            [companyId, deptId, postId],
-                            ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
-                                '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-                                '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
-                            '{}', ['companyId', 'deptId'], 0);
-                    }
-                });
+                selector.setSelect(['company[id]', 'dept[id]', 'posts[][id]'], ['name', 'name', 'name'], ['id', 'id', 'id'],
+                    [companyId, deptId, postId],
+                    ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
+                        '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
+                        '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
+                    '{}', ['company[id]', 'dept[id]'], 0);
             }
         });
     } else {
-        selector.setSelect(['#companyId', '#deptId', '#postId'], ['name', 'name', 'name'], ['id', 'id', 'id'], [],
+        selector.setSelect(['company[id]', 'dept[id]', 'posts[][id]'], ['name', 'name', 'name'], ['id', 'id', 'id'], [],
             ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
                 '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
                 '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
-            '{}', ['companyId', 'deptId'], 0);
+            '{}', ['company[id]', 'dept[id]'], 0);
     }
 
 </script>

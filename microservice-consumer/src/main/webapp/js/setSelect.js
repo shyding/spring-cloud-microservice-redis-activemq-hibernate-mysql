@@ -4,8 +4,8 @@ var selector = (function($){
     var setFuncIndex = "";
 
     function setSelect(selectIds, showProperties, valueProperties, initPropertyValues, urls, queryJson, queryProperties, index) {
-        var select = $(selectIds[index]);
-        select.append("<option value=\"\">请选择</option>");
+        var select = $(document.getElementById(selectIds[index]));
+        select.append("<option value=\"-1\">请选择</option>");
 
         $.ajax({
             type: "get",
@@ -38,15 +38,27 @@ var selector = (function($){
                         select.append("<option value=\'" + valuePropertyValue +"\' " + selected + ">" + showPropertyValue + "</option>");
                     }
                 });
-                
+
                 //设置级联下拉框函数
                 if (selectIds[index+1] != null && selectIds[index+1] != undefined) {
                     var funcIndex = "#"+index+"#";
                     if (setFuncIndex.indexOf(funcIndex) == -1) {
-                        $(selectIds[index]).change(function () {
+                        $(document.getElementById(selectIds[index])).change(function () {
 
-                            $(selectIds[index + 1]).empty();
-                            var queryJson = "{\"" + queryProperties[index] + "\":\"" + $(selectIds[index]).val() + "\"}";
+                            $(document.getElementById(selectIds[index+1])).empty();
+
+                            var queryJson;
+                            var startPos = queryProperties[index].indexOf("["), endPos = queryProperties[index].indexOf("]");
+
+                            if (startPos != -1 && endPos != -1) {
+                                var entity = queryProperties[index].substring(0, startPos),
+                                    property = queryProperties[index].substring(startPos+1, endPos);
+
+                                queryJson = "{\"" + entity + "\":{\"" + property +"\":\"" + $(document.getElementById(selectIds[index])).val() + "\"}}";
+                            } else {
+                                queryJson = "{\"" + queryProperties[index] + "\":\"" + $(document.getElementById(selectIds[index])).val() + "\"}";
+                            }
+
                             setSelect(selectIds, showProperties, valueProperties, initPropertyValues, urls, queryJson, queryProperties, ++index);
                             --index;
                         });
@@ -59,7 +71,16 @@ var selector = (function($){
                         var queryJson1 = queryJson;
                         if (initPropertyValues[index]  != null && initPropertyValues[index] != undefined &&
                             initPropertyValues[index] != "") {
-                            queryJson1 = "{\"" + queryProperties[index] + "\":\"" + initPropertyValues[index] + "\"}";
+
+                            var startPos = queryProperties[index].indexOf("["), endPos = queryProperties[index].indexOf("]");
+                            if (startPos != -1 && endPos != -1) {
+                                var entity = queryProperties[index].substring(0, startPos),
+                                    property = queryProperties[index].substring(startPos+1, endPos);
+
+                                queryJson1 = "{\"" + entity + "\":{\"" + property +"\":\"" + initPropertyValues[index] + "\"}}";
+                            } else {
+                                queryJson1 = "{\"" + queryProperties[index] + "\":\"" + initPropertyValues[index] + "\"}";
+                            }
                         }
 
                         setSelect(selectIds, showProperties, valueProperties, initPropertyValues, urls, queryJson1, queryProperties, ++index);

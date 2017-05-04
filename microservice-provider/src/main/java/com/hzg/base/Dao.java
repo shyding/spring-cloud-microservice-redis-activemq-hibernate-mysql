@@ -20,14 +20,6 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Dao.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/20
- */
 @Repository
 public class Dao {
     private Logger logger = Logger.getLogger(Dao.class);

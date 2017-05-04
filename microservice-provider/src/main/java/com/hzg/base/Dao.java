@@ -20,6 +20,14 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: Dao.java
+ *
+ * @author smjie
+ * @version 1.00
+ * @Date 2017/4/20
+ */
 @Repository
 public class Dao {
     private Logger logger = Logger.getLogger(Dao.class);
@@ -38,7 +46,7 @@ public class Dao {
      * @param object
      * @return
      */
-    public String save(Object object){
+    public String save(Object object){logger.info("save111");
         sessionFactory.getCurrentSession().save(object);
         Class clazz = object.getClass();
         storeToRedis(clazz.getName() + "_" + getId(object, clazz), object);
@@ -128,16 +136,25 @@ public class Dao {
         String tableName = relateTableInfo[0], firstIdColumn = relateTableInfo[1], secondIdColumn = relateTableInfo[2];
 
         for (Integer relateId : relateIds) {
-            result = sessionFactory.getCurrentSession().createSQLQuery(
-                    "insert into " + tableName + "(" + firstIdColumn + "," + secondIdColumn + ") " +
-                       " values (" + id + "," + relateId + ")").executeUpdate();
+            if (!unRelateIds.contains(relateId)) {
+                Object relate = sessionFactory.getCurrentSession().createSQLQuery(
+                        "select * from " + tableName + " where " + firstIdColumn + " = " + id + " and " + secondIdColumn + " = " + relateId).uniqueResult();
+
+                if (relate == null) {
+                    result = sessionFactory.getCurrentSession().createSQLQuery(
+                            "insert into " + tableName + "(" + firstIdColumn + "," + secondIdColumn + ") " +
+                                    " values (" + id + "," + relateId + ")").executeUpdate();
+                }
+            }
         }
         
         for (Integer unRelateId : unRelateIds) {
-            result = sessionFactory.getCurrentSession().createSQLQuery(
-                    "delete from " + tableName +
-                       " where " +  firstIdColumn + "=" + id +
-                       " and " + secondIdColumn + "=" + unRelateId).executeUpdate();
+            if (!relateIds.contains(unRelateId)) {
+                result = sessionFactory.getCurrentSession().createSQLQuery(
+                        "delete from " + tableName +
+                                " where " +  firstIdColumn + "=" + id +
+                                " and " + secondIdColumn + "=" + unRelateId).executeUpdate();
+            }
         }
 
         return (result > 0 ? "success" : "fail") + "," + result + " item updated";
@@ -406,6 +423,8 @@ public class Dao {
                     Set<Object> relateObjects = (Set<Object>) clazz.getMethod(objectToSql.getMethodPerfix + partMethodName).invoke(dbObject);
 
                     if (relateObjects != null && relateObjects.size() > 0) {
+                        Set<Object> relateDbObjects = new HashSet<>();
+
                         for (Object relateObject : relateObjects) {
                             String relateId = String.valueOf(getId(relateObject, relateObject.getClass()));
                             Object relateDbObject = getFromRedis(relateObject.getClass().getName() + "_" + relateId);
@@ -414,9 +433,9 @@ public class Dao {
                                 relateDbObject = queryStoreObjectById(Integer.valueOf(relateId), relateObject.getClass());
                             }
 
-                            relateObjects.remove(relateObject);
-                            relateObjects.add(relateDbObject);
+                            relateDbObjects.add(relateDbObject);
                         }
+                        relateObjects = relateDbObjects;
 
                     } else {
                         relateObjects = queryOneOrManyToManyObjects(field, dbObject);
@@ -426,7 +445,8 @@ public class Dao {
                 }
             }
         } catch (Exception e) {
-            logger.info(e);
+            e.printStackTrace();
+            logger.info(e.getMessage());
         }
     }
 

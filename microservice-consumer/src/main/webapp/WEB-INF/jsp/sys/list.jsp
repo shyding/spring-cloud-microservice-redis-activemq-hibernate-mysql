@@ -22,7 +22,7 @@
     <!-- bootstrap-daterangepicker -->
     <link href="../../../res/gentelella/vendors/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet">
     <!-- iCheck -->
-    <link href="../vendors/iCheck/skins/flat/green.css" rel="stylesheet">
+    <link href="../../../res/gentelella/vendors/iCheck/skins/flat/green.css" rel="stylesheet">
     <!-- Datatables -->
     <link href="../../../res/gentelella/vendors/datatables.net-bs/css/dataTables.bootstrap.min.css" rel="stylesheet">
     <link href="../../../res/gentelella/vendors/datatables.net-buttons-bs/css/buttons.bootstrap.min.css" rel="stylesheet">
@@ -138,7 +138,7 @@
                                 <div class="ln_solid"></div>
                             </div>
                             <div class="x_content">
-                                <table id="dataList" class="table table-striped table-bordered"></table>
+                                <table id="dataList" class="table table-striped table-bordered jambo_table bulk_action"></table>
                             </div>
                         </div>
                     </div>
@@ -165,7 +165,7 @@
 <!-- iCheck -->
 <script src="../../../res/gentelella/vendors/iCheck/icheck.min.js"></script>
 <!-- Datatables -->
-<script src="../../../res/gentelella/vendors/datatables.net/js/jquery.dataTables.min.js"></script>
+<script src="../../../res/gentelella/vendors/datatables.net/js/jquery.dataTables.js"></script>
 <script src="../../../res/gentelella/vendors/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
 <script src="../../../res/gentelella/vendors/datatables.net-buttons/js/dataTables.buttons.min.js"></script>
 <script src="../../../res/gentelella/vendors/datatables.net-buttons-bs/js/buttons.bootstrap.min.js"></script>
@@ -181,7 +181,7 @@
 <script src="../../../res/gentelella/vendors/pdfmake/build/pdfmake.min.js"></script>
 <script src="../../../res/gentelella/vendors/pdfmake/build/vfs_fonts.js"></script>
 <!-- Custom Theme Scripts -->
-<script src="../../../res/gentelella/build/js/custom.min.js"></script>
+<script src="../../../res/js/custom.js"></script>
 <!-- form submit -->
 <script src="../../../res/js/jquery.serializejson.js"></script>
 <script src="../../../res/js/submitForm.js"></script>

@@ -1,4 +1,4 @@
-﻿package com.hzg.base;
+package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
@@ -20,7 +20,6 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-
 @Repository
 public class Dao {
     private Logger logger = Logger.getLogger(Dao.class);
@@ -39,7 +38,7 @@ public class Dao {
      * @param object
      * @return
      */
-    public String save(Object object){logger.info("save111");
+    public String save(Object object){
         sessionFactory.getCurrentSession().save(object);
         Class clazz = object.getClass();
         storeToRedis(clazz.getName() + "_" + getId(object, clazz), object);
@@ -379,6 +378,7 @@ public class Dao {
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             logger.info(e);
         }
     }
@@ -516,20 +516,24 @@ public class Dao {
      * @return
      */
     public List suggest(Object object){
-        return queryBySql(objectToSql.generateSelectSqlByAnnotation(object), object.getClass());
+        return queryBySql(objectToSql.generateSuggestSqlByAnnotation(object), object.getClass());
     }
 
     /**
      * 复杂查询
-     * @param object
+     * @param clazz
+     * @param queryParameters
      * @param position
      * @param rowNum
      * @return
      */
-    public List complexQuery(Object object, int position, int rowNum){
-        return queryBySql(objectToSql.generateComplexSqlByAnnotation(object, position, rowNum), object.getClass());
+    public List complexQuery(Class clazz, Map<String, String> queryParameters, int position, int rowNum){
+        List objects = queryBySql(objectToSql.generateComplexSqlByAnnotation(clazz, queryParameters, position, rowNum), clazz);
+        for (Object dbObject : objects) {
+            querySetRelateObject(dbObject);
+        }
+        return  objects;
     }
-
 
 
 

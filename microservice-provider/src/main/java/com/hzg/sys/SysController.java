@@ -1,6 +1,6 @@
 package com.hzg.sys;
 
-import com.hzg.tools.DateUtil;
+import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.Writer;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/sys")
@@ -195,33 +196,31 @@ public class SysController {
 
     @RequestMapping(value = "/complexQuery", method = {RequestMethod.GET, RequestMethod.POST})
     public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
-        logger.info("suggest start, parameter:" + entity + ":" + json);
+        logger.info("complexQuery start, parameter:" + entity + ":" + json);
+
+        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
-            User user = writer.gson.fromJson(json, User.class);
-            List<User> users = sysDao.complexQuery(user, position, rowNum);
+            List<User> users = sysDao.complexQuery(User.class, queryParameters, position, rowNum);
             for (User user1 : users) {
                 user1.setPassword(null);
             }
             writer.writeObjectToJson(response, users);
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
-            Post post = writer.gson.fromJson(json, Post.class);
-            List<Post> posts = sysDao.complexQuery(post, position, rowNum);
+            List<Post> posts = sysDao.complexQuery(Post.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, posts);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
-            Dept dept = writer.gson.fromJson(json, Dept.class);
-            List<Dept> depts = sysDao.complexQuery(dept, position, rowNum);
+            List<Dept> depts = sysDao.complexQuery(Dept.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, depts);
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
-            Company company = writer.gson.fromJson(json, Company.class);
-            List<Company> companies = sysDao.complexQuery(company, position, rowNum);
+            List<Company> companies = sysDao.complexQuery(Company.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, companies);
         }
 
-        logger.info("suggest end");
+        logger.info("complexQuery end");
     }
 
     boolean isUsernameExist(Integer id, String username) {

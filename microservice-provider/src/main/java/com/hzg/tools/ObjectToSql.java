@@ -1,8 +1,11 @@
 package com.hzg.tools;
 
+import com.google.gson.reflect.TypeToken;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 import org.apache.log4j.Logger;
@@ -15,6 +18,9 @@ public class ObjectToSql {
 
     public String getMethodPerfix = "get";
     public  String setMethodPerfix = "set";
+
+    @Autowired
+    private Writer writer;
 
     public String generateSelectSqlByAnnotation(Object object){
         Class objectClass = object.getClass();
@@ -33,7 +39,7 @@ public class ObjectToSql {
         }
 
         int i = 1;
-        List<List<Object>> manyToManyTableInfos = getManyToManyTableInfo(objectClass, object);
+        List<List<Object>> manyToManyTableInfos = getManyToManyTableInfos(objectClass, object);
         if (manyToManyTableInfos.size() > 0) {
             for (List<Object> manyToManyTableInfo : manyToManyTableInfos) {
                 String joinTableNickName = "t" + (i++), secondTableNickName = "t" + (i++);
@@ -51,7 +57,7 @@ public class ObjectToSql {
             }
         }
 
-        List<List<Object>> oneToManyTableInfos = getOneToManyTableInfo(objectClass, object);
+        List<List<Object>> oneToManyTableInfos = getOneToManyTableInfos(objectClass, object);
         if (oneToManyTableInfos.size() > 0) {
             for (List<Object> oneToManyTableInfo : oneToManyTableInfos) {
                 String joinTableNickName = "t" + (i++);
@@ -118,31 +124,112 @@ public class ObjectToSql {
         return suggestSql;
     }
 
-    public String generateComplexSqlByAnnotation(Object object, int position, int rowNum){
-        Class objectClass = object.getClass();
+    public String generateComplexSqlByAnnotation(Class clazz, Map<String, String> queryParameters, int position, int rowNum){
+        String selectSql = "select t.* ", fromPart = getTableName(clazz)+" t, ", wherePart = "";
 
-        String complexSql = "select t.* from " + getTableName(objectClass) + " t ";
-        List<List<String>> columnValues = getColumnValues(objectClass, object);
-        String where = "";
+        List<List<String>> columnValues = new ArrayList<>();
+        List<List<Object>> manyToManyTableInfos = new ArrayList<>();
+        List<List<Object>> oneToManyTableInfos = new ArrayList<>();
 
-        for (List<String> columnValue : columnValues) {
-            if (columnValue.get(0).toLowerCase().contains("date")) { //字段含有 date 表示是日期字段，columnValue.get(1)的值如：2017/04/26 - 2017/04/26
-                String[] dateRange = columnValue.get(1).replace("/", "-").split(" - ");
-                where += columnValue.get(0) + " >= " + dateRange[0] + "' and " + columnValue.get(0) + " <= '" + dateRange[1] + " and ";
+        for (Map.Entry<String, String> entry : queryParameters.entrySet()) {
+            Field field = null;
+            try {
+                field = clazz.getDeclaredField(entry.getKey());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-            } else {
-                where += columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
+            if (field != null) {
+                if (field.isAnnotationPresent(Column.class) ||
+                        field.isAnnotationPresent(ManyToOne.class) ||
+                        field.isAnnotationPresent(OneToOne.class)) {
+                    List<String> columnValue = getColumnValue(field, entry.getValue());
+                    if (columnValue != null) {
+                        columnValues.add(columnValue);
+                    }
+
+                } else if (field.isAnnotationPresent(ManyToMany.class)) {
+                    List<Object> columnValue = getManyToManyTableInfo(field, entry.getValue());
+                    if (columnValue != null) {
+                        manyToManyTableInfos.add(columnValue);
+                    }
+
+                } else if (field.isAnnotationPresent(OneToMany.class)) {
+                    List<Object> columnValue = getOneToManyTableInfo(field, entry.getValue());
+                    if (columnValue != null) {
+                        oneToManyTableInfos.add(columnValue);
+                    }
+                }
             }
         }
 
-        if (where.length() > 0) {
-            where = " where " + where.substring(0, where.length()-" and ".length());
+        for (List<String> columnValue : columnValues) {
+            /**
+             * 字段含有 date 表示是日期字段，columnValue.get(1)的值如：2017/04/26 - 2017/04/26
+             */
+            if (columnValue.get(0).toLowerCase().contains("date") && columnValue.get(1).contains(" - ")) {
+                String[] dateRange = columnValue.get(1).replace("/", "-").split(" - ");
+                wherePart += "t." + columnValue.get(0) + " >= " + dateRange[0] + "' and t." + columnValue.get(0) + " <= '" + dateRange[1] + " and ";
+
+            } else {
+                wherePart += "t." + columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
+            }
         }
 
-        complexSql = complexSql + where + " limit " + position + "," + rowNum;
-        logger.info("complexSql: " + complexSql);
+        int i = 1;
+        if (manyToManyTableInfos.size() > 0) {
+            for (List<Object> manyToManyTableInfo : manyToManyTableInfos) {
+                String joinTableNickName = "t" + (i++), secondTableNickName = "t" + (i++);
 
-        return complexSql;
+                fromPart += manyToManyTableInfo.get(1).toString() + " " + joinTableNickName + ", " +
+                            manyToManyTableInfo.get(4).toString() + " " + secondTableNickName + ", ";
+
+                wherePart += "t." + manyToManyTableInfo.get(0).toString() + " = " + joinTableNickName + "." + manyToManyTableInfo.get(2).toString() + " and " +
+                        joinTableNickName + "." + manyToManyTableInfo.get(3).toString() + " = " + secondTableNickName + "." + manyToManyTableInfo.get(5).toString() + " and ";
+
+                wherePart = setWhereByValues(wherePart, secondTableNickName, (String)manyToManyTableInfo.get(6), (Class)manyToManyTableInfo.get(7));
+            }
+        }
+
+        if (oneToManyTableInfos.size() > 0) {
+            for (List<Object> oneToManyTableInfo : oneToManyTableInfos) {
+                String joinTableNickName = "t" + (i++);
+
+                fromPart += oneToManyTableInfo.get(1).toString() + " " + joinTableNickName + ", ";
+                wherePart += "t." + oneToManyTableInfo.get(0).toString() + " = " + joinTableNickName + "." + oneToManyTableInfo.get(2).toString() + " and ";
+                wherePart = setWhereByValues(wherePart, joinTableNickName, (String)oneToManyTableInfo.get(3), (Class)oneToManyTableInfo.get(4));
+            }
+        }
+
+        if (fromPart.length() > ", ".length()) {
+            selectSql += " from " + fromPart.substring(0, fromPart.length()-", ".length());
+        }
+
+        if (wherePart.length() > " and ".length()) {
+            selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by id desc limit " + position + "," + rowNum;
+        }
+
+        logger.info("selectSql:" + selectSql);
+
+        return selectSql;
+    }
+
+    private String setWhereByValues(String wherePart, String joinTableNickName, String jsonValue, Class clazz) {
+        Map<String, String> columnSumValues = getPropertySumValues(jsonValue, clazz);
+
+        for (Map.Entry<String, String> entry : columnSumValues.entrySet()) {
+            if (entry.getKey().toLowerCase().contains("date") && entry.getValue().contains(" - ")) {
+
+                String[] dateRange = entry.getValue().replace("/", "-").split(" - ");
+                wherePart += joinTableNickName + "." + entry.getKey() + " >= " + dateRange[0] + "' and " +
+                             joinTableNickName + "." + entry.getKey() + " <= '" + dateRange[1] + " and ";
+
+            } else {
+                wherePart += joinTableNickName + "." + entry.getKey() + " in (" + entry.getValue() + ") and ";
+            }
+        }
+
+        return wherePart;
     }
 
     public String getTableName(Class clazz) {
@@ -164,42 +251,49 @@ public class ObjectToSql {
 
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
-            String fieldName = field.getName();
-            String methodName = getMethodPerfix + fieldName.substring(0,1).toUpperCase() +
-                    fieldName.substring(1);
-            Object value = null;
-
-            try {
-                value = clazz.getMethod(methodName).invoke(object);
-            } catch (Exception e) {
-                logger.info(e.getMessage());
-            }
-
-            // 检查类中属性是否含有 column 注解
-            String column = "";
-
-            if (field.isAnnotationPresent(Column.class)) {
-                column = field.getAnnotation(Column.class).name();
-
-            }else if(field.isAnnotationPresent(ManyToOne.class) ||
-                    field.isAnnotationPresent(OneToOne.class)){
-                column = field.getAnnotation(JoinColumn.class).name();
-            }
-
-            if (value != null && !String.valueOf(value).trim().equals("") && !column.trim().equals("")) {
-                List<String> columnValue = new ArrayList<>();
-
-                columnValue.add(column);
-                columnValue.add(getValue(field, value));
-
+            List<String> columnValue = getColumnValue(field, getFieldValue(object, field));
+            if (columnValue != null) {
                 columnValues.add(columnValue);
-
             }
         }
 
         return columnValues;
     }
 
+    /**
+     * 获取单个字段信息
+     * @param field
+     * @param value
+     * @return
+     */
+    public List<String> getColumnValue(Field field, Object value) {
+        List<String> columnValue = null;
+
+        // 检查类中属性是否含有 column 注解
+        String column = "";
+
+        if (field.isAnnotationPresent(Column.class)) {
+            column = field.getAnnotation(Column.class).name();
+
+        }else if(field.isAnnotationPresent(ManyToOne.class) ||
+                field.isAnnotationPresent(OneToOne.class)){
+            column = field.getAnnotation(JoinColumn.class).name();
+        }
+
+        if (value != null && !String.valueOf(value).trim().equals("") && !column.trim().equals("")) {
+            columnValue = new ArrayList<>();
+            columnValue.add(column);
+            columnValue.add(getValue(field, value));
+        }
+
+        return columnValue;
+    }
+
+    /**
+     * 获取所有属性域信息
+     * @param clazz
+     * @return
+     */
     public List<Map<String, String>> getAllColumnFields(Class clazz) {
         List<Map<String, String>> columnFields = new ArrayList<>();
 
@@ -220,59 +314,86 @@ public class ObjectToSql {
     }
 
     /**
-     * 获ManyToMany信息
+     * 获取 ManyToMany 信息
      * @param clazz
      * @param object
      * @return
      */
-    List<List<Object>> getManyToManyTableInfo(Class clazz, Object object) {
+    public List<List<Object>> getManyToManyTableInfos(Class clazz, Object object) {
         List<List<Object>> columnValues = new ArrayList<>();
 
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
-            String fieldName = field.getName();
-            String methodName = getMethodPerfix + fieldName.substring(0,1).toUpperCase() +
-                    fieldName.substring(1);
-            Object value = null;
+            if (field.isAnnotationPresent(ManyToMany.class)) {
 
-            try {
-                value = clazz.getMethod(methodName).invoke(object);
-            } catch (Exception e) {
-                logger.info(e.getMessage());
-            }
-
-            // ManyToMany 注解
-            String joinTableName = "", joinFirstIdColumn = "", joinSecondIdColumn = "";
-
-            if(field.isAnnotationPresent(ManyToMany.class)){
-                JoinTable joinTable = field.getAnnotation(JoinTable.class);
-
-                joinTableName = joinTable.name();
-                joinFirstIdColumn = joinTable.joinColumns()[0].name();
-                joinSecondIdColumn = joinTable.inverseJoinColumns()[0].name();
-            }
-
-            if (!joinTableName.trim().equals("") && value != null) {
-                Set<Object> objects = (Set<Object>)value;
-                if (objects.size() > 0) {
-                    List<Object> columnValue = new ArrayList<>();
-
-                    //ManyToMany  关联表里的 tableName 信息
-                    columnValue.add("id"); // 主表 id
-                    columnValue.add(joinTableName); // 连接表表名
-                    columnValue.add(joinFirstIdColumn); // 连接主表 id 的表名
-                    columnValue.add(joinSecondIdColumn); // 连接次表 id 的表名
-
-                    columnValue.add(getTableName(objects.toArray()[0].getClass())); // 次表
-                    columnValue.add("id"); // 次表 id
-                    columnValue.add(value); // 次表对象值
-
+                List<Object> columnValue = getManyToManyTableInfo(field, getFieldValue(object, field));
+                if (columnValue != null) {
                     columnValues.add(columnValue);
                 }
             }
+
         }
 
         return columnValues;
+    }
+
+    /**
+     * 获取单个域 ManyToMany 信息
+     * @param field
+     * @param value
+     * @return
+     */
+    public List<Object> getManyToManyTableInfo(Field field, Object value) {
+        List<Object> columnValue = null;
+
+        // ManyToMany 注解
+        String[] joinTableInfo = getJoinTableInfo(field);
+
+        if (joinTableInfo != null && value != null) {
+            Set<Object> objects = (Set<Object>)value;
+            if (objects.size() > 0) {
+                columnValue = new ArrayList<>();
+
+                //ManyToMany  关联表里的 tableName 信息
+                columnValue.add("id"); // 主表 id
+                columnValue.add(joinTableInfo[0]); // 连接表表名
+                columnValue.add(joinTableInfo[1]); // 连接主表 id 的表名
+                columnValue.add(joinTableInfo[2]); // 连接次表 id 的表名
+
+                String tableName = getTableName(objects.toArray()[0].getClass());
+                if (tableName.equals("")) {
+                    tableName = getTableName((Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]);
+                }
+
+                columnValue.add(tableName); // 次表
+                columnValue.add("id"); // 次表 id
+                columnValue.add(value); // 次表对象值
+                columnValue.add(((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]); // 次表 clazz 类
+
+            }
+        }
+
+        return columnValue;
+    }
+
+    /**
+     * 获取 ManyToMany 连接表信息
+     * @param field
+     * @return
+     */
+    public String[] getJoinTableInfo(Field field) {
+        String[] joinTableInfo = null;
+
+        if(field.isAnnotationPresent(ManyToMany.class)){
+            JoinTable joinTable = field.getAnnotation(JoinTable.class);
+
+            joinTableInfo = new String[3];
+            joinTableInfo[0] = joinTable.name();
+            joinTableInfo[1] = joinTable.joinColumns()[0].name();
+            joinTableInfo[2] = joinTable.inverseJoinColumns()[0].name();
+        }
+
+        return joinTableInfo;
     }
 
     /**
@@ -300,46 +421,124 @@ public class ObjectToSql {
     }
 
     /**
+     * 获取 json 里属性值的集合
+     * @param json
+     * @param clazz
+     * @return
+     */
+    public Map<String, String> getPropertySumValues(String json, Class clazz) {
+        Map<String, String> columnSumValues = new HashMap<>();
+
+        List<Map<String, String>> jsonMaps = writer.gson.fromJson(json, new TypeToken<List<Map<String, String>>>(){}.getType());
+        for (Map<String, String> jsonMap : jsonMaps) {
+            for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
+                Field field = null;
+
+                try {
+                    field = clazz.getDeclaredField(entry.getKey());
+                } catch (Exception e) {
+                    logger.info(e.getMessage());
+                }
+
+                if (field != null) {
+                    List<String> columnValue = getColumnValue(field, entry.getValue());
+
+                    if (columnValue != null) {
+                        if (columnSumValues.containsKey(columnValue.get(0))) {
+                            columnSumValues.put(columnValue.get(0), columnSumValues.get(columnValue.get(0)) + "," + columnValue.get(1));
+                        } else {
+                            columnSumValues.put(columnValue.get(0), columnValue.get(1));
+                        }
+                    }
+                }
+            }
+        }
+
+        return columnSumValues;
+    }
+
+    /**
      * 获取 OneToMany 表信息
      * @param clazz
      * @param object
      * @return
      */
-    List<List<Object>> getOneToManyTableInfo(Class clazz, Object object) {
+    public List<List<Object>> getOneToManyTableInfos(Class clazz, Object object) {
         List<List<Object>> columnValues = new ArrayList<>();
 
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
-            String fieldName = field.getName();
-            String methodName = getMethodPerfix + fieldName.substring(0,1).toUpperCase() +
-                    fieldName.substring(1);
-            Object value = null;
+            if (field.isAnnotationPresent(OneToMany.class)) {
 
-            try {
-                value = clazz.getMethod(methodName).invoke(object);
-            } catch (Exception e) {
-                logger.info(e.getMessage());
-            }
-
-            if(field.isAnnotationPresent(OneToMany.class)  && value != null){
-                Set<Object> objects = (Set<Object>)value;
-                if (objects.size() > 0) {
-                    List<Object> columnValue = new ArrayList<>();
-
-                    //OneToMany 关联表里的 tableName 信息
-                    columnValue.add("id"); // 主表 id
-                    columnValue.add(getTableName(objects.toArray()[0].getClass())); // 次表
-                    columnValue.add("id"); // 次表 id
-                    columnValue.add(value); // 次表对象值
-
+                List<Object> columnValue = getOneToManyTableInfo(field, getFieldValue(object, field));
+                if (columnValue != null) {
                     columnValues.add(columnValue);
                 }
             }
+
         }
 
         return columnValues;
     }
 
+    /**
+     * 获取单个域 OneToMany 表信息
+     * @param field
+     * @param value
+     * @return
+     */
+    public List<Object> getOneToManyTableInfo(Field field, Object value) {
+        List<Object> columnValue = null;
+
+        if(field.isAnnotationPresent(OneToMany.class)  && value != null){
+            Set<Object> objects = (Set<Object>)value;
+            if (objects.size() > 0) {
+                columnValue = new ArrayList<>();
+
+                String tableName = getTableName(objects.toArray()[0].getClass());
+                if (tableName.equals("")) {
+                    tableName = getTableName((Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]);
+                }
+
+                //OneToMany 关联表里的 tableName 信息
+                columnValue.add("id"); // 主表 id
+                columnValue.add(tableName); // 次表
+                columnValue.add("id"); // 次表 id
+                columnValue.add(value); // 次表对象值
+                columnValue.add(((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]); // 次表 class 类
+            }
+        }
+
+        return columnValue;
+    }
+
+    /**
+     * 获取属性值
+     * @param object
+     * @param field
+     * @return
+     */
+    public Object getFieldValue(Object object, Field field) {
+        String fieldName = field.getName();
+        String methodName = getMethodPerfix + fieldName.substring(0,1).toUpperCase() +
+                fieldName.substring(1);
+        Object value = null;
+
+        try {
+            value = object.getClass().getMethod(methodName).invoke(object);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        }
+
+        return value;
+    }
+
+    /**
+     * 根据对象产生 sql 语句
+     * @param object
+     * @param where
+     * @return
+     */
     public String generateUpdateSql(Object object, String where){
         Class objectClass = object.getClass();
 

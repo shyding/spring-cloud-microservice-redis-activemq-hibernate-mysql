@@ -13,6 +13,9 @@ var dataList = (function($){
         "stock":"库存"
     }
 
+    var totalTableData = [];
+    var isLocalSearch = false, searchStr = "";
+
     function setQuery(){
         var entity = $("#entity").val();
 
@@ -40,11 +43,14 @@ var dataList = (function($){
         var url;
         var module = "";
         var tHeader = "<thead><tr>";
+        var propertiesShowSequence, showTitleName;
         if ("user;dept;post;company;privilege".indexOf(entity) != -1) {
             module = "/sys";
 
             if ("user" == entity) {
-                tHeader += "<th>姓名</th><th>用户名</th><th>email</th><th>岗位</th><th>创建时间</th><th>状态</th>";
+                tHeader += "<th>姓名</th><th>性别</th><th>用户名</th><th>email</th><th>岗位</th><th>创建时间</th><th>状态</th>";
+                propertiesShowSequence = ["name", "gender", "username", "email", "posts.name", "inputDate", "state"];
+                showTitleName = {"state":{0: "使用", 1: "注销"}};
             }
 
             if ("dept" == entity) {
@@ -68,12 +74,19 @@ var dataList = (function($){
 
         url = contextPath + module + "/complexQuery/" + entity;
         var queryJson = JSON.stringify($("#form").serializeJSON());
-        tHeader += "</tr></thead><tbody id='tBody'></tbody>";
+        tHeader += "</tr></thead><tbody></tbody>";
 
-        $("#dataList").initDatatable(url, queryJson, tHeader);
+        $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName);
+
+        // 设置搜索
+        $('#dataList').before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
+        $('#columnSearch').on( 'keyup keydown change',  function () {
+            isLocalSearch = true;
+            searchStr = $('#columnSearch').val();
+        } );
     }
 
-    $.fn.initDatatable = function(url, queryJson, header) {
+    $.fn.initDatatable = function(url, queryJson, header, propertiesShowSequence, showTitleName) {
         $("#dataList").empty().html(header);
         this.DataTable({
             dom: "Bfrtip",
@@ -99,36 +112,144 @@ var dataList = (function($){
                     className: "btn-sm"
                 },
             ],
-            responsive: true,
             destroy: true,
+
+            "oLanguage" : { // 汉化
+                "sLengthMenu" : "显示_MENU_条 ",
+                "sZeroRecords" : "没有您要搜索的内容",
+                "sInfo" : "从_START_ 到 _END_ 条记录——总记录数为 _TOTAL_ 条",
+                "sInfoEmpty" : "记录数为0",
+                "sInfoFiltered" : "(全部记录数 _MAX_  条)",
+                "sInfoPostFix" : "",
+                "sSearch" : "Search",
+                "sUrl" : "",
+                "oPaginate" : {
+                    "sFirst" : "<a href=\"#/fast-backward\"><i class=\"fa fa-fast-backward\"></i></a>",
+                    "sPrevious" : "<a href=\"#/backward\"><i class=\"fa fa-backward\"></i></a>",
+                    "sNext" : "<a href=\"#/forward\"><i class=\"fa fa-forward\"></i></a>",
+                    "sLast" : "<a href=\"#/fast-forward\"><i class=\"fa fa-fast-forward\"></i></a>"
+                }
+            },
+            "bJQueryUI": true,
+            "bPaginate" : true,// 分页按钮
+            "bFilter" : false,// 搜索栏
+            "bLengthChange" : true,// 每行显示记录数
+            "bSort" : false,// 排序
+            //"aLengthMenu": [[50,100,500,1000,10000], [50,100,500,1000,10000]],//定义每页显示数据数量
+            //"iScrollLoadGap":400,//用于指定当DataTable设置为滚动时，最多可以一屏显示多少条数据
+            //"aaSorting": [[4, "desc"]],
+            "bInfo" : true,// Showing 1 to 10 of 23 entries 总记录数没也显示多少等信息
+            "bWidth":true,
+            //"sScrollY": "62%",
+            //"sScrollX": "210%",
+            "bScrollCollapse": true,
+            "sPaginationType" : "full_numbers", // 分页，一共两种样式 另一种为two_button 是datatables默认
+            "bSortCellsTop": true,
 
             iDisplayLength: 30, //每页显示条数
             bServerSide: true, //这个用来指明是通过服务端来取数据
             sAjaxSource: url,
-            fnServerData: function(url, aoData, fnCallback) {   //获取数据的处理函数
-                            $.ajax({
-                                type : "post",
-                                url : url,
-                                contentType: "application/x-www-form-urlencoded; charset=utf-8",
-                                dataType : "json",
-                                data : {
-                                    dataTableParameters: JSON.stringify(aoData),
-                                    json: queryJson
-                                },
-                                "success" : function(resp) {
-                                    //fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
-                                    var tBody = "";
-                                    $.each(resp.aaData, function(id, item){
-                                        tBody += "<tr>";
-                                        $.each(item, function (propertyName, propertyValue){
-                                            tBody += "<td>" + propertyValue + "</td>";
-                                        });
-                                        tBody += "</tr>";
-                                    });alert(tBody);
-                                    $("#tBody").append(tBody);
+            fnServerData:
+                function(url, aoData, fnCallback) {   //获取数据的处理函数
+                    if (!isLocalSearch) {
+                        $.ajax({
+                            type : "post",
+                            url : url,
+                            contentType: "application/x-www-form-urlencoded; charset=utf-8",
+                            dataType : "json",
+                            data : {
+                                dataTableParameters: JSON.stringify(aoData),
+                                json: queryJson
+                            },
+
+                            "success" : function(resp) {
+                                var tableData = [];
+                                var dataList = $.parseJSON(resp.aaData);
+
+                                for (var key in dataList) {
+                                    var rowData=[];
+
+                                    for (var i in propertiesShowSequence){
+                                        var tdData = "";
+
+                                        var pos = propertiesShowSequence[i].indexOf(".");
+                                        if (pos != -1) {  // dataList[key][propertiesShowSequence[i]] 是数组对象
+                                            var parentProperty = propertiesShowSequence[i].substr(0, pos);
+                                            var childProperty = propertiesShowSequence[i].substr(pos+1);
+
+                                            for (var ii in dataList[key][parentProperty]) {
+                                                var childValue = dataList[key][parentProperty][ii][childProperty];
+
+                                                if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                    tdData += showTitleName[propertiesShowSequence[i]][childValue] + " ";
+                                                } else {
+                                                    tdData += childValue + " ";
+                                                }
+
+                                                if (ii == 1) {
+                                                    tdData = $.trim(tdData) + "..";
+                                                }
+                                            }
+
+                                        } else {
+                                            var value = dataList[key][propertiesShowSequence[i]];
+
+                                            if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                tdData = showTitleName[propertiesShowSequence[i]][value];
+                                            } else {
+                                                tdData = value;
+                                            }
+                                        }
+
+                                        rowData[i] = tdData;
+                                    }
+
+                                    tableData[key] = rowData;
                                 }
-                            });
-                         }
+
+                                for (var i in tableData) {
+                                    var isSame = false;
+                                    for (var ii in totalTableData) {
+                                        if (tableData[i].toString() == totalTableData[ii].toString())
+                                            isSame = true;
+                                    }
+
+                                    if (!isSame) {
+                                        totalTableData.push(tableData[i]);
+                                    }
+                                }
+
+                                resp.aaData = tableData;
+                                resp.iTotalRecords = tableData.length;
+                                resp.iTotalDisplayRecords = tableData.length;
+                                fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
+                            }
+                        });
+
+                    } else {
+                        var aaData = [];
+
+                        var index = 0;
+                        for (var i in totalTableData) {
+                            for (var ii in totalTableData[i]) {
+                                if (totalTableData[i][ii].indexOf(searchStr) != -1) {
+                                    aaData[index] = totalTableData[i];
+
+                                    index++;
+                                    break;
+                                }
+                            }
+                        }
+
+                        var resp = {};
+                        resp.aaData = aaData;
+                        resp.iTotalRecords = aaData.length;
+                        resp.iTotalDisplayRecords = aaData.length;
+                        fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
+
+                        isLocalSearch = false;
+                    }
+                 }
         });
     }
 

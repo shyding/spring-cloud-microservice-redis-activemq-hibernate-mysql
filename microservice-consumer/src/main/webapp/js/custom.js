@@ -1,11 +1,3 @@
-/**
- * Resize function without multiple trigger
- *
- * Usage:
- * $(window).smartresize(function(){
- *     // code here
- * });
- */
 (function($,sr){
     // debouncing function from John Hann
     // http://unscriptable.com/index.php/2009/03/20/debouncing-javascript-methods/
@@ -313,4 +305,35 @@ $(document).ready(function() {
     init_sidebar();
     init_autosize();
 
+    $('#form').preventEnterSubmit();
+    if (editable) {
+        $(document).keydown(function(event){
+            if(event.keyCode == 13){ //绑定回车
+                $('#send').click();
+            }
+        });
+    }
+
+    $("#cancel").click(function(){
+        window.location.reload();
+    });
+
+    $("#edit").click(function(){
+        editable = true;
+
+        $(document).keydown(function(event){
+            if(event.keyCode == 13){ //绑定回车
+                $('#send').click();
+            }
+        });
+
+        $('input, select').attr("readonly",false).css("border", "1px solid #ccc");
+        $('#cancel, #send').attr("disabled", false);
+        $("#edit").attr("disabled", "disabled");
+    });
+
+    if (!editable) {
+        $('input, select').attr("readonly","readonly").css("border", "0");
+        $('#cancel, #send').attr("disabled","disabled");
+    }
 });

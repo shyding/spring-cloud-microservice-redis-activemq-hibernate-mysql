@@ -12,7 +12,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>后台用户<c:choose><c:when test="${user != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></title>
+    <title>后台用户<c:choose><c:when test="${entity != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></title>
 
     <!-- Bootstrap -->
     <link href="../../../res/gentelella/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -34,7 +34,7 @@
             <div class="">
                 <div class="page-title">
                     <div class="title_left">
-                        <h3>后台用户<c:choose><c:when test="${user != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></h3>
+                        <h3>后台用户<c:choose><c:when test="${entity != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></h3>
                     </div>
 
                     <div class="title_right">
@@ -81,7 +81,7 @@
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">姓名 <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${user.name}" data-validate-length-range="6，20" data-validate-words="1" name="name" required type="text">
+                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${entity.name}" data-validate-length-range="6，20" data-validate-words="1" name="name" required type="text">
                                         </div>
                                     </div>
                                     <div class="item form-group">
@@ -101,17 +101,17 @@
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="posts[][id]">岗位 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <select id="posts[][id]" name="posts[][id]" class="form-control col-md-7 col-xs-12" required>
+                                            <select id="posts[][id]" name="posts[][id]" class="form-control col-md-7 col-xs-12" multiple required>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label for="username" class="control-label col-md-3">用户名 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="username" type="text" name="username" value="${user.username}" data-validate-length="6,20" class="form-control col-md-7 col-xs-12" required>
+                                            <input id="username" type="text" name="username" value="${entity.username}" data-validate-length="6,20" class="form-control col-md-7 col-xs-12" required>
                                         </div>
                                     </div>
-                                    <c:if test="${user == null}">
+                                    <c:if test="${entity == null}">
                                     <div class="item form-group">
                                         <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
@@ -126,7 +126,7 @@
                                     </div>
                                     <input type="hidden" id="password" name="password">
                                     </c:if>
-                                    <c:if test="${user != null}">
+                                    <c:if test="${entity != null}">
                                     <div class="item form-group">
                                         <label for="password1" class="control-label col-md-3">密码 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
@@ -140,10 +140,10 @@
                                         <div class="col-md-6 col-sm-6 col-xs-12">
                                             <div id="gender" class="btn-group" data-toggle="buttons">
                                                 <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                                    <input type="radio" name="gender" value="male" <c:if test="${user != null && user.gender == 'male'}">checked</c:if>> &nbsp;男&nbsp;
+                                                    <input type="radio" name="gender" value="male" <c:if test="${entity != null && entity.gender == 'male'}">checked</c:if>> &nbsp;男&nbsp;
                                                 </label>
                                                 <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                                    <input type="radio" name="gender" value="female" <c:if test="${user != null && user.gender == 'female'}">checked</c:if>> &nbsp;女&nbsp;
+                                                    <input type="radio" name="gender" value="female" <c:if test="${entity != null && entity.gender == 'female'}">checked</c:if>> &nbsp;女&nbsp;
                                                 </label>
                                             </div>
                                         </div>
@@ -152,17 +152,18 @@
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="email">Email <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input type="email" id="email" name="email" value="${user.email}" data-validate-length="6,30" required class="form-control col-md-7 col-xs-12">
+                                            <input type="email" id="email" name="email" value="${entity.email}" data-validate-length="6,30" required class="form-control col-md-7 col-xs-12">
                                         </div>
                                     </div>
                                     <div class="ln_solid"></div>
                                     <div class="form-group">
                                         <div class="col-md-6 col-md-offset-3">
-                                            <button type="submit" class="btn btn-primary">取消</button>
-                                            <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${user != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
+                                            <button id="cancel" type="button" class="btn btn-primary">取消</button>
+                                            <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${entity != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
+                                            <c:if test="${entity != null}"><button id="edit" type="button" class="btn btn-primary">编辑</button></c:if>
                                         </div>
                                     </div>
-                                    <c:if test="${user != null}"><input type="hidden" id="id" name="id" value="${user.id}"></c:if>
+                                    <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
                                 </form>
                             </div>
                         </div>
@@ -187,17 +188,18 @@
 <!-- validator -->
 <script src="../../../res/gentelella/vendors/validator/validator.js"></script>
 <!-- Custom Theme Scripts -->
-<script src="../../../res/gentelella/build/js/custom.min.js"></script>
+<script type="text/javascript">
+    var editable = <c:out value="${entity == null}"/>;
+</script>
+<script src="../../../res/js/custom.js"></script>
 <!-- form submit -->
 <script src="../../../res/js/jquery.serializejson.js"></script>
 <script src="../../../res/js/submitForm.js"></script>
 <script src="../../../res/js/setSelect.js"></script>
 <script src="../../../res/js/md5.js"></script>
 <script type="text/javascript">
-    $('#form').preventEnterSubmit();
-
     $("#send").click(function(){
-        <c:if test="${user == null}">
+        <c:if test="${entity == null}">
         if ($('#form').isFullSet()) {
             var password1 = $("#password1");
             $("#password").val(faultylabs.MD5(jQuery.trim(password1.val())));
@@ -206,24 +208,19 @@
         }
         </c:if>
 
-        $('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${user != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');
-    });
-    $(document).keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            $('#send').click();
-        }
+        $('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');
     });
 
     <c:set var="postIds" value="" />
     <c:set var="deptId" value="" />
-    <c:if test="${user != null}">
-        <c:forEach var="post" items="${user.posts}" varStatus="status">
-            <c:set var="postIds" value="${postIds + post.id}" />
+    <c:if test="${entity != null}">
+        <c:forEach var="post" items="${entity.posts}" varStatus="status">
+            <c:set var="postIds" value="${postIds}${post.id}," />
             <c:set var="deptId" value="${post.dept.id}" />
         </c:forEach>
     </c:if>
 
-    var companyId = "${companyId}", deptId = "${deptId}", postId = "${postIds}";
+    var companyId = "${companyId}", deptId = "${deptId}", postId = "${postIds}".substr(0, "${postIds}".length-1);
     if (postId != "") {
         $.ajax({
             type: "get",
@@ -250,7 +247,6 @@
                 '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
             '{}', ['company[id]', 'dept[id]'], 0);
     }
-
 </script>
 </body>
 </html>

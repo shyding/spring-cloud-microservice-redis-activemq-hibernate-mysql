@@ -9,7 +9,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>公司<c:choose><c:when test="${company != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></title>
+    <title>公司<c:choose><c:when test="${entity != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></title>
 
     <!-- Bootstrap -->
     <link href="../../../res/gentelella/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -32,7 +32,7 @@
             <div class="">
                 <div class="page-title">
                     <div class="title_left">
-                        <h3>公司<c:choose><c:when test="${company != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></h3>
+                        <h3>公司<c:choose><c:when test="${entity != null}">修改</c:when><c:otherwise>注册</c:otherwise></c:choose></h3>
                     </div>
 
                     <div class="title_right">
@@ -79,37 +79,38 @@
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="name">公司名称 <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${company.name}" data-validate-length-range="6,30" data-validate-words="1" name="name"  required type="text">
+                                            <input id="name" class="form-control col-md-7 col-xs-12" value="${entity.name}" data-validate-length-range="6,30" data-validate-words="1" name="name"  required type="text">
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="phone">联系电话 <span class="required">*</span>
                                         </label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="phone" class="form-control col-md-7 col-xs-12" value="${company.phone}" data-validate-length-range="5,16" data-validate-words="1" name="phone" required type="text">
+                                            <input id="phone" class="form-control col-md-7 col-xs-12" value="${entity.phone}" data-validate-length-range="5,16" data-validate-words="1" name="phone" required type="text">
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label for="address" class="control-label col-md-3">地址 <span class="required">*</span></label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input id="address" class="form-control col-md-7 col-xs-12" type="text" value="${company.address}" name="address" data-validate-words="1" data-validate-length="6,60" required>
+                                            <input id="address" class="form-control col-md-7 col-xs-12" type="text" value="${entity.address}" name="address" data-validate-words="1" data-validate-length="6,60" required>
                                         </div>
                                     </div>
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text1">负责人</label>
                                         <div class="col-md-6 col-sm-6 col-xs-12">
-                                            <input type="text" id="text1" name="text1" <c:if test="${company.charger != null}">value="${company.charger.name}"</c:if> class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" />
-                                            <input type="hidden" id="charger[id]" name="charger[id]" <c:if test="${company.charger != null}">value="${company.charger.id}"</c:if>>
+                                            <input type="text" id="text1" name="text1" <c:if test="${entity.charger != null}">value="${entity.charger.name}"</c:if> class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" />
+                                            <input type="hidden" id="charger[id]" name="charger[id]" <c:if test="${entity.charger != null}">value="${entity.charger.id}"</c:if>>
                                         </div>
                                     </div>
                                     <div class="ln_solid"></div>
                                     <div class="form-group">
                                         <div class="col-md-6 col-md-offset-3">
-                                            <button type="submit" class="btn btn-primary">取消</button>
-                                            <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${company != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
+                                            <button id="cancel" type="button" class="btn btn-primary">取消</button>
+                                            <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${entity != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
+                                            <c:if test="${entity != null}"><button id="edit" type="button" class="btn btn-primary">编辑</button></c:if>
                                         </div>
                                     </div>
-                                    <c:if test="${company != null}"><input type="hidden" id="id" name="id" value="${company.id}"></c:if>
+                                    <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
                                 </form>
                             </div>
                         </div>
@@ -134,20 +135,17 @@
 <!-- validator -->
 <script src="../../../res/gentelella/vendors/validator/validator.js"></script>
 <!-- Custom Theme Scripts -->
-<script src="../../../res/gentelella/build/js/custom.min.js"></script>
+<script type="text/javascript">
+    var editable = <c:out value="${entity == null}"/>;
+</script>
+<script src="../../../res/js/custom.js"></script>
 <%--jquery suggest--%>
 <script language="javascript" type="text/javascript" src="../../../res/js/jquery.coolautosuggest.js"></script>
 <!-- form submit -->
 <script src="../../../res/js/jquery.serializejson.js"></script>
 <script src="../../../res/js/submitForm.js"></script>
 <script type="text/javascript">
-    $('#form').preventEnterSubmit();
-    $("#send").click(function(){$('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${company != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Company.class.getSimpleName().toLowerCase()%>');});
-    $(document).keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            $('#send').click();
-        }
-    });
+    $("#send").click(function(){$('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Company.class.getSimpleName().toLowerCase()%>');});
 
     $("#text1").coolautosuggest({
         url:"<%=request.getContextPath()%>/sys/suggest/user/name/",

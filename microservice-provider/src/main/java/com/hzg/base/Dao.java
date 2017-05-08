@@ -17,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import javax.persistence.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -533,6 +534,18 @@ public class Dao {
             querySetRelateObject(dbObject);
         }
         return  objects;
+    }
+
+    /**
+     * 查询记录数
+     * @param clazz
+     * @param queryParameters
+     * @return
+     */
+    public BigInteger recordsSum(Class clazz, Map<String, String> queryParameters){
+        String sql = objectToSql.generateComplexSqlByAnnotation(clazz, queryParameters, 0, -1);
+        sql = sql.substring(0, sql.indexOf(" order by ")).replace("t.*", "count(t.id)");
+        return (BigInteger)sessionFactory.getCurrentSession().createSQLQuery(sql).uniqueResult();
     }
 
 

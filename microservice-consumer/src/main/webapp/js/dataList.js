@@ -14,7 +14,7 @@ var dataList = (function($){
     }
 
     var totalTableData = [];
-    var isLocalSearch = false, searchStr = "";
+    var isLocalSearch = false, searchStr = "", recordsSum = -1;
 
     function setQuery(){
         var entity = $("#entity").val();
@@ -75,6 +75,9 @@ var dataList = (function($){
         url = contextPath + module + "/complexQuery/" + entity;
         var queryJson = JSON.stringify($("#form").serializeJSON());
         tHeader += "</tr></thead><tbody></tbody>";
+
+        totalTableData = [];
+        recordsSum = -1;
 
         $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName);
 
@@ -159,7 +162,8 @@ var dataList = (function($){
                             dataType : "json",
                             data : {
                                 dataTableParameters: JSON.stringify(aoData),
-                                json: queryJson
+                                json: queryJson,
+                                recordsSum: recordsSum
                             },
 
                             "success" : function(resp) {
@@ -219,9 +223,8 @@ var dataList = (function($){
                                     }
                                 }
 
+                                recordsSum = resp.iTotalRecords;
                                 resp.aaData = tableData;
-                                resp.iTotalRecords = tableData.length;
-                                resp.iTotalDisplayRecords = tableData.length;
                                 fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
                             }
                         });
@@ -243,8 +246,6 @@ var dataList = (function($){
 
                         var resp = {};
                         resp.aaData = aaData;
-                        resp.iTotalRecords = aaData.length;
-                        resp.iTotalDisplayRecords = aaData.length;
                         fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
 
                         isLocalSearch = false;

@@ -23,6 +23,9 @@ public interface Client {
     @RequestMapping(value = "/sys/complexQuery", method = RequestMethod.POST)
     String complexQuery(@RequestParam("entity") String entity, @RequestBody String json, @RequestParam("position") int position, @RequestParam("rowNum") int rowNum);
 
+    @RequestMapping(value = "/sys/recordsSum", method = RequestMethod.POST)
+    String recordsSum(@RequestParam("entity") String entity, @RequestBody String json);
+
     class ClientFallback implements Client {
         @Override
         public String query(String entity, String json) {
@@ -50,8 +53,14 @@ public interface Client {
 
         @Override
         public String complexQuery(String entity, String json, int position, int rowNum) {
-            log.info("doSome 异常发生，进入fallback方法，接收的参数：" + entity + ", " + json + ", " + position + ", " + rowNum);
+            log.info("complexQuery 异常发生，进入fallback方法，接收的参数：" + entity + ", " + json + ", " + position + ", " + rowNum);
             return "[{}]";
+        }
+
+        @Override
+        public String recordsSum(String entity, String json) {
+            log.info("complexQuery 异常发生，进入fallback方法，接收的参数：" + entity + ", " + json);
+            return "{\"recordsSum\": -1}";
         }
     }
 }

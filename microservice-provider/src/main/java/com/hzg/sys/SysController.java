@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletResponse;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -196,7 +197,7 @@ public class SysController {
 
     @RequestMapping(value = "/complexQuery", method = {RequestMethod.GET, RequestMethod.POST})
     public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
-        logger.info("complexQuery start, parameter:" + entity + ":" + json);
+        logger.info("complexQuery start, parameter:" + entity + ":" + json + "," + position + "," + rowNum);
 
         Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
 
@@ -221,6 +222,31 @@ public class SysController {
         }
 
         logger.info("complexQuery end");
+    }
+
+    @RequestMapping(value = "/recordsSum", method = {RequestMethod.GET, RequestMethod.POST})
+    public void recordsSum(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("recordsSum start, parameter:" + entity + ":" + json);
+        BigInteger recordsSum = new BigInteger("-1");
+
+        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+
+        if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
+            recordsSum = sysDao.recordsSum(User.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(Post.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(Dept.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(Company.class, queryParameters);
+        }
+
+        writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");
+
+        logger.info("recordsSum end");
     }
 
     boolean isUsernameExist(Integer id, String username) {

@@ -14,7 +14,7 @@ var dataList = (function($){
     }
 
     var totalTableData = [];
-    var isLocalSearch = false, searchStr = "", recordsSum = -1;
+    var isLocalSearch = false, searchStr = "", recordsSum = -1, preEntity = "";
 
     function setQuery(){
         var entity = $("#entity").val();
@@ -43,18 +43,19 @@ var dataList = (function($){
         var url;
         var module = "";
         var tHeader = "<thead><tr>";
-        var propertiesShowSequence, showTitleName;
+        var propertiesShowSequence = [], showTitleName={};
         if ("user;dept;post;company;privilege".indexOf(entity) != -1) {
             module = "/sys";
 
             if ("user" == entity) {
                 tHeader += "<th>姓名</th><th>性别</th><th>用户名</th><th>email</th><th>岗位</th><th>创建时间</th><th>状态</th>";
-                propertiesShowSequence = ["name", "gender", "username", "email", "posts.name", "inputDate", "state"];
+                propertiesShowSequence = ["name", "gender", "username", "email", "posts[][name]", "inputDate", "state"];
                 showTitleName = {"state":{0: "使用", 1: "注销"}};
             }
 
             if ("dept" == entity) {
-                tHeader += "<th>Name</th><th>Position</th><th>Office</th><th>Age</th><th>Start date</th><th>Salary</th>";
+                tHeader += "<th>名称</th><th>联系电话</th><th>地址</th><th>所属公司</th><th>负责人</th>";
+                propertiesShowSequence = ["name", "phone", "address", "company[name]", "charger[name]"];
             }
 
             if ("post" == entity) {
@@ -79,6 +80,9 @@ var dataList = (function($){
         totalTableData = [];
         recordsSum = -1;
 
+        if (entity != preEntity && preEntity != "") {
+            $("#dataList").dataTable().fnDestroy();
+        }
         $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName);
 
         // 设置搜索
@@ -87,6 +91,8 @@ var dataList = (function($){
             isLocalSearch = true;
             searchStr = $('#columnSearch').val();
         } );
+
+        preEntity = entity;
     }
 
     $.fn.initDatatable = function(url, queryJson, header, propertiesShowSequence, showTitleName) {
@@ -176,32 +182,65 @@ var dataList = (function($){
                                     for (var i in propertiesShowSequence){
                                         var tdData = "";
 
-                                        var pos = propertiesShowSequence[i].indexOf(".");
-                                        if (pos != -1) {  // dataList[key][propertiesShowSequence[i]] 是数组对象
-                                            var parentProperty = propertiesShowSequence[i].substr(0, pos);
-                                            var childProperty = propertiesShowSequence[i].substr(pos+1);
+                                        var pos = propertiesShowSequence[i].indexOf("[]");
+                                        /**
+                                         * dataList[key][propertiesShowSequence[i]] 是数组对象,propertiesShowSequence[i]值如：posts[][name]
+                                         */
+                                        if (pos != -1) {
+                                            var parentArrayProperty = propertiesShowSequence[i].substr(0, pos);
+                                            var childElementProperty = propertiesShowSequence[i].substr(pos+3);
+                                                childElementProperty = childElementProperty.substr(0, childElementProperty.length-1);
 
-                                            for (var ii in dataList[key][parentProperty]) {
-                                                var childValue = dataList[key][parentProperty][ii][childProperty];
+                                            if (dataList[key][parentArrayProperty] != undefined) {
+                                                for (var ii in dataList[key][parentArrayProperty]) {
+                                                    var childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
 
-                                                if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                    tdData += showTitleName[propertiesShowSequence[i]][childValue] + " ";
-                                                } else {
-                                                    tdData += childValue + " ";
-                                                }
+                                                    if (dataList[key][parentArrayProperty][ii] != undefined) {
+                                                        if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                            tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
+                                                        } else {
+                                                            tdData += childElementValue + " ";
+                                                        }
 
-                                                if (ii == 1) {
-                                                    tdData = $.trim(tdData) + "..";
+                                                        if (ii == 1) {
+                                                            tdData = $.trim(tdData) + "..";
+                                                        }
+                                                    }
                                                 }
                                             }
 
                                         } else {
-                                            var value = dataList[key][propertiesShowSequence[i]];
+                                            pos = propertiesShowSequence[i].indexOf("[");
+                                            /**
+                                             * dataList[key][propertiesShowSequence[i]] 是对象,propertiesShowSequence[i]值如：company[name]
+                                             */
+                                            if (pos != -1) {
+                                                var parentProperty = propertiesShowSequence[i].substr(0, pos);
+                                                var childProperty = propertiesShowSequence[i].substr(pos+1);
+                                                     childProperty = childProperty.substr(0, childProperty.length-1);
 
-                                            if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                tdData = showTitleName[propertiesShowSequence[i]][value];
+                                                var childValue = "";
+                                                if (dataList[key][parentProperty] != undefined) {
+                                                    childValue = dataList[key][parentProperty][childProperty];
+
+                                                    if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                        tdData = showTitleName[propertiesShowSequence[i]][childValue];
+                                                    } else {
+                                                        tdData = childValue;
+                                                    }
+                                                }
+
                                             } else {
-                                                tdData = value;
+                                                /**
+                                                 * dataList[key][propertiesShowSequence[i]] 是属性,propertiesShowSequence[i]值如：name
+                                                 */
+                                                var value = dataList[key][propertiesShowSequence[i]];
+
+                                                if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                    tdData = showTitleName[propertiesShowSequence[i]][value];
+                                                } else {
+                                                    tdData = value;
+                                                }
                                             }
                                         }
 

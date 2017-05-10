@@ -5,7 +5,7 @@ var selector = (function($){
 
     function setSelect(selectIds, showProperties, valueProperties, initPropertyValues, urls, queryJson, queryProperties, index) {
         var select = $(document.getElementById(selectIds[index]));
-        select.append("<option value=\"-1\">请选择</option>");
+        select.append("<option value=\"\">请选择</option>");
 
         $.ajax({
             type: "get",
@@ -30,9 +30,15 @@ var selector = (function($){
 
                     if (showPropertyValue != null && valuePropertyValue != null) {
                         var selected = "";
-                        if (initPropertyValues[index] != null && initPropertyValues[index] != undefined &&
-                            initPropertyValues[index] == valuePropertyValue) {
-                            selected = "selected";
+                        if (initPropertyValues[index] != null && initPropertyValues[index] != undefined) {
+                            var initPropertyValuesArr = initPropertyValues[index].toString().split(",");
+
+                            for (var key in initPropertyValuesArr) {
+                                if (initPropertyValuesArr[key] == valuePropertyValue) {
+                                    selected = "selected";
+                                    break;
+                                }
+                            }
                         }
 
                         select.append("<option value=\'" + valuePropertyValue +"\' " + selected + ">" + showPropertyValue + "</option>");
@@ -71,15 +77,40 @@ var selector = (function($){
                         var queryJson1 = queryJson;
                         if (initPropertyValues[index]  != null && initPropertyValues[index] != undefined &&
                             initPropertyValues[index] != "") {
+                            var initPropertyValuesArr = initPropertyValues[index].toString().split(",");
+                            var entitiesStr = "";
 
                             var startPos = queryProperties[index].indexOf("["), endPos = queryProperties[index].indexOf("]");
                             if (startPos != -1 && endPos != -1) {
                                 var entity = queryProperties[index].substring(0, startPos),
                                     property = queryProperties[index].substring(startPos+1, endPos);
 
-                                queryJson1 = "{\"" + entity + "\":{\"" + property +"\":\"" + initPropertyValues[index] + "\"}}";
+                                for (var key in initPropertyValuesArr) {
+                                    if (initPropertyValuesArr[key] != "") {
+                                        entitiesStr += "{\"" + property +"\":\"" + initPropertyValuesArr[key] + "\"},";
+                                    }
+                                }
+
+                                entitiesStr = entitiesStr.substr(0, entitiesStr.length-1);
+                                if (entitiesStr.indexOf("},{") > 0) {
+                                    queryJson1 = "{\"" + entity + "\":[" + entitiesStr + "]}";
+                                } else {
+                                    queryJson1 = "{\"" + entity + "\":" + entitiesStr + "}";
+                                }
+
                             } else {
-                                queryJson1 = "{\"" + queryProperties[index] + "\":\"" + initPropertyValues[index] + "\"}";
+                                for (var key in initPropertyValuesArr) {
+                                    if (initPropertyValuesArr[key] != "") {
+                                        entitiesStr += "{\"" + queryProperties[index] +"\":\"" + initPropertyValuesArr[key] + "\"},";
+                                    }
+                                }
+
+                                entitiesStr = entitiesStr.substr(0, entitiesStr.length-1);
+                                if (entitiesStr.indexOf("},{") > 0) {
+                                    queryJson1 = "[" + entitiesStr + "]";
+                                } else {
+                                    queryJson1 = entitiesStr;
+                                }
                             }
                         }
 

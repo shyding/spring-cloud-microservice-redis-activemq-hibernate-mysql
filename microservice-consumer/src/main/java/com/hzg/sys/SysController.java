@@ -1,17 +1,14 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 
 @Controller
 @RequestMapping("/sys")
@@ -34,7 +31,7 @@ public class SysController extends com.hzg.base.Controller {
     }
 
     @GetMapping("/list")
-    public String welcome() {
+    public String list() {
         return "/sys/list";
     }
 
@@ -66,5 +63,40 @@ public class SysController extends com.hzg.base.Controller {
         logger.info("viewById end");
 
         return "/sys/" + entity;
+    }
+
+    @RequestMapping(value = "/business/{name}", method = {RequestMethod.GET, RequestMethod.POST})
+    public String business(Map<String, Object> model, @PathVariable("name") String name, String json) {
+        logger.info("business start, name:" + name + ", json:" + json);
+
+        if (name.equals("assignPrivilege")) {
+            List<Post> posts = writer.gson.fromJson(client.query("post", json), new TypeToken<List<Post>>() {}.getType());
+
+            List<PrivilegeResource> unAssignPrivileges = null;
+
+            if (!posts.isEmpty()) {
+                Post post = posts.get(0);
+                model.put("entity", post);
+
+                String ids = "";
+                for (PrivilegeResource resource : post.getPrivilegeResources()) {
+                    ids += resource.getId() + ",";
+                }
+
+                String params = "{}";
+                if (!ids.equals("")) {
+                   params = "{\"id\": \" not in (" + ids.substring(0, ids.length()-1) + ")\"}";
+                }
+
+                unAssignPrivileges = writer.gson.fromJson(client.complexQuery("privilegeResource", params, 0, -1),
+                        new TypeToken<List<PrivilegeResource>>() {}.getType());
+            }
+
+            model.put("unAssignPrivileges", unAssignPrivileges);
+        }
+
+        logger.info("business " + name + " end");
+
+        return "sys/" + name;
     }
 }

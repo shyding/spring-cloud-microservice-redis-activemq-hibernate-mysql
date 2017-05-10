@@ -1,3 +1,11 @@
+/**
+ * Resize function without multiple trigger
+ *
+ * Usage:
+ * $(window).smartresize(function(){
+ *     // code here
+ * });
+ */
 (function($,sr){
     // debouncing function from John Hann
     // http://unscriptable.com/index.php/2009/03/20/debouncing-javascript-methods/
@@ -306,6 +314,11 @@ $(document).ready(function() {
     init_autosize();
 
     $('#form').preventEnterSubmit();
+
+    if (editable == undefined) {
+        var editable = true;
+    }
+
     if (editable) {
         $(document).keydown(function(event){
             if(event.keyCode == 13){ //绑定回车

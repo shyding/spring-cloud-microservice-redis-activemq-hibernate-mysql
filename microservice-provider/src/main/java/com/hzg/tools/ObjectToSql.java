@@ -172,7 +172,14 @@ public class ObjectToSql {
                 wherePart += "t." + columnValue.get(0) + " >= " + dateRange[0] + "' and t." + columnValue.get(0) + " <= '" + dateRange[1] + " and ";
 
             } else {
-                wherePart += "t." + columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
+                /**
+                 * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
+                 */
+                if (columnValue.get(1).contains("in (")) {
+                    wherePart += "t." + columnValue.get(0) + " " + columnValue.get(1).substring(1) + " and ";
+                } else {
+                    wherePart += "t." + columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
+                }
             }
         }
 
@@ -206,7 +213,11 @@ public class ObjectToSql {
         }
 
         if (wherePart.length() > " and ".length()) {
-            selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by id desc limit " + position + "," + rowNum;
+            selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by id desc ";
+        }
+
+        if (rowNum != -1) {
+            selectSql += " limit " +position + "," + rowNum;
         }
 
         logger.info("selectSql:" + selectSql);
@@ -579,15 +590,15 @@ public class ObjectToSql {
 
         } else if (field.getType().getSimpleName().equals("Integer") ||
                 field.getType().getSimpleName().equals("int")) {
-            valueStr += (Integer)value;
+            valueStr += String.valueOf(value);
 
         } else if (field.getType().getSimpleName().equals("Double") ||
                 field.getType().getSimpleName().equals("double")){
-            valueStr += (Double)value;
+            valueStr +=  String.valueOf(value);
 
         } else if (field.getType().getSimpleName().equals("Float") ||
                 field.getType().getSimpleName().equals("float")){
-            valueStr += (Float)value;
+            valueStr +=  String.valueOf(value);
 
         } else {
             try {

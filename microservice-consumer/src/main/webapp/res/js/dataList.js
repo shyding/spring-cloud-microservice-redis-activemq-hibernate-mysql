@@ -6,7 +6,7 @@ var dataList = (function($){
         "post":"岗位",
         "dept":"部门",
         "company":"公司",
-        "privilege":"权限",
+        "privilegeResource":"权限",
         "product":"商品",
         "order":"订单",
         "purchase":"采购",
@@ -14,7 +14,8 @@ var dataList = (function($){
     }
 
     var totalTableData = [];
-    var isLocalSearch = false, searchStr = "", recordsSum = -1, preEntity = "";
+    var isLocalSearch = false, searchStr = "", recordsSum = -1;
+    var contextPath = "", module = "", entity = "", preEntity = "";
 
     function setQuery(){
         var entity = $("#entity").val();
@@ -24,7 +25,7 @@ var dataList = (function($){
         $("#htitle").empty().html(title);
         $("#stitle").empty().html(titles[entity]);
 
-        if ("user;dept;post;company;privilege".indexOf(entity) != -1) {
+        if ("user;dept;post;company;privilegeResource".indexOf(entity) != -1) {
             $("#timeLabel").empty().html("录入时间");
 
         } else if ("product".indexOf(entity) != -1) {
@@ -33,18 +34,19 @@ var dataList = (function($){
         }
     }
 
-    function query(contextPath){
-        var entity = $("#entity").val();
+    function query(rootPath){
+        contextPath = rootPath;
+
+        entity = $("#entity").val();
         if (entity == "") {
             alert("请选择类型");
             return false;
         }
 
         var url;
-        var module = "";
         var tHeader = "<thead><tr>";
         var propertiesShowSequence = [], showTitleName={};
-        if ("user;dept;post;company;privilege".indexOf(entity) != -1) {
+        if ("user;dept;post;company;privilegeResource".indexOf(entity) != -1) {
             module = "/sys";
 
             if ("user" == entity) {
@@ -59,15 +61,18 @@ var dataList = (function($){
             }
 
             if ("post" == entity) {
-                tHeader += "<th>Name</th><th>Position</th><th>Office</th><th>Age</th><th>Start date</th><th>Salary</th>";
+                tHeader += "<th>名称</th><th>所在部门</th><th>所属公司</th>";
+                propertiesShowSequence = ["name", "dept[name]", "company[name]"];
             }
 
             if ("company" == entity) {
-                tHeader += "<th>Name</th><th>Position</th><th>Office</th><th>Age</th><th>Start date</th><th>Salary</th>";
+                tHeader += "<th>名称</th><th>联系电话</th><th>地址</th><th>负责人</th>";
+                propertiesShowSequence = ["name", "phone", "address", "charger[name]"];
             }
 
-            if ("privilege" == entity) {
-                tHeader += "<th>Name</th><th>Position</th><th>Office</th><th>Age</th><th>Start date</th><th>Salary</th>";
+            if ("privilegeResource" == entity) {
+                tHeader += "<th>名称</th><th>URL</th>";
+                propertiesShowSequence = ["name", "url"];
             }
         } else if ("product".indexOf(entity) != -1) {
             module = "/product";
@@ -202,8 +207,9 @@ var dataList = (function($){
                                                             tdData += childElementValue + " ";
                                                         }
 
-                                                        if (ii == 1) {
+                                                        if (ii == 2) {
                                                             tdData = $.trim(tdData) + "..";
+                                                            break;
                                                         }
                                                     }
                                                 }
@@ -242,6 +248,11 @@ var dataList = (function($){
                                                     tdData = value;
                                                 }
                                             }
+                                        }
+
+                                        if (propertiesShowSequence[i] == "name") {
+                                            var queryUrl = contextPath + module + "/view/" + entity + "/" + dataList[key]["id"];
+                                            tdData = "<a href='#' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
                                         }
 
                                         rowData[i] = tdData;

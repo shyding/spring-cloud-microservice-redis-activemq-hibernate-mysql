@@ -8,18 +8,38 @@ var dataList = (function($){
         "company":"公司",
         "privilegeResource":"权限",
         "product":"商品",
-        "order":"订单",
         "purchase":"采购",
-        "stock":"库存"
-    }
+        "stock":"库存",
+        "order":"订单"
+    };
+
+    var urls = {
+        "user":"/sys/view/user/-1",
+        "post":"/sys/view/post/-1",
+        "dept":"/sys/view/dept/-1",
+        "company":"/sys/view/company/-1",
+        "privilegeResource":"/sys/view/privilegeResource/-1",
+        "product":"/erp/view/product/-1",
+        "purchase":"/erp/view/purchase/-1",
+        "stock":"/erp/view/stockInOut/-1"
+    };
+
+    var urlTitles = {
+        "user":"注册用户",
+        "post":"注册岗位",
+        "dept":"注册部门",
+        "company":"注册公司",
+        "privilegeResource":"添加权限",
+        "product":"录入商品",
+        "purchase":"采购申请",
+        "stock":"商品入库、出库"
+    };
 
     var totalTableData = [];
-    var isLocalSearch = false, searchStr = "", recordsSum = -1;
-    var contextPath = "", module = "", entity = "", preEntity = "";
+    var isLocalSearch = false, searchStr = "", recordsSum = -1, sEcho = 1, tablePageData=[];
+    var contextPath = "", module = "", preEntity = "";
 
-    function setQuery(){
-        var entity = $("#entity").val();
-
+    function setQuery(entity){
         var title = (titles[entity]+"列表").toString();
         document.title = title;
         $("#htitle").empty().html(title);
@@ -32,12 +52,19 @@ var dataList = (function($){
             $("#dateItems").empty().html("");
             $("#inputItems").empty().html("");
         }
+
+        if (urls[entity] != undefined) {
+            $("#add").html(urlTitles[entity]).click(function(){
+                render(urls[entity])
+            });
+        } else {
+            $("#add").css("display:none");
+        }
     }
 
-    function query(rootPath){
+    function query(rootPath, entity){
         contextPath = rootPath;
 
-        entity = $("#entity").val();
         if (entity == "") {
             alert("请选择类型");
             return false;
@@ -71,8 +98,8 @@ var dataList = (function($){
             }
 
             if ("privilegeResource" == entity) {
-                tHeader += "<th>名称</th><th>URL</th>";
-                propertiesShowSequence = ["name", "url"];
+                tHeader += "<th>名称</th><th>URI</th>";
+                propertiesShowSequence = ["name", "uri"];
             }
         } else if ("product".indexOf(entity) != -1) {
             module = "/product";
@@ -82,16 +109,18 @@ var dataList = (function($){
         var queryJson = JSON.stringify($("#form").serializeJSON());
         tHeader += "</tr></thead><tbody></tbody>";
 
-        totalTableData = [];
-        recordsSum = -1;
+        if (!isLocalSearch) {
+            totalTableData = [];
+            recordsSum = -1;
+        }
 
         if (entity != preEntity && preEntity != "") {
             $("#dataList").dataTable().fnDestroy();
         }
-        $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName);
+        $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName, entity);
 
         // 设置搜索
-        $('#dataList').before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
+        $('#dataList').before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input value="' + searchStr +'" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
         $('#columnSearch').on( 'keyup keydown change',  function () {
             isLocalSearch = true;
             searchStr = $('#columnSearch').val();
@@ -100,7 +129,7 @@ var dataList = (function($){
         preEntity = entity;
     }
 
-    $.fn.initDatatable = function(url, queryJson, header, propertiesShowSequence, showTitleName) {
+    $.fn.initDatatable = function(url, queryJson, header, propertiesShowSequence, showTitleName, entity) {
         $("#dataList").empty().html(header);
         this.DataTable({
             dom: "Bfrtip",
@@ -160,7 +189,7 @@ var dataList = (function($){
             "sPaginationType" : "full_numbers", // 分页，一共两种样式 另一种为two_button 是datatables默认
             "bSortCellsTop": true,
 
-            iDisplayLength: 30, //每页显示条数
+            iDisplayLength: 6, //每页显示条数
             bServerSide: true, //这个用来指明是通过服务端来取数据
             sAjaxSource: url,
             fnServerData:
@@ -252,7 +281,7 @@ var dataList = (function($){
 
                                         if (propertiesShowSequence[i] == "name") {
                                             var queryUrl = contextPath + module + "/view/" + entity + "/" + dataList[key]["id"];
-                                            tdData = "<a href='#' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
+                                            tdData = "<a href='#" + queryUrl + "' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
                                         }
 
                                         rowData[i] = tdData;
@@ -274,6 +303,8 @@ var dataList = (function($){
                                 }
 
                                 recordsSum = resp.iTotalRecords;
+                                sEcho = resp.sEcho;
+                                tablePageData = tableData;
                                 resp.aaData = tableData;
                                 fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
                             }
@@ -281,21 +312,33 @@ var dataList = (function($){
 
                     } else {
                         var aaData = [];
+                        var localRecordsSum = recordsSum;
+                        var sEcho2 = 1;
 
-                        var index = 0;
-                        for (var i in totalTableData) {
-                            for (var ii in totalTableData[i]) {
-                                if (totalTableData[i][ii].indexOf(searchStr) != -1) {
-                                    aaData[index] = totalTableData[i];
+                        if ($.trim(searchStr) == "") {
+                            aaData = tablePageData;
+                            sEcho2 = sEcho;
+                        } else {
+                            var index = 0;
+                            for (var i in totalTableData) {
+                                for (var ii in totalTableData[i]) {
+                                    if (totalTableData[i][ii].indexOf(searchStr) != -1) {
+                                        aaData[index] = totalTableData[i];
 
-                                    index++;
-                                    break;
+                                        index++;
+                                        break;
+                                    }
                                 }
                             }
+
+                            localRecordsSum = aaData.length;
                         }
 
                         var resp = {};
                         resp.aaData = aaData;
+                        resp.iTotalRecords = localRecordsSum;
+                        resp.iTotalDisplayRecords = localRecordsSum;
+                        resp.sEcho = sEcho2;
                         fnCallback(resp); //把返回的数据传给这个方法就可以了,datatable会自动绑定数据的
 
                         isLocalSearch = false;

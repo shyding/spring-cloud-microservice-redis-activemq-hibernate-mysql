@@ -214,6 +214,8 @@ public class ObjectToSql {
 
         if (wherePart.length() > " and ".length()) {
             selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by id desc ";
+        } else {
+            selectSql += " order by id desc ";
         }
 
         if (rowNum != -1) {

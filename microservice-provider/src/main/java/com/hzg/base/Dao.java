@@ -544,7 +544,11 @@ public class Dao {
      */
     public BigInteger recordsSum(Class clazz, Map<String, String> queryParameters){
         String sql = objectToSql.generateComplexSqlByAnnotation(clazz, queryParameters, 0, -1);
-        sql = sql.substring(0, sql.indexOf(" order by ")).replace("t.*", "count(t.id)");
+        int pos = sql.indexOf(" order by ");
+        if (pos != -1) {
+            sql = sql.substring(0, pos);
+        }
+        sql = sql.replace("t.*", "count(t.id)");
         return (BigInteger)sessionFactory.getCurrentSession().createSQLQuery(sql).uniqueResult();
     }
 
@@ -569,8 +573,30 @@ public class Dao {
      * @return
      */
     public Object getFromRedis(String key) {
-        ValueOperations<String, Object> valueOperation = redisTemplate.opsForValue();
-        return  valueOperation.get(key);
+        return redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 从 redis 删除对象
+     * @param key
+     * @return
+     */
+    public void deleteFromRedis(String key) {
+        redisTemplate.opsForValue().getOperations().delete(key);
+    }
+
+    /**
+     * 把 对象 存储到 redis 里 seconds 秒
+     * @param key
+     * @param object
+     * @param seconds
+     */
+    public void storeToRedis(String key, Object object, int seconds){
+        BoundValueOperations<String, Object> boundValueOperations = redisTemplate.boundValueOps(key);
+        //设置值
+        boundValueOperations.set(object);
+        //设置过期时间
+        boundValueOperations.expire(seconds, TimeUnit.SECONDS);
     }
 
     /**

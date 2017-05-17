@@ -1,5 +1,5 @@
 server:
-  port: 8050
+  port: 8080
 
 spring:
   application:
@@ -17,7 +17,7 @@ spring:
       ddl-auto: none
 
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/test
+    url: jdbc:mysql:loadbalance://127.0.0.1:3306/hzg_new_db?roundRobinLoadBalance=true
     username: root
     password: root
     driver-class-name: com.mysql.jdbc.Driver
@@ -31,6 +31,10 @@ spring:
     password: admin
     pool:
       max-connections: 2
+
+  http:
+    encoding:
+      charset: utf-8
 
 hibernate:
     dialect: org.hibernate.dialect.MySQL5Dialect
@@ -52,9 +56,11 @@ eureka:
     serviceUrl:
       defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka
   instance:
-    hostname: cumtomer1                 # 此处，preferIpAddress不设置或者设为false，不能设为true，否则影响turbine的测试。turbine存在的问题：eureka.instance.hostname一致时只能检测到一个节点，会造成turbine数据不完整
+    hostname: portal1                 # 此处，preferIpAddress不设置或者设为false，不能设为true，否则影响turbine的测试。turbine存在的问题：eureka.instance.hostname一致时只能检测到一个节点，会造成turbine数据不完整
 ribbon:
   eureka:
     enabled: true         # 默认为true。如果设置为false，Ribbon将不会从Eureka中获得服务列表，而是使用静态配置的服务列表。静态服务列表可使用：<client>.ribbon.listOfServers来指定。参考：http://projects.spring.io/spring-cloud/docs/1.0.3/spring-cloud.html#spring-cloud-ribbon-without-eureka
 
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
+
+noAuthUris: /user/,/list

@@ -1,14 +1,16 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.base.Dao;
+import com.hzg.tools.StrUtil;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpSession;
 import java.util.*;
-
 
 @Controller
 @RequestMapping("/sys")
@@ -19,20 +21,14 @@ public class SysController extends com.hzg.base.Controller {
     @Autowired
     private Writer writer;
 
+    @Autowired
+    private SysClient sysClient;
+
+    @Autowired
+    private StrUtil strUtil;
+
     public SysController(SysClient sysClient) {
         super(sysClient);
-    }
-
-    @GetMapping("")
-    public String welcome(Map<String, Object> model) {
-        model.put("time", new Date());
-        model.put("message", "Hello World");
-        return "index";
-    }
-
-    @GetMapping("/list")
-    public String list() {
-        return "/sys/list";
     }
 
     @GetMapping("/view/{entity}/{id}")
@@ -70,33 +66,80 @@ public class SysController extends com.hzg.base.Controller {
         logger.info("business start, name:" + name + ", json:" + json);
 
         if (name.equals("assignPrivilege")) {
-            List<Post> posts = writer.gson.fromJson(client.query("post", json), new TypeToken<List<Post>>() {}.getType());
-
-            List<PrivilegeResource> unAssignPrivileges = null;
-
-            if (!posts.isEmpty()) {
-                Post post = posts.get(0);
-                model.put("entity", post);
-
-                String ids = "";
-                for (PrivilegeResource resource : post.getPrivilegeResources()) {
-                    ids += resource.getId() + ",";
-                }
-
-                String params = "{}";
-                if (!ids.equals("")) {
-                   params = "{\"id\": \" not in (" + ids.substring(0, ids.length()-1) + ")\"}";
-                }
-
-                unAssignPrivileges = writer.gson.fromJson(client.complexQuery("privilegeResource", params, 0, -1),
-                        new TypeToken<List<PrivilegeResource>>() {}.getType());
+            Map<String, Object> result = writer.gson.fromJson(sysClient.queryPrivilege(json), new TypeToken<Map<String, Object>>(){}.getType());
+            if (result.get("post") != null) {
+                model.put("entity", result.get("post"));
             }
-
-            model.put("unAssignPrivileges", unAssignPrivileges);
+            model.put("unAssignPrivileges", result.get("unAssignPrivileges"));
         }
 
         logger.info("business " + name + " end");
 
-        return "sys/" + name;
+        return "/sys/" + name;
+    }
+
+    /**
+     * 到登录页面，设置加密密码的 salt
+     * @param model
+     * @param session
+     * @return
+     */
+    @GetMapping("/user/signIn")
+    public String signIn(Map<String, Object> model, HttpSession session) {
+        String salt = strUtil.generateRandomStr(256);
+        dao.storeToRedis("salt_" + session.getId(), salt, 1800);
+
+        if (session.getAttribute("result") != null) {
+            model.put("result", session.getAttribute("result"));
+            session.removeAttribute("result");
+        }
+        model.put("salt", "\"" + salt + "\"");
+
+        return "/signIn";
+    }
+
+    /**
+     * 用户登录，注销，重复登录
+     * @param name
+     * @param json
+     * @return
+     */
+    @PostMapping("/user/{name}")
+    public String user(@PathVariable("name") String name, HttpSession session, String json) {
+        logger.info("user start, name:" + name + ", json:" + json);
+
+        String page;
+
+        Map<String, String> result = null;
+        if (name.equals("signIn")) {
+            result = writer.gson.fromJson(sysClient.signIn(json), new TypeToken<Map<String, String>>(){}.getType());
+
+        } else if (name.equals("signOut")) {
+            result = writer.gson.fromJson(sysClient.signOut(json), new TypeToken<Map<String, String>>(){}.getType());
+
+        } else if (name.equals("hasLoginDeal")) {
+            result = writer.gson.fromJson(sysClient.hasLoginDeal(json), new TypeToken<Map<String, String>>(){}.getType());
+        }
+
+        if (result.get("result").equals("success")) {
+            page = "redirect:/";
+
+            if (name.equals("signOut")) {
+                page = "redirect:/sys/user/signIn";
+            }
+
+        } else {
+            session.setAttribute("result", result.get("result"));
+            page = "redirect:/sys/user/signIn";
+
+            if (name.equals("signOut")) {
+                session.removeAttribute("result");
+                page = "redirect:/";
+            }
+        }
+
+        logger.info("user " + name + " end");
+
+        return page;
     }
 }

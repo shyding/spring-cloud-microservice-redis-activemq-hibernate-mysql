@@ -1,6 +1,7 @@
 package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.tools.SignInUtil;
 import com.hzg.tools.Writer;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
@@ -15,9 +16,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import javax.servlet.http.HttpServletResponse;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Controller
 @RequestMapping("/sys")
@@ -30,6 +29,9 @@ public class SysController {
 
     @Autowired
     private Writer writer;
+
+    @Autowired
+    private SignInUtil signInUtil;
 
     /**
      * 保存实体
@@ -76,6 +78,11 @@ public class SysController {
             Company company = writer.gson.fromJson(json, Company.class);
             company.setInputDate(inputDate);
             result = sysDao.save(company);
+
+        }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
+            privilegeResource.setInputDate(inputDate);
+            result = sysDao.save(privilegeResource);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -116,6 +123,19 @@ public class SysController {
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
+
+            List<Integer> relateIds = new ArrayList<>();
+            for (PrivilegeResource privilegeResource : post.getPrivilegeResources()) {
+                relateIds.add(privilegeResource.getId());
+            }
+
+            Post dbPost = (Post) sysDao.queryById(post.getId(), Post.class);
+            List<Integer> unRelateIds = new ArrayList<>();
+            for (PrivilegeResource privilegeResource : dbPost.getPrivilegeResources()) {
+                unRelateIds.add(privilegeResource.getId());
+            }
+
+            sysDao.updateRelateId(post.getId(), relateIds, unRelateIds, Post.class);
             result = sysDao.updateById(post.getId(), post);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
@@ -125,6 +145,10 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
             result = sysDao.updateById(company.getId(), company);
+
+        }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
+            result = sysDao.updateById(privilegeResource.getId(), privilegeResource);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -158,6 +182,11 @@ public class SysController {
             Company company = writer.gson.fromJson(json, Company.class);
             List<Company> companies = sysDao.query(company);
             writer.writeObjectToJson(response, companies);
+
+        }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
+            List<PrivilegeResource> privilegeResources = sysDao.query(privilegeResource);
+            writer.writeObjectToJson(response, privilegeResources);
         }
 
         logger.info("query end");
@@ -190,6 +219,11 @@ public class SysController {
             Company company = writer.gson.fromJson(json, Company.class);
             List<Company> companies = sysDao.suggest(company);
             writer.writeObjectToJson(response, companies);
+
+        } else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
+            List<PrivilegeResource> privilegeResources = sysDao.suggest(privilegeResource);
+            writer.writeObjectToJson(response, privilegeResources);
         }
 
         logger.info("suggest end");
@@ -219,11 +253,21 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             List<Company> companies = sysDao.complexQuery(Company.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, companies);
+
+        }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            List<PrivilegeResource> privilegeResources = sysDao.complexQuery(PrivilegeResource.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, privilegeResources);
         }
 
         logger.info("complexQuery end");
     }
 
+    /**
+     * 查询条件限制下的记录数
+     * @param response
+     * @param entity
+     * @param json
+     */
     @RequestMapping(value = "/recordsSum", method = {RequestMethod.GET, RequestMethod.POST})
     public void recordsSum(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("recordsSum start, parameter:" + entity + ":" + json);
@@ -242,6 +286,9 @@ public class SysController {
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             recordsSum =  sysDao.recordsSum(Company.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(PrivilegeResource.class, queryParameters);
         }
 
         writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");
@@ -265,5 +312,211 @@ public class SysController {
         }
 
         return isExist;
+    }
+
+    /**
+     * 查询岗位已有权限，及没有的权限
+     * @param response
+     * @param json
+     */
+    @RequestMapping(value = "/queryPrivilege", method = {RequestMethod.GET, RequestMethod.POST})
+    public void queryPrivilege(HttpServletResponse response, @RequestBody String json) {
+        logger.info("queryPrivilege start, parameter:" + json);
+
+        Map<String, Object> result = new HashMap();
+
+        List<Post> posts = sysDao.query(writer.gson.fromJson(json, Post.class));
+        String queryParameters = "{}";
+        if (!posts.isEmpty()) {
+
+            Post post = posts.get(0);
+            result.put("post", post);
+
+            String ids = "";
+            for (PrivilegeResource resource : post.getPrivilegeResources()) {
+                ids += resource.getId() + ",";
+            }
+
+            if (!ids.equals("")) {
+                queryParameters = "{\"id\": \" not in (" + ids.substring(0, ids.length()-1) + ")\"}";
+            }
+
+        }
+
+        List<PrivilegeResource> unAssignPrivileges = sysDao.complexQuery(PrivilegeResource.class,
+                writer.gson.fromJson(queryParameters, new TypeToken<Map<String, String>>(){}.getType()), 0, -1);
+        result.put("unAssignPrivileges", unAssignPrivileges);
+
+        logger.info("queryPrivilege end");
+
+        writer.writeObjectToJson(response, result);
+    }
+
+    /**
+     * 用户登录
+     * @param response
+     * @param json
+     */
+    @RequestMapping(value = "/signIn", method = {RequestMethod.GET, RequestMethod.POST})
+    public void signIn(HttpServletResponse response, @RequestBody String json) {
+        logger.info("signIn start, parameter:" + json);
+
+        String result = "fail";
+
+        Map<String, String> signInInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        String username = signInInfo.get("username");
+
+        long waitTime = signInUtil.userWait(username);
+        if (waitTime > 0) {
+            result = "请等待" + (waitTime/1000) + "秒后再次登录";
+            writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+            return ;
+        }
+
+        String salt = (String)sysDao.getFromRedis("salt_" + signInInfo.get("sessionId"));
+        if (salt == null) {
+            result = "加密信息丢失，请刷新后再次登录";
+            writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+            return ;
+        }
+
+        List<User> dbUsers = sysDao.query(new User(username));
+        if (dbUsers.size() == 1) {
+            String encryptDbPassword = DigestUtils.md5Hex(dbUsers.get(0).getPassword().toUpperCase() + salt).toUpperCase();
+
+            /**
+             * 账号密码正确
+             */
+            if (encryptDbPassword.equals(signInInfo.get("encryptPassword"))) {
+                Set<Post> posts = new HashSet<>();
+                for (Post post : dbUsers.get(0).getPosts()) {
+                    posts.add((Post)sysDao.queryById(post.getId(), Post.class));
+                }
+                dbUsers.get(0).setPosts(posts);
+
+                result = "success";
+                signInUtil.removeSignInFailInfo(username);
+
+            } else {
+                result = "用户名或密码错误";
+
+                signInUtil.setSignInFailInfo(username);
+                long waitSeconds = signInUtil.getWaitSeconds(username);
+                if (waitSeconds != 0) {
+                    result += "<br/>已<span style='color:#db6a41;padding-left:2px;padding-right:2px'>" +
+                             signInUtil.getSignInFailCount(username) +
+                             "</span>次登录错误，请等待" + waitSeconds + "秒后再次登录";
+
+                }
+            }
+
+        } else if (dbUsers.size() > 1){
+           result = dbUsers.get(0).getName() + "是重名用户，请联系管理员处理";
+        }
+
+        /**
+         * 用户已经登录
+         */
+        if (signInUtil.isUserExist(username) && result.equals("success")) {
+            if (signInUtil.getSessionIdByUser(username) != null) {
+                if (!signInUtil.getSessionIdByUser(username).equals(signInInfo.get("sessionId"))) {
+                    sysDao.storeToRedis(username + "_" + signInInfo.get("sessionId"), dbUsers.get(0), 1800);
+                    result = username + "已经登录";
+                }
+            }
+        }
+
+        /**
+         * 登录成功,设置用户,该用户权限资源到 redis
+         */
+        if (result.equals("success")) {
+            String resources = "";
+            for (Post post : dbUsers.get(0).getPosts()) {
+                for (PrivilegeResource resource : post.getPrivilegeResources()) {
+                    resources += resource.getUri() + ",";
+                }
+
+                /**
+                 * 由于已经获得了权限，移除对象里的权限
+                 */
+                post.setPrivilegeResources(null);
+            }
+
+            sysDao.storeToRedis(username, dbUsers.get(0), 1800);
+            sysDao.storeToRedis(username + "_resources", resources, 1800);
+            signInUtil.setUser(signInInfo.get("sessionId"), username);
+        }
+
+        logger.info("signIn end");
+
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+    }
+
+
+    /**
+     * 用户注销
+     */
+    @RequestMapping(value="/signOut")
+    public void signOut(HttpServletResponse response,  @RequestBody String json) {
+        logger.info("signOut start, parameter:" + json);
+
+        String result = "fail";
+
+        Map<String, String> signOutInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        String sessionId =  signOutInfo.get("sessionId");
+
+        String username = (String)sysDao.getFromRedis("sessionId_" + sessionId);
+        if (username != null) {
+            sysDao.deleteFromRedis(username);
+            sysDao.deleteFromRedis(username + "_resources");
+            sysDao.deleteFromRedis("salt_" + sessionId);
+            signInUtil.removeUser(username);
+
+            logger.info(username + "注销");
+
+            result = "success";
+        }
+
+        logger.info("signOut end");
+
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+    }
+
+    /**
+     * 处理重复登录
+     */
+    @RequestMapping(value="/hasLoginDeal")
+    public void hasLoginDeal(HttpServletResponse response,  @RequestBody String json) {
+        logger.info("hasLoginDeal start, parameter:" + json);
+
+        String result = "fail";
+
+        Map<String, String> dealInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        String username = dealInfo.get("username");
+        String sessionId = dealInfo.get("sessionId");
+        String tempUserKey = username + "_" + sessionId;
+
+        if (dealInfo.get("dealType").equals("againSignIn")) {
+            User user = (User) sysDao.getFromRedis(tempUserKey);
+
+            if (user != null) {
+                //移除之前登录的用户
+                signInUtil.removeUser(username);
+
+                sysDao.storeToRedis(username, user, 1800);
+                signInUtil.setUser(sessionId, username);
+
+                sysDao.deleteFromRedis(tempUserKey);
+
+                result = "success";
+            }
+
+        } else {
+            result = "no operation";
+        }
+
+        logger.info("hasLoginDeal end");
+
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
     }
 }

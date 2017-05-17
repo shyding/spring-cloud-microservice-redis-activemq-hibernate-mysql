@@ -15,12 +15,45 @@ public interface SysClient extends Client {
     @RequestMapping(value = "/sys/doSome", method = RequestMethod.POST)
     String doSome(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/sys/queryPrivilege", method = RequestMethod.POST)
+    String queryPrivilege(@RequestBody String json);
+
+    @RequestMapping(value = "/sys/signIn", method = RequestMethod.POST)
+    String signIn(@RequestBody String json);
+
+    @RequestMapping(value = "/sys/signOut", method = RequestMethod.POST)
+    String signOut(@RequestBody String json);
+
+    @RequestMapping(value = "/sys/hasLoginDeal", method = RequestMethod.POST)
+    String hasLoginDeal(@RequestBody String json);
+
     @Component
     class SysClientFallback extends ClientFallback implements SysClient  {
         @Override
         public String doSome(String entity, String json) {
             logger.info("doSome 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
             return null;
+        }
+
+        @Override
+        public String queryPrivilege(@RequestBody String json) {
+            logger.info("queryPrivilege 异常发生，进入fallback方法，接收的参数："  + ":" + json);
+            return "{\"result\":\"系统异常，查询出错\"}";
+        }
+
+        @Override
+        public String signIn(@RequestBody String json) {
+            return "{\"result\":\"系统异常，登录出错\"}";
+        }
+
+        @Override
+        public String signOut(@RequestParam("sessionId") String sessionId) {
+            return "{\"result\":\"系统异常，注销出错\"}";
+        }
+
+        @Override
+        public String hasLoginDeal(@RequestParam("sessionId") String sessionId) {
+            return "{\"result\":\"系统异常，处理重复登录出错\"}";
         }
     }
 }

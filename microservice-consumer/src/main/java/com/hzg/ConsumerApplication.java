@@ -1,7 +1,7 @@
 package com.hzg;
 
+import com.hzg.tools.VisitInterceptor;
 import org.apache.activemq.command.ActiveMQQueue;
-import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -22,22 +22,23 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.jms.annotation.EnableJms;
-import org.springframework.orm.hibernate4.HibernateTransactionManager;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
-import org.springframework.orm.hibernate4.support.OpenSessionInViewFilter;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
+import org.springframework.orm.hibernate5.support.OpenSessionInViewFilter;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.filter.CharacterEncodingFilter;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import redis.clients.jedis.JedisPoolConfig;
 
 import javax.jms.Queue;
 import javax.sql.DataSource;
 import java.util.*;
 
-/**
- * Created by Administrator on 2017/3/28.
- */
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableJms
@@ -45,7 +46,7 @@ import java.util.*;
 @EnableTransactionManagement
 @EnableFeignClients
 @EnableCircuitBreaker
-public class ConsumerApplication {
+public class ConsumerApplication extends WebMvcConfigurerAdapter {
     @Autowired
     private DataSource dataSource;
 
@@ -75,7 +76,13 @@ public class ConsumerApplication {
     @Value("${redis.pool.test-on-borrow}")
     private boolean testOnBorrow;
 
-    // 设置 mq 队列
+    @Value("${noAuthUris}")
+    private String noAuthUrisStr;
+
+    /**
+     * 设置 mq 队列
+     * @return
+     */
     @Bean
     public Queue queue() {
         return new ActiveMQQueue("userQueue");
@@ -106,7 +113,10 @@ public class ConsumerApplication {
     @Autowired
     private JedisConnectionFactory connectionFactory;
 
-    // 设置 redisTemplate
+    /**
+     * 设置 redisTemplate
+     * @return
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<String, Object>();
@@ -149,7 +159,10 @@ public class ConsumerApplication {
     @Autowired
     private LocalSessionFactoryBean sessionFactory;
 
-    // 设置事物
+    /**
+     * 设置事物
+     * @return
+     */
     @Bean
     public HibernateTransactionManager transactionManager() {
         HibernateTransactionManager transactionManager = new HibernateTransactionManager();
@@ -164,12 +177,38 @@ public class ConsumerApplication {
         return new PersistenceExceptionTranslationPostProcessor();
     }
 
-    // 注册过滤器
+    /**
+     * 注册 hibernate session 过滤器
+     * @return
+     */
     @Bean
-    public FilterRegistrationBean indexFilterRegistration() {
+    public FilterRegistrationBean openSessionInViewFilter() {
         FilterRegistrationBean registration = new FilterRegistrationBean(new OpenSessionInViewFilter());
         registration.addUrlPatterns("/*");
         return registration;
+    }
+
+    @Bean
+    public List<String> noAuthUris(){
+        return Arrays.asList(noAuthUrisStr.split(","));
+    }
+
+    @Bean
+    public VisitInterceptor visitInterceptor(){
+        return new VisitInterceptor();
+    }
+
+    @Autowired
+    VisitInterceptor visitInterceptor;
+
+    /**
+     * 添加访问控制拦截器
+     * @param registry
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(visitInterceptor).addPathPatterns("/**")//要拦截的请求
+             .excludePathPatterns("/res/**");//不拦截静态资源
     }
 
     /**

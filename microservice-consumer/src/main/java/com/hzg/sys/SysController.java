@@ -1,7 +1,6 @@
 package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
-import com.hzg.base.Dao;
 import com.hzg.tools.StrUtil;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
@@ -9,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.util.*;
 
@@ -53,12 +53,46 @@ public class SysController extends com.hzg.base.Controller {
 
         } else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<PrivilegeResource>>() {}.getType());
+
+        } else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Audit>>() {}.getType());
+
+            String queryJson = "";
+            if (!entities.isEmpty()) {
+                queryJson = "{\"entityId\":" + ((Audit)entities.get(0)).getEntityId() + "}";
+            }
+            model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<Audit>>() {}.getType()));
         }
 
         model.put("entity", entities.isEmpty() ? null : entities.get(0));
         logger.info("viewById end");
 
         return "/sys/" + entity;
+    }
+
+    @RequestMapping(value = "/privateQuery/{entity}", method = {RequestMethod.GET, RequestMethod.POST})
+    public void privateQuery(HttpSession session, HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
+        logger.info("privateQuery start, entity:" + entity + ", json:" + json);
+        String privateCondition = "";
+
+        if (entity.equals("audit")) {
+            User user = (User) dao.getFromRedis((String)dao.getFromRedis("sessionId_" + session.getId()));
+            for (Post post : user.getPosts()) {
+                privateCondition += post.getId() + ",";
+            }
+
+            if (!privateCondition.equals("")) {
+                if (!json.equals("{}")) {
+                    json = json.substring(0, json.length()-1) + ",\"post\":\" in (" + privateCondition.substring(0, privateCondition.length()-1) + ")\"}";
+                } else {
+                    json = "{" + "\"post\": in(" + privateCondition.substring(0, privateCondition.length()-1) + ")}";
+                }
+            }
+
+            complexQuery(response, dataTableParameters, json, recordsSum, entity);
+        }
+
+        logger.info("privateQuery " + entity + " end");
     }
 
     @RequestMapping(value = "/business/{name}", method = {RequestMethod.GET, RequestMethod.POST})

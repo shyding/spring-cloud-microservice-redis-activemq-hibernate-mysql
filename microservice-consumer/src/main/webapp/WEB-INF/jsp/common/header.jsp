@@ -1,3 +1,7 @@
+<%@ page import="com.hzg.sys.User" %>
+<%@ page import="com.hzg.sys.Audit" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <div class="col-md-3 left_col">
     <div class="left_col scroll-view">
@@ -26,24 +30,45 @@
             <div class="menu_section">
                 <h3>General</h3>
                 <ul class="nav side-menu">
-                    <li><a><i class="fa fa-home"></i> Home <span class="fa fa-chevron-down"></span></a>
+                    <li><a href="#/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D" onclick="render('/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D');"><i class="fa fa-home"></i> 待办事宜 <span class="fa fa-chevron-right"></span></a></li>
+
+                    <c:if test="${resources != null}">
+                    <c:if test="${fn:contains(resources, '/sys/')}">
+                    <li><a><i class="fa fa-edit"></i> 后台 <span class="fa fa-chevron-down"></span></a>
                         <ul class="nav child_menu">
-                            <li><a href="index.html">Dashboard</a></li>
-                            <li><a href="index2.html">Dashboard2</a></li>
-                            <li><a href="index3.html">Dashboard3</a></li>
+                            <li><a href="#/sys/list/<%=User.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>
+                        <c:if test="${fn:contains(resources, '/sys/save/user')}">
+                            <li><a href="#/sys/view/user/-1">注册用户</a></li>
+                        </c:if>
                         </ul>
                     </li>
-                    <li><a><i class="fa fa-edit"></i> Forms <span class="fa fa-chevron-down"></span></a>
+                    </c:if>
+
+                    <c:if test="${fn:contains(resources, '/erp/')}">
+                    <li><a><i class="fa fa-edit"></i> 商品 <span class="fa fa-chevron-down"></span></a>
                         <ul class="nav child_menu">
-                            <li><a href="form.html">General Form</a></li>
-                            <li><a href="form_advanced.html">Advanced Components</a></li>
-                            <li><a href="form_validation.html">Form Validation</a></li>
-                            <li><a href="form_wizards.html">Form Wizard</a></li>
-                            <li><a href="form_upload.html">Form Upload</a></li>
-                            <li><a href="form_buttons.html">Form Buttons</a></li>
+                            <li><a href="#/product/list/product/{}">管理</a></li>
+                        <c:if test="${fn:contains(resources, '/erp/save/product')}">
+                            <li><a href="#/sys/view/user/26">录入商品</a></li>
+                        </c:if>
+                        <c:if test="${fn:contains(resources, '/erp/save/purchase')}">
+                            <li><a href="#/sys/view/user/26">采购</a></li>
+                        </c:if>
+                        <c:if test="${fn:contains(resources, '/erp/save/stockInOut')}">
+                            <li><a href="#/sys/view/user/26">入库出库</a></li>
+                        </c:if>
                         </ul>
                     </li>
-                    <li><a href="javascript:void(0)"><i class="fa fa-laptop"></i> Landing Page <span class="label label-success pull-right">Coming Soon</span></a></li>
+                    </c:if>
+
+                    <c:if test="${fn:contains(resources, '/order/')}">
+                    <li><a><i class="fa fa-edit"></i> 销售订单 <span class="fa fa-chevron-down"></span></a>
+                        <ul class="nav child_menu">
+                            <li><a href="#/sys/list/order">管理</a></li>
+                        </ul>
+                    </li>
+                    </c:if>
+                    </c:if>
                 </ul>
             </div>
 
@@ -92,7 +117,10 @@
                             </a>
                         </li>
                         <li><a href="javascript:;">Help</a></li>
-                        <li><a href="login.html"><i class="fa fa-sign-out pull-right"></i> Log Out</a></li>
+                        <li><a href="#" id="signOut"><i class="fa fa-sign-out pull-right"></i> 注销 </a></li>
+                        <form action="<%=request.getContextPath()%>/sys/user/signOut" id="signOutForm" method="post">
+                            <input type="hidden" id="json" name="json" value='{"sessionId":"<%=session.getId()%>"}' />
+                        </form>
                     </ul>
                 </li>
 

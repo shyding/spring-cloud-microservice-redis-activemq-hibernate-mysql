@@ -156,7 +156,7 @@ function init_autosize() {
 
 var hisUrls = [], hisIndex = 0, hisLength = 10;
 hisUrls[hisIndex] = "/";
-var dataListQueryJson = "{}", dataListQueryEntity = "";
+var dataListQueryJson = "{}", dataListQueryEntity = "";dataListQueryEntity.s
 var returnPage = false;
 
 function render(url){
@@ -166,6 +166,32 @@ function render(url){
         success: function (pageContent) {
             setHisUrls(url);
             $("#pageContent").empty().html(pageContent);
+        }
+    });
+}
+
+function renderAudit(element, url){
+    $.ajax({
+        type: "get",
+        url:  url,
+        success: function (pageContent) {
+            element.empty().html(pageContent);
+
+            /**
+             * 蕴藏部分元素
+             */
+            element.find(".page-title").css("display", "none");
+            element.find(".clearfix").css("display", "none");
+            element.find(".x_title").css("display", "none");
+            var children = document.getElementById("form").children;
+            var index = children.length-1;
+            for (;index >= 0; index--) {
+                if (children[index].tagName.toLowerCase() == "div") {
+                    children[index].style.display="none";
+                    break;
+                }
+            }
+            $('#result').attr("readonly",false).css("border", "1px solid #ccc");
         }
     });
 }

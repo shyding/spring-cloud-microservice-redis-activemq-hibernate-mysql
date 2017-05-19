@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +22,19 @@ public class Controller {
     @Autowired
     private Writer writer;
 
+    @Autowired
+    public Dao dao;
+
     public Controller(Client client) {
         this.client = client;
+    }
+
+    @GetMapping("/list/{entity}/{json}")
+    public String list(HttpSession session, Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("json") String json) {
+        model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + session.getId()) + "_resources"));
+        model.put("entity", entity);
+        model.put("json", json);
+        return "/sys/list";
     }
 
     @PostMapping("/save/{entity}")
@@ -73,7 +85,7 @@ public class Controller {
      */
     @PostMapping("/complexQuery/{entity}")
     public void complexQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
-        logger.info("query start, entity:" + entity + ", dataTableParameters:" + dataTableParameters + ", json:" + json + ",recordsSum" + recordsSum);
+        logger.info("complexQuery start, entity:" + entity + ", dataTableParameters:" + dataTableParameters + ", json:" + json + ",recordsSum" + recordsSum);
 
         int sEcho = 0;// 记录操作的次数  每次加1
         int iDisplayStart = 0;// 起始
@@ -98,7 +110,6 @@ public class Controller {
 
         sEcho += 1; //为操作次数加1
         String result = client.complexQuery(entity, json, iDisplayStart, iDisplayLength);
-        int count = result.split("\\{").length-1 ;  //查询出来的数量
 
         if (recordsSum == -1) {
             recordsSum = ((Map<String, Integer>)writer.gson.fromJson(client.recordsSum(entity, json), new TypeToken<Map<String, Integer>>(){}.getType())).get("recordsSum");
@@ -111,6 +122,6 @@ public class Controller {
         dataMap.put("aaData", result); //数据
 
         writer.writeObjectToJson(response, dataMap);
-        logger.info("query end");
+        logger.info("complexQuery end");
     }
 }

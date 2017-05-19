@@ -83,6 +83,11 @@ public class SysController {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
             privilegeResource.setInputDate(inputDate);
             result = sysDao.save(privilegeResource);
+
+        }else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            Audit audit = writer.gson.fromJson(json, Audit.class);
+            audit.setInputDate(inputDate);
+            result = sysDao.save(audit);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -149,6 +154,10 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
             result = sysDao.updateById(privilegeResource.getId(), privilegeResource);
+
+        } else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            Audit audit = writer.gson.fromJson(json, Audit.class);
+            result = sysDao.updateById(audit.getId(), audit);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -187,6 +196,11 @@ public class SysController {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
             List<PrivilegeResource> privilegeResources = sysDao.query(privilegeResource);
             writer.writeObjectToJson(response, privilegeResources);
+
+        }else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            Audit audit = writer.gson.fromJson(json, Audit.class);
+            List<Audit> audits = sysDao.query(audit);
+            writer.writeObjectToJson(response, audits);
         }
 
         logger.info("query end");
@@ -257,6 +271,11 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             List<PrivilegeResource> privilegeResources = sysDao.complexQuery(PrivilegeResource.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, privilegeResources);
+
+        }else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            List<Audit> audits = sysDao.complexQuery(Audit.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, audits);
+
         }
 
         logger.info("complexQuery end");

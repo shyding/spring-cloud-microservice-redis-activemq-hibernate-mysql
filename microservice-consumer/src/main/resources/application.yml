@@ -63,4 +63,4 @@ ribbon:
 
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
-noAuthUris: /user/,/list
+noAuthUris: /user/,/list/,/privateQuery/audit,/view/audit

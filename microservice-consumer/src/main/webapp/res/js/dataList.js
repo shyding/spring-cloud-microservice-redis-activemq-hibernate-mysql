@@ -10,18 +10,8 @@ var dataList = (function($){
         "product":"商品",
         "purchase":"采购",
         "stock":"库存",
-        "order":"订单"
-    };
-
-    var urls = {
-        "user":"/sys/view/user/-1",
-        "post":"/sys/view/post/-1",
-        "dept":"/sys/view/dept/-1",
-        "company":"/sys/view/company/-1",
-        "privilegeResource":"/sys/view/privilegeResource/-1",
-        "product":"/erp/view/product/-1",
-        "purchase":"/erp/view/purchase/-1",
-        "stock":"/erp/view/stockInOut/-1"
+        "order":"订单",
+        "audit":"事宜"
     };
 
     var urlTitles = {
@@ -35,34 +25,124 @@ var dataList = (function($){
         "stock":"商品入库、出库"
     };
 
+    var modules = {
+        "user":"/sys",
+        "post":"/sys",
+        "dept":"/sys",
+        "company":"/sys",
+        "privilegeResource":"/sys",
+        "audit":"/sys",
+        "product":"/product",
+        "purchase":"/product",
+        "stock":"/product",
+        "order":"/sale"
+    };
+
+    var addActions = {
+        "user":"/view",
+        "post":"/view",
+        "dept":"/view",
+        "company":"/view",
+        "privilegeResource":"/view",
+        "product":"/view",
+        "purchase":"/view",
+        "stock":"/view"
+    };
+
+    var queryActions = {
+        "user":"/complexQuery",
+        "post":"/complexQuery",
+        "dept":"/complexQuery",
+        "company":"/complexQuery",
+        "privilegeResource":"/complexQuery",
+        "audit":"/privateQuery",
+        "product":"/complexQuery",
+        "purchase":"/complexQuery",
+        "stock":"/complexQuery",
+        "order":"/complexQuery"
+    };
+
+    var viewActions = {
+        "user":"/view",
+        "post":"/view",
+        "dept":"/view",
+        "company":"/view",
+        "privilegeResource":"/view",
+        "audit":"/view",
+        "product":"/view",
+        "purchase":"/view",
+        "stock":"/view",
+        "order":"/view"
+    };
+
+    var tHeaders = {
+        "user":"<th>姓名</th><th>性别</th><th>用户名</th><th>email</th><th>岗位</th><th>创建时间</th><th>状态</th>",
+        "post":"<th>名称</th><th>所在部门</th><th>所属公司</th>",
+        "dept":"<th>名称</th><th>联系电话</th><th>地址</th><th>所属公司</th><th>负责人</th>",
+        "company":"<th>名称</th><th>联系电话</th><th>地址</th><th>负责人</th>",
+        "privilegeResource":"<th>名称</th><th>URI</th>",
+        "audit":"<th>名称</th><th>流转时间</th><th>状态</th>",
+        "product":"<th>名称</th>",
+        "purchase":"<th>名称</th>",
+        "stock":"<th>名称</th>",
+        "order":"<th>名称</th>"
+    };
+
+    var propertiesShowSequences = {
+        "user":["name", "gender", "username", "email", "posts[][name]", "inputDate", "state"],
+        "post":["name", "dept[name]", "company[name]"],
+        "dept":["name", "phone", "address", "company[name]", "charger[name]"],
+        "company":["name", "phone", "address", "charger[name]"],
+        "privilegeResource":["name", "uri"],
+        "audit":["name", "inputDate", "state"],
+        "product":["name"],
+        "purchase":["name"],
+        "stock":["name"],
+        "order":["name"]
+    };
+
+    var showTitleNames = {
+        "user":{"state":{0: "使用", 1: "注销"}},
+        "audit":{"state":{0: "已办", 1: "待办"}}
+    };
+
     var totalTableData = [];
     var isLocalSearch = false, searchStr = "", recordsSum = -1, sEcho = 1, tablePageData=[];
-    var contextPath = "", module = "", preEntity = "";
+    var contextPath = "", module = "", action = "", preEntity = "";
 
-    function setQuery(entity){
+    function setQuery(rootPath, entity){
+        contextPath = rootPath;
+
         var title = (titles[entity]+"列表").toString();
         document.title = title;
         $("#htitle").empty().html(title);
-        $("#stitle").empty().html(titles[entity]);
+        $("#stitle").empty().html(title);
 
         if ("user;dept;post;company;privilegeResource".indexOf(entity) != -1) {
             $("#timeLabel").empty().html("录入时间");
 
-        } else if ("product".indexOf(entity) != -1) {
+        } else if ("audit".indexOf(entity) != -1) {
+            $("#entity").css("display", "none");
+            $("#selectTitle").html("状态");
+            $("#timeLabel").empty().html("流转时间");
+            $("#entity").after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="1">待办</option><option value="0">已办</option></select>');
+
+        }else if ("product".indexOf(entity) != -1) {
             $("#dateItems").empty().html("");
             $("#inputItems").empty().html("");
         }
 
-        if (urls[entity] != undefined) {
-            $("#add").html(urlTitles[entity]).click(function(){
-                render(urls[entity])
-            });
+        if (typeof(addActions[entity]) == "undefined" ) {
+            $("#add").css("display", "none");
+
         } else {
-            $("#add").css("display:none");
+            $("#add").html(urlTitles[entity]).click(function(){
+                render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
+            });
         }
     }
 
-    function query(rootPath, entity){
+    function query(table, rootPath, queryJson, entity){
         contextPath = rootPath;
 
         if (entity == "") {
@@ -70,57 +150,25 @@ var dataList = (function($){
             return false;
         }
 
-        var url;
-        var tHeader = "<thead><tr>";
-        var propertiesShowSequence = [], showTitleName={};
-        if ("user;dept;post;company;privilegeResource".indexOf(entity) != -1) {
-            module = "/sys";
-
-            if ("user" == entity) {
-                tHeader += "<th>姓名</th><th>性别</th><th>用户名</th><th>email</th><th>岗位</th><th>创建时间</th><th>状态</th>";
-                propertiesShowSequence = ["name", "gender", "username", "email", "posts[][name]", "inputDate", "state"];
-                showTitleName = {"state":{0: "使用", 1: "注销"}};
-            }
-
-            if ("dept" == entity) {
-                tHeader += "<th>名称</th><th>联系电话</th><th>地址</th><th>所属公司</th><th>负责人</th>";
-                propertiesShowSequence = ["name", "phone", "address", "company[name]", "charger[name]"];
-            }
-
-            if ("post" == entity) {
-                tHeader += "<th>名称</th><th>所在部门</th><th>所属公司</th>";
-                propertiesShowSequence = ["name", "dept[name]", "company[name]"];
-            }
-
-            if ("company" == entity) {
-                tHeader += "<th>名称</th><th>联系电话</th><th>地址</th><th>负责人</th>";
-                propertiesShowSequence = ["name", "phone", "address", "charger[name]"];
-            }
-
-            if ("privilegeResource" == entity) {
-                tHeader += "<th>名称</th><th>URI</th>";
-                propertiesShowSequence = ["name", "uri"];
-            }
-        } else if ("product".indexOf(entity) != -1) {
-            module = "/product";
-        }
-
-        url = contextPath + module + "/complexQuery/" + entity;
-        var queryJson = JSON.stringify($("#form").serializeJSON());
-        tHeader += "</tr></thead><tbody></tbody>";
-
         if (!isLocalSearch) {
             totalTableData = [];
             recordsSum = -1;
         }
 
         if (entity != preEntity && preEntity != "") {
-            $("#dataList").dataTable().fnDestroy();
+            table.dataTable().fnDestroy();
         }
-        $("#dataList").initDatatable(url, queryJson, tHeader, propertiesShowSequence, showTitleName, entity);
+
+        table.initDataTable(
+            contextPath + modules[entity] + queryActions[entity] + "/" + entity,
+            queryJson,
+            "<thead><tr>" + tHeaders[entity] + "</tr></thead><tbody></tbody>",
+            typeof(propertiesShowSequences[entity]) == "undefined" ? [] : propertiesShowSequences[entity],
+            typeof(showTitleNames[entity]) == "undefined" ? {} : showTitleNames[entity],
+            entity);
 
         // 设置搜索
-        $('#dataList').before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input value="' + searchStr +'" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
+        table.before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input value="' + searchStr +'" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
         $('#columnSearch').on( 'keyup keydown change',  function () {
             isLocalSearch = true;
             searchStr = $('#columnSearch').val();
@@ -129,8 +177,9 @@ var dataList = (function($){
         preEntity = entity;
     }
 
-    $.fn.initDatatable = function(url, queryJson, header, propertiesShowSequence, showTitleName, entity) {
-        $("#dataList").empty().html(header);
+    $.fn.initDataTable = function(url, queryJson, header, propertiesShowSequence, showTitleName, entity) {
+        this.empty().html(header);
+
         this.DataTable({
             dom: "Bfrtip",
             buttons: [
@@ -189,7 +238,7 @@ var dataList = (function($){
             "sPaginationType" : "full_numbers", // 分页，一共两种样式 另一种为two_button 是datatables默认
             "bSortCellsTop": true,
 
-            iDisplayLength: 6, //每页显示条数
+            iDisplayLength: 30, //每页显示条数
             bServerSide: true, //这个用来指明是通过服务端来取数据
             sAjaxSource: url,
             fnServerData:
@@ -280,7 +329,7 @@ var dataList = (function($){
                                         }
 
                                         if (propertiesShowSequence[i] == "name") {
-                                            var queryUrl = contextPath + module + "/view/" + entity + "/" + dataList[key]["id"];
+                                            var queryUrl = contextPath + modules[entity] + viewActions[entity] + "/" + entity + "/" + dataList[key]["id"];
                                             tdData = "<a href='#" + queryUrl + "' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
                                         }
 
@@ -349,7 +398,9 @@ var dataList = (function($){
 
     return {
         setQuery: setQuery,
-        query: query
+        query: query,
+        modules: modules,
+        viewActions: viewActions
     }
 
 })(jQuery);

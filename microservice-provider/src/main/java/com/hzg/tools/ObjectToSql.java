@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
@@ -175,8 +176,18 @@ public class ObjectToSql {
                 /**
                  * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
                  */
-                if (columnValue.get(1).contains("in (")) {
+                if (Pattern.compile("in\\s*\\(").matcher(columnValue.get(1)).find()) {
                     wherePart += "t." + columnValue.get(0) + " " + columnValue.get(1).substring(1) + " and ";
+
+                /**
+                 * 值为数子
+                 */
+                } else if (columnValue.get(1).indexOf("'") == -1) {
+                    wherePart += "t." + columnValue.get(0) + " = " + columnValue.get(1) + " and ";
+
+                /**
+                 * 值为字符串
+                 */
                 } else {
                     wherePart += "t." + columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
                 }
@@ -608,7 +619,14 @@ public class ObjectToSql {
             } catch (Exception e) {
                 logger.info(e.getMessage());
 
-                valueStr += "'" + value.toString() + "'";
+                /**
+                 * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
+                 */
+                if (Pattern.compile("in\\s*\\(").matcher(value.toString()).find()) {
+                    valueStr += value.toString();
+                } else {
+                    valueStr += "'" + value.toString() + "'";
+                }
             }
         }
 

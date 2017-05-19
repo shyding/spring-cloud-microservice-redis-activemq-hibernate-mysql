@@ -34,7 +34,7 @@
                     <div class="x_content">
                         <form class="form-horizontal form-label-left" novalidate id="form">
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="entity">类别<span class="required">*</span></label>
+                                <label id="selectTitle" class="control-label col-md-3 col-sm-3 col-xs-12"  for="entity">类别<span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="entity" name="entity" class="form-control col-md-7 col-xs-12" required>
                                         <option value="">请选择类别</option>
@@ -75,6 +75,7 @@
                                         <c:if test="${fn:contains(resources, '/company')}">
                                         <option value="company">公司</option>
                                         </c:if>
+                                        <option value="audit">办理事宜</option>
                                         </c:if>
                                     </select>
                                 </div>
@@ -120,11 +121,11 @@
     $('#inputDate').daterangepicker({locale: {format: 'YYYY/MM/DD'}}, function(start, end, label) {
         console.log(start.toISOString(), end.toISOString(), label);
     });
-    $("#entity").change(function(){dataList.setQuery($("#entity").val());});
+    $("#entity").change(function(){dataList.setQuery("<%=request.getContextPath()%>", $("#entity").val());});
     $("#send").click(function(){
         dataListQueryEntity = $("#entity").val();
         dataListQueryJson = JSON.stringify($("#form").serializeJSON());
-        dataList.query("<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
+        dataList.query($("#dataList"),"<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
     });
     $(document).keydown(function(event){
         if(event.keyCode == 13){ //绑定回车
@@ -135,11 +136,11 @@
    <c:if test="${entity != null}">
     if (!returnPage) {
         dataListQueryEntity = "${entity}";
-        dataListQueryJson == "{}"
+        dataListQueryJson = '${json}';
     }
     </c:if>
 
-    dataList.setQuery(dataListQueryEntity);
+    dataList.setQuery("<%=request.getContextPath()%>", dataListQueryEntity);
     setSelect(document.getElementById("entity"), dataListQueryEntity);
-    dataList.query("<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
+    dataList.query($("#dataList"), "<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
 </script>

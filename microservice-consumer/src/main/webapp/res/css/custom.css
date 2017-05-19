@@ -1,0 +1,10 @@
+table {
+    font-size: 12px;
+}
+.daterangepicker .calendar th, .daterangepicker .calendar td{
+    min-width: 22px;
+}
+
+.h2-margin-bottom{
+    margin-bottom: 20px;
+}

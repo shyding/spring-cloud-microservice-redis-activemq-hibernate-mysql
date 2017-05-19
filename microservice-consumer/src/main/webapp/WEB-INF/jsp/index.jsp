@@ -27,14 +27,8 @@
     <link href="../../res/gentelella/vendors/datatables.net-fixedheader-bs/css/fixedHeader.bootstrap.min.css" rel="stylesheet">
     <link href="../../res/gentelella/vendors/datatables.net-responsive-bs/css/responsive.bootstrap.min.css" rel="stylesheet">
     <link href="../../res/gentelella/vendors/datatables.net-scroller-bs/css/scroller.bootstrap.min.css" rel="stylesheet">
-    <style type="text/css">
-        table {
-            font-size: 12px;
-        }
-        .daterangepicker .calendar th, .daterangepicker .calendar td{
-            min-width: 22px;
-        }
-    </style>
+    <!-- custom -->
+    <link href="../../res/css/custom.css" rel="stylesheet">
 </head>
 <body class="nav-md">
 <div class="container body">

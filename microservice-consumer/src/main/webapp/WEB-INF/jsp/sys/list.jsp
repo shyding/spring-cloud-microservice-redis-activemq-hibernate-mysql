@@ -140,6 +140,7 @@
         dataListQueryEntity = "${entity}";
         dataListQueryJson = '${json}';
     } else {
+        //restore returnPage value
         returnPage = false;
     }
     </c:if>

@@ -8,11 +8,12 @@
             return;
         }
         var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
+        var mac = faultylabs.MD5(formJson + $.cookie("pin"));
         $.ajax({
             type: "post",
             url: url,
             contentType: "application/x-www-form-urlencoded; charset=utf-8",
-            data: {json: formJson},
+            data: {json: formJson, mac: mac},
             dataType: "json",
 
             beforeSend: function(){

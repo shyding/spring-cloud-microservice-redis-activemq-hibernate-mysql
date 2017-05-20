@@ -1,5 +1,7 @@
 package com.hzg.tools;
 
+import com.hzg.sys.User;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -8,13 +10,14 @@ import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 @Component
 public class VisitInterceptor extends HandlerInterceptorAdapter {
 
     @Autowired
     public List<String> noAuthUris;
+    @Autowired
+    public List<String> macValidateUris;
 
     @Autowired
     public RedisTemplate<String, Object> redisTemplate;
@@ -51,9 +54,18 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
             resources = (String)redisTemplate.opsForValue().get(username + "_resources");
         }
 
+
         if (resources != null) {
             if (resources.contains(visitingURI)) {
-                return pass(username, sessionId);
+
+                /**
+                 * 表单提交 mac 校验
+                 */
+                if (macValidate(request, visitingURI, sessionId)) {
+                    return pass(username, sessionId);
+                } else {
+                    return notPass(response, "MAC 校验不通过");
+                }
 
             } else {
                 /**
@@ -70,15 +82,21 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
                 }
 
                 if (resources.contains(parUrisStr.substring(0, parUrisStr.lastIndexOf("/")) + "/{")) {
-                    return pass(username, sessionId);
+                    if (macValidate(request, visitingURI, sessionId)) {
+                        return pass(username, sessionId);
+                    } else {
+                        return notPass(response, "MAC 校验不通过");
+                    }
+
 
                 } else {
-                    return notPass(response);
+                    return notPass(response, "对不起，你访问的页面不存在，或者没有权限访问");
                 }
             }
 
+
         } else {
-            return notPass(response);
+            return notPass(response, "对不起，你访问的页面不存在，或者会话已经过期,请重新登录");
         }
     }
 
@@ -100,10 +118,10 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         return true;
     }
 
-    public Boolean notPass(javax.servlet.http.HttpServletResponse response) {
+    public Boolean notPass(javax.servlet.http.HttpServletResponse response, String msg) {
         try {
             response.setCharacterEncoding("UTF-8");
-            response.getWriter().print("对不起，你访问的页面不存在，或者没有权限访问;或者会话已经过期,请重新登录");
+            response.getWriter().print(msg);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -125,5 +143,44 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         }
 
         return false;
+    }
+
+    public boolean isMacValidateUris(String uri) {
+        for (int i = 0; i < macValidateUris.size(); i++) {
+            if (uri.contains(macValidateUris.get(i))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 表单提交 mac 校验
+     * @param request
+     * @param visitingURI
+     * @param sessionId
+     * @return
+     */
+    public boolean macValidate(javax.servlet.http.HttpServletRequest request, String visitingURI, String sessionId) {
+        boolean pass = false;
+
+        if (isMacValidateUris(visitingURI)) {
+            String json = request.getParameter("json");
+            String mac = request.getParameter("mac");
+
+            String salt = (String)redisTemplate.opsForValue().get("salt_" + sessionId);
+            User user = (User) redisTemplate.opsForValue().get((String)redisTemplate.opsForValue().get("sessionId_" + sessionId));
+            String pin = DigestUtils.md5Hex(salt + user.getPassword()).toUpperCase();
+
+
+            if (mac.equals(DigestUtils.md5Hex(json + pin).toUpperCase())) {
+                pass = true;
+            }
+        } else {
+            pass = true;
+        }
+
+        return pass;
     }
 }

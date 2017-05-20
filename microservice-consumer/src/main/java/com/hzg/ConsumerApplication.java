@@ -78,6 +78,8 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
 
     @Value("${noAuthUris}")
     private String noAuthUrisStr;
+    @Value("${macValidateUris}")
+    private String macValidateUris;
 
     /**
      * 设置 mq 队列
@@ -191,6 +193,11 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
     @Bean
     public List<String> noAuthUris(){
         return Arrays.asList(noAuthUrisStr.split(","));
+    }
+
+    @Bean
+    public List<String> macValidateUris(){
+        return Arrays.asList(macValidateUris.split(","));
     }
 
     @Bean

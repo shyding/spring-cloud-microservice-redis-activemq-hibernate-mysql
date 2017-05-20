@@ -116,6 +116,7 @@
 </div>
 </body>
 <script src="../../res/gentelella/vendors/jquery/dist/jquery.min.js"></script>
+<script src="../../res/js/jquery.cookie.js"></script>
 <!-- form submit -->
 <script src="../../res/js/jquery.serializejson.js"></script>
 <script src="../../res/js/submitForm.js"></script>
@@ -132,6 +133,11 @@
             alert("请输入密码");
             return false;
         }
+
+        /**
+         * pin 的值不能和在网络上传输的加密的密码值一样
+         */
+        $.cookie("pin", faultylabs.MD5(${salt}+faultylabs.MD5(jQuery.trim($("#password").val()))), {path:'/'});
 
         $("#encryptPassword").val(faultylabs.MD5(faultylabs.MD5(jQuery.trim($("#password").val()))+${salt}));
         $("#password").attr("disabled","disabled");

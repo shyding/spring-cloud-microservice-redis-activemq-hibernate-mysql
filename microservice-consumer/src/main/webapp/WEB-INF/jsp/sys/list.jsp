@@ -124,7 +124,9 @@
     $("#entity").change(function(){dataList.setQuery("<%=request.getContextPath()%>", $("#entity").val());});
     $("#send").click(function(){
         dataListQueryEntity = $("#entity").val();
-        dataListQueryJson = JSON.stringify($("#form").serializeJSON());
+        var formJson = $("#form").serializeJSON();
+        delete formJson["entity"];
+        dataListQueryJson = JSON.stringify(formJson);
         dataList.query($("#dataList"),"<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
     });
     $(document).keydown(function(event){

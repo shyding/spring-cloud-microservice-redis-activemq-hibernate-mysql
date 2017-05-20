@@ -1,3 +1,4 @@
+<%@ page import="com.hzg.sys.Audit" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!-- page content -->
@@ -53,7 +54,7 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="result">类型<span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="result" name="result" class="form-control col-md-7 col-xs-12" required>
-                                        <option value="N">请选择</option>
+                                        <option value="">请选择</option>
                                         <option value="Y">已办</option>
                                         <option value="Y">审核通过</option>
                                         <option value="N">审核未通过</option>
@@ -93,6 +94,12 @@
     } else {
         $("#deal").attr("disabled", "disabled");
     }
+
+    $(document).unbind().keydown(function(event){
+        if(event.keyCode == 13){ //绑定回车
+            $('#deal').click();
+        }
+    });
 
     <c:choose><c:when test="${entity.state == 1}">document.title = "办理事宜";</c:when><c:otherwise> document.title = "查看事宜";</c:otherwise></c:choose>
 </script>

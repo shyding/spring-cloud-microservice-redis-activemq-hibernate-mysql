@@ -187,7 +187,7 @@ function renderAudit(element, url){
             var index = children.length-1;
             for (;index >= 0; index--) {
                 if (children[index].tagName.toLowerCase() == "div") {
-                    children[index].style.display="none";
+                    children[index].innerHTML="";
                     break;
                 }
             }
@@ -229,17 +229,17 @@ function setSelect(src, value) {
 
 function init(editable) {
     if (editable) {
-        $(document).keydown(function(event){
+        $(document).unbind().keydown(function(event){
             if(event.keyCode == 13){ //绑定回车
                 $('#send').click();
             }
         });
     }
 
-    $("#edit").click(function(){
+    $("#edit").unbind().click(function(){
         editable = true;
 
-        $(document).keydown(function(event){
+        $(document).unbind().keydown(function(event){
             if(event.keyCode == 13){ //绑定回车
                 $('#send').click();
             }
@@ -255,7 +255,7 @@ function init(editable) {
         $('#send').attr("disabled","disabled");
     }
 
-    $("#cancel, #return").click(function(){
+    $("#cancel, #return").unbind().click(function(){
         render(getPreUrls());
         returnPage = true;
     });
@@ -267,9 +267,9 @@ $(document).ready(function() {
     init_sidebar();
     init_autosize();
 
-    $("#signOut").click(function(){
+    $("#signOut").unbind().click(function(){
         $("#signOutForm").submit();
     });
 
-    $("#sidebar-menu ul li ul li a").click(function(){render($(this).attr("href").toString().substring(1));});
+    $("#sidebar-menu ul li ul li a").unbind().click(function(){render($(this).attr("href").toString().substring(1));});
 });

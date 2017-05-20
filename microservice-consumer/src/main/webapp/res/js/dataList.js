@@ -108,7 +108,7 @@ var dataList = (function($){
 
     var totalTableData = [];
     var isLocalSearch = false, searchStr = "", recordsSum = -1, sEcho = 1, tablePageData=[];
-    var contextPath = "", module = "", action = "", preEntity = "";
+    var contextPath = "", preEntity = "", preDataTable = null;
 
     function setQuery(rootPath, entity){
         contextPath = rootPath;
@@ -136,7 +136,7 @@ var dataList = (function($){
             $("#add").css("display", "none");
 
         } else {
-            $("#add").html(urlTitles[entity]).click(function(){
+            $("#add").html(urlTitles[entity]).unbind().click(function(){
                 render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
             });
         }
@@ -156,7 +156,11 @@ var dataList = (function($){
         }
 
         if (entity != preEntity && preEntity != "") {
-            table.dataTable().fnDestroy();
+            try{
+                preDataTable.fnDestroy();
+            }catch(e){
+
+            }
         }
 
         table.initDataTable(
@@ -175,6 +179,7 @@ var dataList = (function($){
         } );
 
         preEntity = entity;
+        preDataTable = table.dataTable();
     }
 
     $.fn.initDataTable = function(url, queryJson, header, propertiesShowSequence, showTitleName, entity) {

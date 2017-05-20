@@ -139,6 +139,8 @@
     if (!returnPage) {
         dataListQueryEntity = "${entity}";
         dataListQueryJson = '${json}';
+    } else {
+        returnPage = false;
     }
     </c:if>
 

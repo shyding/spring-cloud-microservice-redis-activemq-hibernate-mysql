@@ -95,7 +95,7 @@
         $("#deal").attr("disabled", "disabled");
     }
 
-    $(document).unbind().keydown(function(event){
+    $(document).unbind("keydown").keydown(function(event){
         if(event.keyCode == 13){ //绑定回车
             $('#deal').click();
         }

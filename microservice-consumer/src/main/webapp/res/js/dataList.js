@@ -1,3 +1,11 @@
+/**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: Test.java
+ *
+ * @author smjie
+ * @Date  2017/4/25
+ * @version 1.00
+ */
 var dataList = (function($){
     "use strict";
 

@@ -1,6 +1,6 @@
-<%@ page import="com.hzg.sys.Audit" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ page import="com.hzg.sys.Audit" %>
 <!-- page content -->
 <div class="right_col" role="main">
     <div class="">
@@ -76,7 +76,8 @@
                                     <button id="deal" type="button" class="btn btn-success">办理</button>
                                 </div>
                             </div>
-                            <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
+                            <input type="hidden" id="id" name="id" value="${entity.id}">
+                            <input type="hidden" name="sessionId" value="<%=session.getId()%>">
                         </form>
                     </div>
                 </div>
@@ -86,11 +87,20 @@
 </div>
 <!-- /page content -->
 <script type="text/javascript">
+    var parentEntity = "";
     var entity = "${entity.entity}";
-    renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[entity] + dataList.viewActions[entity] + "/" + entity + "/${entity.entityId}");
+    var pos = entity.indexOf("_");
+    if (pos != -1) {
+        parentEntity = entity.substr(0, pos);
+    } else {
+        parentEntity = entity;
+    }
+    renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[parentEntity] + dataList.viewActions[parentEntity] + "/" + parentEntity + "/${entity.entityId}");
 
     if (${entity.state == 1}) {
-        $("#deal").click(function(){$('#dealForm').submitForm('<%=request.getContextPath()%>/sys/business/<%=Audit.class.getSimpleName().toLowerCase()%>');});
+        $("#deal").click(function(){
+            $('#dealForm').submitForm('<%=request.getContextPath()%>/sys/<%=Audit.class.getSimpleName().toLowerCase()%>');
+        });
     } else {
         $("#deal").attr("disabled", "disabled");
     }

@@ -44,6 +44,13 @@ public class Controller {
         logger.info("save end");
     }
 
+    @PostMapping("/saveList/{entity}")
+    public void saveList(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
+        logger.info("saveList start, entity:" + entity + ", json:" + json);
+        writer.writeStringToJson(response, client.saveList(entity, json));
+        logger.info("saveList end");
+    }
+
     @PostMapping("/update/{entity}")
     public void update(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
         logger.info("update start, entity:" + entity + ", json:" + json);

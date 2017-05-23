@@ -66,6 +66,9 @@
                                         <c:if test="${fn:contains(resources, '/privilegeResource')}">
                                         <option value="privilegeResource">权限</option>
                                         </c:if>
+                                        <c:if test="${fn:contains(resources, '/auditFlow')}">
+                                        <option value="auditFlow">流程</option>
+                                        </c:if>
                                         <c:if test="${fn:contains(resources, '/post')}">
                                         <option value="post">岗位</option>
                                         </c:if>
@@ -140,7 +143,6 @@
         dataListQueryEntity = "${entity}";
         dataListQueryJson = '${json}';
     } else {
-        //restore returnPage value
         returnPage = false;
     }
     </c:if>

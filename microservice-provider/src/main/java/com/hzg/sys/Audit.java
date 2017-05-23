@@ -56,6 +56,10 @@ public class Audit implements Serializable {
     @JoinColumn(name = "refusePostId")
     private Post refusePost;
 
+    @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name = "companyId")
+    private Company company;
+
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
@@ -154,6 +158,14 @@ public class Audit implements Serializable {
 
     public void setRefusePost(Post refusePost) {
         this.refusePost = refusePost;
+    }
+
+    public Company getCompany() {
+        return company;
+    }
+
+    public void setCompany(Company company) {
+        this.company = company;
     }
 
     public String getStateName() {

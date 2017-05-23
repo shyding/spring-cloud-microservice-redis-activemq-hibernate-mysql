@@ -17,8 +17,8 @@
                 <img src="../../../res/gentelella/production/images/img.jpg" alt="..." class="img-circle profile_img">
             </div>
             <div class="profile_info">
-                <span>Welcome,</span>
-                <h2>John Doe</h2>
+                <span>欢迎,</span>
+                <h2>${username}</h2>
             </div>
         </div>
         <!-- /menu profile quick info -->
@@ -39,6 +39,9 @@
                             <li><a href="#/sys/list/<%=User.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>
                         <c:if test="${fn:contains(resources, '/sys/save/user')}">
                             <li><a href="#/sys/view/user/-1">注册用户</a></li>
+                        </c:if>
+                        <c:if test="${fn:contains(resources, '/sys/save/auditFlow')}">
+                            <li><a href="#/sys/view/auditFlow/-1">添加流程</a></li>
                         </c:if>
                         </ul>
                     </li>
@@ -105,7 +108,7 @@
             <ul class="nav navbar-nav navbar-right">
                 <li class="">
                     <a href="javascript:;" class="user-profile dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                        <img src="../../../res/gentelella/production/images/img.jpg" alt="">John Doe
+                        <img src="../../../res/gentelella/production/images/img.jpg" alt="">${username}
                         <span class=" fa fa-angle-down"></span>
                     </a>
                     <ul class="dropdown-menu dropdown-usermenu pull-right">

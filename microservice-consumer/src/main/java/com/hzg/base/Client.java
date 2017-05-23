@@ -17,6 +17,9 @@ public interface Client {
     @RequestMapping(value = "/sys/save", method = RequestMethod.POST)
     String save(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/sys/saveList", method = RequestMethod.POST)
+    String saveList(@RequestParam("entity") String entity, @RequestBody String json);
+
     @RequestMapping(value = "/sys/suggest", method = RequestMethod.POST)
     String suggest(@RequestParam("entity") String entity, @RequestBody String json);
 
@@ -30,7 +33,7 @@ public interface Client {
         @Override
         public String query(String entity, String json) {
             log.info("query 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
-            return "[{}]";
+            return "[]";
         }
 
         @Override
@@ -46,6 +49,12 @@ public interface Client {
         }
 
         @Override
+        public String saveList(String entity, String json) {
+            log.info("saveList 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
+            return "{\"result\":\"系统异常，保存出错\"}";
+        }
+
+        @Override
         public String suggest(String entity, String json) {
             log.info("suggest 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
             return "{\"result\":\"系统异常，保存出错\"}";
@@ -54,7 +63,7 @@ public interface Client {
         @Override
         public String complexQuery(String entity, String json, int position, int rowNum) {
             log.info("complexQuery 异常发生，进入fallback方法，接收的参数：" + entity + ", " + json + ", " + position + ", " + rowNum);
-            return "[{}]";
+            return "[]";
         }
 
         @Override

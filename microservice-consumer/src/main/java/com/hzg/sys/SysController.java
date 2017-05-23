@@ -62,6 +62,15 @@ public class SysController extends com.hzg.base.Controller {
                 queryJson = "{\"entityId\":" + ((Audit)entities.get(0)).getEntityId() + "}";
             }
             model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<Audit>>() {}.getType()));
+
+        } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<AuditFlow>>() {}.getType());
+
+            String queryJson = "";
+            if (!entities.isEmpty()) {
+                queryJson = "{\"auditFlowId\":" + ((AuditFlow)entities.get(0)).getId() + "}";
+            }
+            model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<AuditFlowNode>>() {}.getType()));
         }
 
         model.put("entity", entities.isEmpty() ? null : entities.get(0));
@@ -105,11 +114,24 @@ public class SysController extends com.hzg.base.Controller {
                 model.put("entity", result.get("post"));
             }
             model.put("unAssignPrivileges", result.get("unAssignPrivileges"));
+
         }
 
         logger.info("business " + name + " end");
 
         return "/sys/" + name;
+    }
+
+    /**
+     * 事宜办理
+     * @param response
+     * @param json
+     */
+    @PostMapping("/audit")
+    public void audit(HttpServletResponse response, String json) {
+        logger.info("audit start, json:" + json);
+        writer.writeStringToJson(response, sysClient.audit(json));
+        logger.info("audit end");
     }
 
     /**
@@ -121,7 +143,7 @@ public class SysController extends com.hzg.base.Controller {
     @GetMapping("/user/signIn")
     public String signIn(Map<String, Object> model, HttpSession session) {
         String salt = strUtil.generateRandomStr(256);
-        dao.storeToRedis("salt_" + session.getId(), salt, 1800);
+        dao.storeToRedis("salt_" + session.getId(), salt, 7200);
 
         if (session.getAttribute("result") != null) {
             model.put("result", session.getAttribute("result"));

@@ -21,6 +21,8 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
 
     @Autowired
     public RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    public Writer writer;
 
     /**
      * 拦截访问的 uri，在可以访问的 uri 里，则通过，否则返回错误提示
@@ -114,17 +116,13 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         redisTemplate.boundValueOps(username + "_resources").expire(1800, TimeUnit.SECONDS);
         redisTemplate.boundValueOps("sessionId_" + sessionId).expire(1800, TimeUnit.SECONDS);
         redisTemplate.boundValueOps("user_" + username).expire(1800, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps("salt_" + sessionId).expire(1800, TimeUnit.SECONDS);
 
         return true;
     }
 
     public Boolean notPass(javax.servlet.http.HttpServletResponse response, String msg) {
-        try {
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().print(msg);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        writer.writeStringToJson(response, "{\"result\": \"" + msg + "\"}");
         return false;
     }
 

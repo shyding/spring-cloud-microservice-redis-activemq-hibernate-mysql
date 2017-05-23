@@ -88,10 +88,39 @@ public class SysController {
             Audit audit = writer.gson.fromJson(json, Audit.class);
             audit.setInputDate(inputDate);
             result = sysDao.save(audit);
+
+        }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
+            auditFlow.setInputDate(inputDate);
+            result = sysDao.save(auditFlow);
+
+            Set<AuditFlowNode> auditFlowNodes = auditFlow.getAuditFlowNodes();
+            for (AuditFlowNode auditFlowNode : auditFlowNodes) {
+                auditFlowNode.setAuditFlow(auditFlow);
+                sysDao.save(auditFlowNode);
+            }
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
         logger.info("save end, result:" + result);
+    }
+
+    /**
+     * 保存实体列表
+     * @param response
+     * @param entity
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/saveList")
+    public void saveList(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("saveList start, parameter:" + entity + ":" + json);
+
+        int index = 0;
+        String result = "save " + index + " items success";
+
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        logger.info("saveList end, result:" + result);
     }
 
     @Transactional
@@ -201,6 +230,11 @@ public class SysController {
             Audit audit = writer.gson.fromJson(json, Audit.class);
             List<Audit> audits = sysDao.query(audit);
             writer.writeObjectToJson(response, audits);
+
+        }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
+            List<AuditFlow> auditFlows = sysDao.query(auditFlow);
+            writer.writeObjectToJson(response, auditFlows);
         }
 
         logger.info("query end");
@@ -238,6 +272,11 @@ public class SysController {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
             List<PrivilegeResource> privilegeResources = sysDao.suggest(privilegeResource);
             writer.writeObjectToJson(response, privilegeResources);
+
+        } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
+            List<AuditFlow> auditFlows = sysDao.suggest(auditFlow);
+            writer.writeObjectToJson(response, auditFlows);
         }
 
         logger.info("suggest end");
@@ -276,6 +315,10 @@ public class SysController {
             List<Audit> audits = sysDao.complexQuery(Audit.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, audits);
 
+        }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            List<AuditFlow> auditFlows = sysDao.complexQuery(AuditFlow.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, auditFlows);
+
         }
 
         logger.info("complexQuery end");
@@ -308,6 +351,9 @@ public class SysController {
 
         }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             recordsSum =  sysDao.recordsSum(PrivilegeResource.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(AuditFlow.class, queryParameters);
         }
 
         writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");
@@ -369,6 +415,75 @@ public class SysController {
         logger.info("queryPrivilege end");
 
         writer.writeObjectToJson(response, result);
+    }
+
+    /**
+     * 办理、审核事宜
+     * @param response
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/audit")
+    public void audit(HttpServletResponse response, @RequestBody String json) {
+        logger.info("audit start, parameter:" + json);
+
+        Map<String, String> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId")));
+
+        if (user == null) {
+            writer.writeStringToJson(response, "{\"result\":\"会话信息丢失，请重新登录后办理、审核事宜\"}");
+            return;
+        }
+
+        /**
+         * 保存当前办理、审核的事宜
+         */
+        Audit audit = writer.gson.fromJson(json, Audit.class);
+
+        Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
+        if (dbAudit.getState() == 0) {
+            writer.writeStringToJson(response, "{\"result\":\"不能重复办理已办理、审核的事宜\"}");
+            return ;
+        }
+
+        audit.setUser(user);
+        audit.setState(0);
+        audit.setDealDate(new Timestamp(System.currentTimeMillis()));
+        sysDao.updateById(audit.getId(), audit);
+
+        AuditFlow auditFlow = new AuditFlow();
+        auditFlow.setEntity(audit.getEntity());
+        auditFlow.setCompany(dbAudit.getCompany());
+        auditFlow.setState(0);
+
+        AuditFlow dbAuditFlow = (AuditFlow) sysDao.query(auditFlow);
+
+        AuditFlowNode auditFlowNode = new AuditFlowNode();
+        auditFlowNode.setAuditFlow(dbAuditFlow);
+        auditFlowNode.setPost(audit.getPost());
+
+        AuditFlowNode dbAuditFlowNode = (AuditFlowNode) sysDao.query(auditFlowNode);
+        if (dbAuditFlowNode.getNextPost() != null) {
+            /**
+             * 查询到下一个工作流程节点，则设置下一个事宜、审核节点
+             */
+            Audit newAudit = new Audit();
+            newAudit.setState(1);
+            newAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
+
+            newAudit.setName(dbAuditFlowNode.getName());
+            newAudit.setPost(dbAuditFlowNode.getNextPost());
+
+            newAudit.setCompany(dbAuditFlow.getCompany());
+            newAudit.setEntity(dbAuditFlow.getEntity());
+            newAudit.setEntityId(dbAudit.getEntityId());
+
+            sysDao.save(newAudit);
+        } else {
+
+        }
+
+        logger.info("audit end");
     }
 
     /**

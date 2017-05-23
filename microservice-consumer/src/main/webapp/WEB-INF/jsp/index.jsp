@@ -82,4 +82,6 @@
 <script src="../../res/js/setSelect.js"></script>
 <script src="../../res/js/md5.js"></script>
 <script src="../../res/js/dataList.js"></script>
+<script src="../../res/js/jquery.cookie.js"></script>
+<script src="../../res/js/jquery-ui-1.10.0.custom.min.js"></script>
 </html>

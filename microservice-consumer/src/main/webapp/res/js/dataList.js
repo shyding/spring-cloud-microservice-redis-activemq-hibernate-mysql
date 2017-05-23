@@ -1,11 +1,3 @@
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Test.java
- *
- * @author smjie
- * @Date  2017/4/25
- * @version 1.00
- */
 var dataList = (function($){
     "use strict";
 
@@ -15,6 +7,7 @@ var dataList = (function($){
         "dept":"部门",
         "company":"公司",
         "privilegeResource":"权限",
+        "auditFlow":"流程",
         "product":"商品",
         "purchase":"采购",
         "stock":"库存",
@@ -28,6 +21,7 @@ var dataList = (function($){
         "dept":"注册部门",
         "company":"注册公司",
         "privilegeResource":"添加权限",
+        "auditFlow":"添加流程",
         "product":"录入商品",
         "purchase":"采购申请",
         "stock":"商品入库、出库"
@@ -40,6 +34,7 @@ var dataList = (function($){
         "company":"/sys",
         "privilegeResource":"/sys",
         "audit":"/sys",
+        "auditFlow":"/sys",
         "product":"/product",
         "purchase":"/product",
         "stock":"/product",
@@ -52,6 +47,7 @@ var dataList = (function($){
         "dept":"/view",
         "company":"/view",
         "privilegeResource":"/view",
+        "auditFlow":"/view",
         "product":"/view",
         "purchase":"/view",
         "stock":"/view"
@@ -64,6 +60,7 @@ var dataList = (function($){
         "company":"/complexQuery",
         "privilegeResource":"/complexQuery",
         "audit":"/privateQuery",
+        "auditFlow":"/complexQuery",
         "product":"/complexQuery",
         "purchase":"/complexQuery",
         "stock":"/complexQuery",
@@ -77,6 +74,7 @@ var dataList = (function($){
         "company":"/view",
         "privilegeResource":"/view",
         "audit":"/view",
+        "auditFlow":"/view",
         "product":"/view",
         "purchase":"/view",
         "stock":"/view",
@@ -90,6 +88,7 @@ var dataList = (function($){
         "company":"<th>名称</th><th>联系电话</th><th>地址</th><th>负责人</th>",
         "privilegeResource":"<th>名称</th><th>URI</th>",
         "audit":"<th>名称</th><th>流转时间</th><th>状态</th>",
+        "auditFlow":"<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
         "product":"<th>名称</th>",
         "purchase":"<th>名称</th>",
         "stock":"<th>名称</th>",
@@ -103,6 +102,7 @@ var dataList = (function($){
         "company":["name", "phone", "address", "charger[name]"],
         "privilegeResource":["name", "uri"],
         "audit":["name", "inputDate", "state"],
+        "auditFow":["name", "entity", "company[name]", "state"],
         "product":["name"],
         "purchase":["name"],
         "stock":["name"],
@@ -111,7 +111,8 @@ var dataList = (function($){
 
     var showTitleNames = {
         "user":{"state":{0: "使用", 1: "注销"}},
-        "audit":{"state":{0: "已办", 1: "待办"}}
+        "audit":{"state":{0: "已办", 1: "待办"}},
+        "auditFlow":{"state":{0: "在用", 1: "没用"}}
     };
 
     var totalTableData = [];
@@ -126,7 +127,7 @@ var dataList = (function($){
         $("#htitle").empty().html(title);
         $("#stitle").empty().html(title);
 
-        if ("user;dept;post;company;privilegeResource".indexOf(entity) != -1) {
+        if ("user;dept;post;company;privilegeResource;auditFlow".indexOf(entity) != -1) {
             $("#timeLabel").empty().html("录入时间");
 
         } else if ("audit".indexOf(entity) != -1) {

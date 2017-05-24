@@ -102,7 +102,7 @@ var dataList = (function($){
         "company":["name", "phone", "address", "charger[name]"],
         "privilegeResource":["name", "uri"],
         "audit":["name", "inputDate", "state"],
-        "auditFow":["name", "entity", "company[name]", "state"],
+        "auditFlow":["name", "entity", "company[name]", "state"],
         "product":["name"],
         "purchase":["name"],
         "stock":["name"],

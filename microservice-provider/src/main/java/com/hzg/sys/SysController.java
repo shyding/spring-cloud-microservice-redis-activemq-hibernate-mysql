@@ -234,6 +234,15 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
             List<AuditFlow> auditFlows = sysDao.query(auditFlow);
+
+            Set<AuditFlowNode> nodes = null;
+            if (!auditFlows.isEmpty()) {
+                nodes = auditFlows.get(0).getAuditFlowNodes();
+
+                for (AuditFlowNode node : nodes) {
+                    node.setPost((Post) sysDao.queryById(node.getPost().getId(), Post.class));
+                }
+            }
             writer.writeObjectToJson(response, auditFlows);
         }
 
@@ -426,6 +435,7 @@ public class SysController {
     @PostMapping("/audit")
     public void audit(HttpServletResponse response, @RequestBody String json) {
         logger.info("audit start, parameter:" + json);
+        String result = "fail";
 
         Map<String, String> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId")));
@@ -456,33 +466,46 @@ public class SysController {
         auditFlow.setCompany(dbAudit.getCompany());
         auditFlow.setState(0);
 
-        AuditFlow dbAuditFlow = (AuditFlow) sysDao.query(auditFlow);
+        List<AuditFlow> dbAuditFlows =  sysDao.query(auditFlow);
 
-        AuditFlowNode auditFlowNode = new AuditFlowNode();
-        auditFlowNode.setAuditFlow(dbAuditFlow);
-        auditFlowNode.setPost(audit.getPost());
+        if (!dbAuditFlows.isEmpty()) {
+            AuditFlow dbAuditFlow =  dbAuditFlows.get(0);
 
-        AuditFlowNode dbAuditFlowNode = (AuditFlowNode) sysDao.query(auditFlowNode);
-        if (dbAuditFlowNode.getNextPost() != null) {
-            /**
-             * 查询到下一个工作流程节点，则设置下一个事宜、审核节点
-             */
-            Audit newAudit = new Audit();
-            newAudit.setState(1);
-            newAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
+            AuditFlowNode auditFlowNode = new AuditFlowNode();
+            auditFlowNode.setAuditFlow(dbAuditFlow);
+            auditFlowNode.setPost(audit.getPost());
 
-            newAudit.setName(dbAuditFlowNode.getName());
-            newAudit.setPost(dbAuditFlowNode.getNextPost());
+            List<AuditFlowNode> dbAuditFlowNodes = sysDao.query(auditFlowNode);
+            if (!dbAuditFlowNodes.isEmpty()) {
+                AuditFlowNode dbAuditFlowNode = dbAuditFlowNodes.get(0);
 
-            newAudit.setCompany(dbAuditFlow.getCompany());
-            newAudit.setEntity(dbAuditFlow.getEntity());
-            newAudit.setEntityId(dbAudit.getEntityId());
+                if (dbAuditFlowNode.getNextPost() != null) {
+                    /**
+                     * 查询到下一个工作流程节点，则设置下一个事宜、审核节点
+                     */
+                    Audit newAudit = new Audit();
+                    newAudit.setState(1);
+                    newAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
 
-            sysDao.save(newAudit);
-        } else {
+                    newAudit.setName(dbAuditFlowNode.getName());
+                    newAudit.setPost(dbAuditFlowNode.getNextPost());
+
+                    newAudit.setCompany(dbAuditFlow.getCompany());
+                    newAudit.setEntity(dbAuditFlow.getEntity());
+                    newAudit.setEntityId(dbAudit.getEntityId());
+
+                    sysDao.save(newAudit);
+
+                } else {
+
+                }
+
+                result = "success";
+            }
 
         }
 
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
         logger.info("audit end");
     }
 

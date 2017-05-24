@@ -8,7 +8,7 @@
     <div class="">
         <div class="page-title">
             <div class="title_left">
-                <h3>添加流程</h3>
+                <h3><c:choose><c:when test="${entity != null}">查看</c:when><c:otherwise>添加</c:otherwise></c:choose>流程</h3>
             </div>
 
             <div class="title_right">
@@ -33,7 +33,7 @@
                     </div>
                     <div class="x_content">
                         <form class="form-horizontal form-label-left" novalidate id="form">
-                            <span class="section">添加流程</span>
+                            <span class="section"><c:choose><c:when test="${entity != null}">查看</c:when><c:otherwise>添加</c:otherwise></c:choose>流程</span>
 
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="name">流程名称 <span class="required">*</span>
@@ -69,7 +69,14 @@
                                 </div>
                             </div>
 
-                            <div id="nodesDiv" align="center"></div>
+                            <div id="nodesDiv" align="center">
+                                <c:forEach items="${entity.auditFlowNodes}" var="node" varStatus="status">
+                                    <c:if test="${status.count > 1}">
+                                        &nbsp;&nbsp;&nbsp;&nbsp;<i class="fa fa-long-arrow-right"></i>&nbsp;&nbsp;
+                                    </c:if>
+                                    <a class="btn btn-app">${node.name}<br/>${node.post.name}</a>
+                                </c:forEach>
+                            </div>
 
                             <div class="ln_solid"></div>
                             <div class="form-group" id="submitDiv">
@@ -116,38 +123,18 @@
     init(<c:out value="${entity == null}"/>);
 
     <c:if test="${entity != null}">
-        setSelect(document.getElementById("entity"), "${entity.entity}");
-        $("#addNodeDiv, #submitDiv").css("display", "none");
+    setSelect(document.getElementById("entity"), "${entity.entity}");
+    $("#addNodeDiv, #send").css("display", "none");
     </c:if>
 
-    var companyId = "${companyId}", deptId = "${deptId}", postId = "${post.id}";
+    selector.setSelect(['company[id]', 'dept[id]', 'post'], ['name', 'name', 'name'], ['id', 'id', 'id'],
+        [<c:if test="${entity != null}">"${entity.company.id}"</c:if>],
+        ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
+            '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
+            '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
+        '{}', ['company[id]', 'dept[id]'], 0);
 
-    if (postId != "") {
-        $.ajax({
-            type: "get",
-            url: '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-            contentType: "application/x-www-form-urlencoded; charset=utf-8",
-            data: {json: '{"id":"' + deptId + '"}'},
-            dataType: "json",
 
-            success: function(items){
-                companyId = items[0].company.id;
-
-                selector.setSelect(['company[id]', 'dept[id]', 'post'], ['name', 'name', 'name'], ['id', 'id', 'id'],
-                    [companyId, deptId, postId],
-                    ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
-                        '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-                        '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
-                    '{}', ['company[id]', 'dept[id]'], 0);
-            }
-        });
-    } else {
-        selector.setSelect(['company[id]', 'dept[id]', 'post'], ['name', 'name', 'name'], ['id', 'id', 'id'], [],
-            ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
-                '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-                '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
-            '{}', ['company[id]', 'dept[id]'], 0);
-    }
 
     $('#addNode').click(function () {
         $('#subFormDiv').dialog('open');

@@ -65,12 +65,6 @@ public class SysController extends com.hzg.base.Controller {
 
         } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<AuditFlow>>() {}.getType());
-
-            String queryJson = "";
-            if (!entities.isEmpty()) {
-                queryJson = "{\"auditFlowId\":" + ((AuditFlow)entities.get(0)).getId() + "}";
-            }
-            model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<AuditFlowNode>>() {}.getType()));
         }
 
         model.put("entity", entities.isEmpty() ? null : entities.get(0));

@@ -1,4 +1,4 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -30,15 +30,11 @@ public class Post implements Serializable {
     @JoinColumn(name = "deptId")
     private Dept dept;
 
-    @Override
-    public String toString() {
-        return "Post{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", inputDate='" + inputDate + '\'' +
-                ", dept=" + dept +
-                '}';
-    }
+    @ManyToMany(cascade = {CascadeType.DETACH}, fetch = FetchType.LAZY)
+    @JoinTable(name = "hzg_sys_privilege_relation"
+            , joinColumns = {@JoinColumn(name = "postId")}
+            , inverseJoinColumns = {@JoinColumn(name = "resourceId")})
+    private Set<PrivilegeResource> privilegeResources;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -74,5 +70,13 @@ public class Post implements Serializable {
 
     public void setDept(Dept dept) {
         this.dept = dept;
+    }
+
+    public Set<PrivilegeResource> getPrivilegeResources() {
+        return privilegeResources;
+    }
+
+    public void setPrivilegeResources(Set<PrivilegeResource> privilegeResources) {
+        this.privilegeResources = privilegeResources;
     }
 }

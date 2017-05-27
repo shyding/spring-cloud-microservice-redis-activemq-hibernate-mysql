@@ -52,7 +52,7 @@
                                         <option value="product">商品上架</option>
                                         <option value="returnProduct">退货审核</option>
                                         <option value="changeProduct">换货审核</option>
-                                        <option value="order_personal">私人地址</option>
+                                        <option value="order_personal">私人订制</option>
                                     </select>
                                 </div>
                             </div>

@@ -105,11 +105,5 @@
         $("#deal").attr("disabled", "disabled");
     }
 
-    $(document).unbind("keydown").keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            $('#deal').click();
-        }
-    });
-
     <c:choose><c:when test="${entity.state == 1}">document.title = "办理事宜";</c:when><c:otherwise> document.title = "查看事宜";</c:otherwise></c:choose>
 </script>

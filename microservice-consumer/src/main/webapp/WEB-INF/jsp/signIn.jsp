@@ -124,7 +124,7 @@
 <script type="text/javascript">
     $("#username").val("");
     $("#password").val("");
-    $("#send").click(function(){
+    $("#send").bind("click keydown", function(){
         if($.trim($("#username").val()) == "") {
             alert("请输入用户名");
             return false;
@@ -144,12 +144,6 @@
 
         $("#json").val(JSON.stringify($("#form").serializeJSON()));
         $("#signInForm").submit();
-    });
-
-    $(document).keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            $('#send').click();
-        }
     });
 
     $("#againSignIn").click(function(){

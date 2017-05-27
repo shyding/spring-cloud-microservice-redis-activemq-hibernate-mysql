@@ -155,9 +155,9 @@ function init_autosize() {
 }
 
 var hisUrls = [], hisIndex = 0, hisLength = 10;
-hisUrls[hisIndex] = "/";
-var dataListQueryJson = "{}", dataListQueryEntity = "";dataListQueryEntity.s
+var dataListQueryJson = "{}", dataListQueryEntity = "";
 var returnPage = false;
+var username = "";
 
 function render(url){
     $.ajax({
@@ -227,23 +227,19 @@ function setSelect(src, value) {
     }
 }
 
+$.fn.setEnterSubmit = function () {
+    this.keydown(function(event){
+        if(event.keyCode == 13){ //绑定回车
+            this.click();
+           // event.preventDefault();
+            return false;
+        }
+    });
+}
+
 function init(editable) {
-    if (editable) {
-        $(document).unbind().keydown(function(event){
-            if(event.keyCode == 13){ //绑定回车
-                $('#send').click();
-            }
-        });
-    }
-
-    $("#edit").unbind().click(function(){
+    $("#edit").unbind("click").click(function(){
         editable = true;
-
-        $(document).unbind().keydown(function(event){
-            if(event.keyCode == 13){ //绑定回车
-                $('#send').click();
-            }
-        });
 
         $('input, select').attr("readonly",false).css("border", "1px solid #ccc");
         $('#send').attr("disabled", false);
@@ -255,21 +251,30 @@ function init(editable) {
         $('#send').attr("disabled","disabled");
     }
 
-    $("#cancel, #return").unbind().click(function(){
+    $("#cancel, #return").unbind("click").click(function(){
         render(getPreUrls());
         returnPage = true;
     });
-
-    $('#form').preventEnterSubmit();
 }
 
 $(document).ready(function() {
     init_sidebar();
     init_autosize();
 
-    $("#signOut").unbind().click(function(){
+    $("#auditA").click();
+
+    $("#signOut").click(function(){
         $("#signOutForm").submit();
     });
 
-    $("#sidebar-menu ul li ul li a").unbind().click(function(){render($(this).attr("href").toString().substring(1));});
+    if ($("input.flat")[0]) {
+        $(document).ready(function () {
+            $('input.flat').iCheck({
+                checkboxClass: 'icheckbox_flat-green',
+                radioClass: 'iradio_flat-green'
+            });
+        });
+    }
+
+    $("#sidebar-menu ul li ul li a").click(function(){render($(this).attr("href").toString().substring(1));});
 });

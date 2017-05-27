@@ -120,7 +120,6 @@
 </div>
 <!-- /page content -->
 <script type="text/javascript">
-    $('#form').preventEnterSubmit();
     $('#inputDate').daterangepicker({locale: {format: 'YYYY/MM/DD'}}, function(start, end, label) {
         console.log(start.toISOString(), end.toISOString(), label);
     });
@@ -131,11 +130,6 @@
         delete formJson["entity"];
         dataListQueryJson = JSON.stringify(formJson);
         dataList.query($("#dataList"),"<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
-    });
-    $(document).keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            $('#send').click();
-        }
     });
 
    <c:if test="${entity != null}">

@@ -64,13 +64,5 @@
         });
 
         return isFullSet;
-    },
-
-    $.fn.preventEnterSubmit = function(){
-        this.keypress(function(e){
-            if(e.keyCode==13){
-                e.preventDefault();
-            }
-        });
     }
 })(jQuery);

@@ -1,13 +1,3 @@
-<%--
-**
-* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
-* 文件名: assignPrivilege.jsp
-*
-* @author smjie
-* @Date  2017/4/12
-* @version 1.00
-*
---%>
 <%@ page import="com.hzg.sys.Post" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>

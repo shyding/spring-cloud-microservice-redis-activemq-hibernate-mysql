@@ -8,3 +8,22 @@ table {
 .h2-margin-bottom{
     margin-bottom: 20px;
 }
+
+#details input{
+    background-color: snow;
+    border: 1px solid #ccc;
+    line-height: 22px;
+    width:90px;
+    border-radius: 3px;
+}
+
+#details div{
+    padding-left: 10px;
+    padding-bottom: 10px;
+}
+
+#details i{
+    -moz-transform:scale(1.5,1.5);
+    -webkit-transform:scale(1.5,1.5);
+    -o-transform:scale(1.5,1.5);
+}

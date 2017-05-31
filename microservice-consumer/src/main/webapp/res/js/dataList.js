@@ -15,6 +15,34 @@ var dataList = (function($){
         "audit":"事宜"
     };
 
+    var dateTitles = {
+        "user":"录入时间",
+        "post":"录入时间",
+        "dept":"录入时间",
+        "company":"录入时间",
+        "privilegeResource":"录入时间",
+        "auditFlow":"录入时间",
+        "product":"入库时间",
+        "purchase":"采购时间",
+        "stock":"录入时间",
+        "order":"生成时间",
+        "audit":"流转时间"
+    };
+
+    var selectTitles = {
+        "user":"类别",
+        "post":"类别",
+        "dept":"类别",
+        "company":"类别",
+        "privilegeResource":"类别",
+        "auditFlow":"类别",
+        "product":"类别",
+        "purchase":"类别",
+        "stock":"类别",
+        "order":"类别",
+        "audit":"状态"
+    };
+
     var urlTitles = {
         "user":"注册用户",
         "post":"注册岗位",
@@ -35,9 +63,9 @@ var dataList = (function($){
         "privilegeResource":"/sys",
         "audit":"/sys",
         "auditFlow":"/sys",
-        "product":"/product",
-        "purchase":"/product",
-        "stock":"/product",
+        "product":"/erp",
+        "purchase":"/erp",
+        "stock":"/erp",
         "order":"/sale"
     };
 
@@ -119,7 +147,7 @@ var dataList = (function($){
     var isLocalSearch = false, searchStr = "", recordsSum = -1, sEcho = 1, tablePageData=[];
     var contextPath = "", preEntity = "", preDataTable = null;
 
-    function setQuery(rootPath, entity){
+    function setQuery(rootPath, entity, visitEntitiesOptions){
         contextPath = rootPath;
 
         var title = (titles[entity]+"列表").toString();
@@ -127,21 +155,34 @@ var dataList = (function($){
         $("#htitle").empty().html(title);
         $("#stitle").empty().html(title);
 
-        if ("user;dept;post;company;privilegeResource;auditFlow".indexOf(entity) != -1) {
-            $("#timeLabel").empty().html("录入时间");
+        if (modules[entity] == "/sys") {
+            if ("audit" != entity) {
+                $("#entity").empty()
+                    .append(visitEntitiesOptions["user"])
+                    .append(visitEntitiesOptions["privilegeResource"])
+                    .append(visitEntitiesOptions["auditFlow"])
+                    .append(visitEntitiesOptions["post"])
+                    .append(visitEntitiesOptions["dept"])
+                    .append(visitEntitiesOptions["company"]);
 
-        } else if ("audit".indexOf(entity) != -1) {
-            $("#entity").css("display", "none");
-            $("#selectTitle").html("状态");
-            $("#timeLabel").empty().html("流转时间");
-            $("#entity").after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="1">待办</option><option value="0">已办</option></select>');
+            } else {
+                $("#entity").css("display", "none").empty().append(visitEntitiesOptions["audit"]).
+                after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="1">待办</option><option value="0">已办</option></select>');
+            }
 
-        }else if ("product".indexOf(entity) != -1) {
-            $("#dateItems").empty().html("");
-            $("#inputItems").empty().html("");
+        } else if (modules[entity] == "/erp") {
+            $("#entity").empty()
+                .append(visitEntitiesOptions["product"])
+                .append(visitEntitiesOptions["purchase"])
+                .append(visitEntitiesOptions["stock"]);
+
         }
 
-        if (typeof(addActions[entity]) == "undefined" ) {
+        $("#selectTitle").html(selectTitles[entity]);
+        $("#timeLabel").empty().html(dateTitles[entity]);
+        setSelect(document.getElementById("entity"), entity);
+
+        if (typeof(addActions[entity]) == "undefined") {
             $("#add").css("display", "none");
 
         } else {

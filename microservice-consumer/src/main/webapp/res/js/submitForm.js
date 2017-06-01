@@ -1,6 +1,6 @@
 (function($){
     "use strict";
-    var preFormJson = "";
+    var preFormJson = "", preJson = "";
     var submitSucc = false;
 
     $.fn.submitForm = function (url) {
@@ -35,6 +35,36 @@
         });
 
         preFormJson = formJson;
+    },
+
+    $.fn.sendData = function (url, json) {
+        var mac = faultylabs.MD5(json + $.cookie("pin"));
+        $.ajax({
+            type: "post",
+            url: url,
+            contentType: "application/x-www-form-urlencoded; charset=utf-8",
+            data: {json: json, mac: mac},
+            dataType: "json",
+
+            beforeSend: function(){
+                if (preJson == json && submitSucc) {
+                    alert("不能重复提交");
+                    return false;
+                }
+            },
+
+            success: function(data){
+                if (data.result.indexOf("success") != -1) {
+                    submitSucc = true;
+                    alert("提交成功");
+                } else {
+                    submitSucc = false;
+                    alert(data.result);
+                }
+            }
+        });
+
+        preJson = json;
     },
 
     $.fn.isFullSet = function(){

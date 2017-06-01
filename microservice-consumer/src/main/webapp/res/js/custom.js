@@ -227,28 +227,18 @@ function setSelect(src, value) {
     }
 }
 
-$.fn.setEnterSubmit = function () {
-    this.keydown(function(event){
-        if(event.keyCode == 13){ //绑定回车
-            this.click();
-           // event.preventDefault();
-            return false;
-        }
-    });
-}
-
 function init(editable) {
     $("#edit").unbind("click").click(function(){
         editable = true;
 
         $('input, select').attr("readonly",false).css("border", "1px solid #ccc");
-        $('#send').attr("disabled", false);
+        $('#send, #delete, #recover').attr("disabled", false);
         $("#edit").attr("disabled", "disabled");
     });
 
     if (!editable) {
         $('input, select').attr("readonly","readonly").css("border", "0");
-        $('#send').attr("disabled","disabled");
+        $('#send, #delete, #recover').attr("disabled","disabled");
     }
 
     $("#cancel, #return").unbind("click").click(function(){
@@ -275,6 +265,14 @@ $(document).ready(function() {
             });
         });
     }
+
+    $("#send").keydown(function(event){
+        if(event.keyCode == 13){ //绑定回车
+            this.click();
+            // event.preventDefault();
+            return false;
+        }
+    });
 
     $("#sidebar-menu ul li ul li a").click(function(){render($(this).attr("href").toString().substring(1));});
 });

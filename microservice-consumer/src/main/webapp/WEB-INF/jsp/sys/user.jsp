@@ -120,7 +120,13 @@
                                 <div class="col-md-6 col-md-offset-3">
                                     <button id="cancel" type="button" class="btn btn-primary">取消</button>
                                     <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${entity != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
-                                    <c:if test="${entity != null}"><button id="edit" type="button" class="btn btn-primary">编辑</button></c:if>
+                                    <c:if test="${entity != null}">
+                                    <button id="edit" type="button" class="btn btn-primary">编辑</button>
+                                    <c:choose>
+                                        <c:when test="${entity.state == 0}"><button id="delete" type="button" class="btn btn-danger">注销</button></c:when>
+                                        <c:otherwise><button id="recover" type="button" class="btn btn-success">置为可用</button></c:otherwise>
+                                    </c:choose>
+                                    </c:if>
                                 </div>
                             </div>
                             <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
@@ -138,7 +144,7 @@
 
     $("#send").click(function(){
         <c:if test="${entity == null}">
-        if ($('#form').isFullSet()) {
+        if ($("#form").isFullSet()) {
             var password1 = $("#password1");
             $("#password").val(faultylabs.MD5(jQuery.trim(password1.val())));
             password1.attr("disabled","disabled");
@@ -146,7 +152,21 @@
         }
         </c:if>
 
-        $('#form').submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');
+        $("#form").submitForm('<%=request.getContextPath()%>/sys/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=User.class.getSimpleName().toLowerCase()%>');
+    });
+
+    $("#delete").click(function(){
+        if (confirm("确定注销该用户吗？")) {
+            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=User.class.getSimpleName().toLowerCase()%>',
+                '{"id":${entity.id},"state":1}');
+        }
+    });
+
+    $("#recover").click(function(){
+        if (confirm("确定设置该用户为可用吗？")) {
+            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=User.class.getSimpleName().toLowerCase()%>',
+                '{"id":${entity.id},"state":0}');
+        }
     });
 
     <c:set var="postIds" value="" />

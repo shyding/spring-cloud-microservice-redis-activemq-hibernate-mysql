@@ -83,6 +83,13 @@
                                 <div class="col-md-6 col-md-offset-3">
                                     <button id="cancel" type="button" class="btn btn-primary">取消</button>
                                     <button id="send" type="button" class="btn btn-success">保存</button>
+                                    <c:if test="${entity != null}">
+                                        <button id="edit" type="button" class="btn btn-primary">编辑</button>
+                                        <c:choose>
+                                            <c:when test="${entity.state == 0}"><button id="delete" type="button" class="btn btn-danger">置为不可用</button></c:when>
+                                            <c:otherwise><button id="recover" type="button" class="btn btn-success">置为可用</button></c:otherwise>
+                                        </c:choose>
+                                    </c:if>
                                 </div>
                             </div>
                             <input type="hidden" id="state" name="state" value="0">
@@ -181,5 +188,19 @@
         }
 
         $('#form').submitForm('<%=request.getContextPath()%>/sys/save/<%=AuditFlow.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+AuditFlow.class.getSimpleName().substring(1)%>');
+    });
+
+    $("#delete").click(function(){
+        if (confirm("确定设置该流程不可用吗？")) {
+            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=AuditFlow.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+AuditFlow.class.getSimpleName().substring(1)%>',
+                '{"id":${entity.id},"state":1}');
+        }
+    });
+
+    $("#recover").click(function(){
+        if (confirm("确定设置该流程为可用吗？")) {
+            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=AuditFlow.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+AuditFlow.class.getSimpleName().substring(1)%>',
+                '{"id":${entity.id},"state":0}');
+        }
     });
 </script>

@@ -118,7 +118,7 @@ var dataList = (function($){
         "audit":"<th>名称</th><th>流转时间</th><th>状态</th>",
         "auditFlow":"<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
         "product":"<th>名称</th>",
-        "purchase":"<th>名称</th>",
+        "purchase":"<th>名称</th><th>状态</th>",
         "stock":"<th>名称</th>",
         "order":"<th>名称</th>"
     };
@@ -132,15 +132,30 @@ var dataList = (function($){
         "audit":["name", "inputDate", "state"],
         "auditFlow":["name", "entity", "company[name]", "state"],
         "product":["name"],
-        "purchase":["name"],
+        "purchase":["name", "state"],
         "stock":["name"],
         "order":["name"]
+    };
+
+    var linkTitle = {
+        "user":"name",
+        "post":"name",
+        "dept":"name",
+        "company":"name",
+        "privilegeResource":"name",
+        "audit":"name",
+        "auditFlow":"name",
+        "product":"name",
+        "purchase":"name",
+        "stock":"stockNo",
+        "order":"orderNo"
     };
 
     var showTitleNames = {
         "user":{"state":{0: "使用", 1: "注销"}},
         "audit":{"state":{0: "已办", 1: "待办"}},
-        "auditFlow":{"state":{0: "在用", 1: "没用"}}
+        "auditFlow":{"state":{0: "在用", 1: "没用"}},
+        "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}}
     };
 
     var totalTableData = [];
@@ -213,23 +228,35 @@ var dataList = (function($){
             }
         }
 
-        table.initDataTable(
-            contextPath + modules[entity] + queryActions[entity] + "/" + entity,
-            queryJson,
-            "<thead><tr>" + tHeaders[entity] + "</tr></thead><tbody></tbody>",
-            typeof(propertiesShowSequences[entity]) == "undefined" ? [] : propertiesShowSequences[entity],
-            typeof(showTitleNames[entity]) == "undefined" ? {} : showTitleNames[entity],
-            entity);
+        initDataTable(table, queryJson, entity);
 
-        // 设置搜索
-        table.before('<div id="dataList_filter" class="dataTables_filter"><label>Search<input value="' + searchStr +'" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
+        //设置搜索框事件
         $('#columnSearch').on( 'keyup keydown change',  function () {
             isLocalSearch = true;
             searchStr = $('#columnSearch').val();
-        } );
+        }).keydown(function(event){
+            if(event.keyCode == 13){ //绑定回车
+                initDataTable(table, queryJson, entity);
+                return false;
+            }
+        });
 
         preEntity = entity;
         preDataTable = table.dataTable();
+    }
+
+    function initDataTable(table, queryJson, entity){
+        if (document.getElementById("dataList_filter") == null){
+            // 设置本地搜索框
+            table.before('<div id="dataList_filter" class="dataTables_filter"><label>Search&nbsp;<input value="' + searchStr +'" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
+        }
+
+        table.initDataTable(contextPath + modules[entity] + queryActions[entity] + "/" + entity,
+                            queryJson,
+                            "<thead><tr>" + tHeaders[entity] + "</tr></thead><tbody></tbody>",
+                            typeof(propertiesShowSequences[entity]) == "undefined" ? [] : propertiesShowSequences[entity],
+                            typeof(showTitleNames[entity]) == "undefined" ? {} : showTitleNames[entity],
+                            entity);
     }
 
     $.fn.initDataTable = function(url, queryJson, header, propertiesShowSequence, showTitleName, entity) {
@@ -383,7 +410,7 @@ var dataList = (function($){
                                             }
                                         }
 
-                                        if (propertiesShowSequence[i] == "name") {
+                                        if (propertiesShowSequence[i] == linkTitle[entity]) {
                                             var queryUrl = contextPath + modules[entity] + viewActions[entity] + "/" + entity + "/" + dataList[key]["id"];
                                             tdData = "<a href='#" + queryUrl + "' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
                                         }
@@ -422,11 +449,19 @@ var dataList = (function($){
                         if ($.trim(searchStr) == "") {
                             aaData = tablePageData;
                             sEcho2 = sEcho;
+                            localRecordsSum = recordsSum;
+
                         } else {
                             var index = 0;
                             for (var i in totalTableData) {
                                 for (var ii in totalTableData[i]) {
-                                    if (totalTableData[i][ii].indexOf(searchStr) != -1) {
+
+                                    var searchColumn = totalTableData[i][ii];
+                                    if (searchColumn.indexOf("<a") != -1) {
+                                        searchColumn = searchColumn.substring(searchColumn.indexOf(">")+1, searchColumn.indexOf("</"));
+                                    }
+
+                                    if (searchColumn.indexOf(searchStr) != -1) {
                                         aaData[index] = totalTableData[i];
 
                                         index++;

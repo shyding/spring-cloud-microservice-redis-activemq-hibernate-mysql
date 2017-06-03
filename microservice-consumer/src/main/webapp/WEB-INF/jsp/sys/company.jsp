@@ -57,8 +57,8 @@
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text1">负责人</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input type="text" id="text1" name="text1" <c:if test="${entity.charger != null}">value="${entity.charger.name}"</c:if> class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" />
-                                    <input type="hidden" id="charger[id]" name="charger[id]" <c:if test="${entity.charger != null}">value="${entity.charger.id}"</c:if>>
+                                    <input type="text" id="text1" name="text1" value="${entity.charger.name}" class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" />
+                                    <input type="hidden" id="charger[id]" name="charger[id]" value="${entity.charger.id}" data-value-type="number" data-skip-falsy="true">
                                 </div>
                             </div>
                             <div class="ln_solid"></div>

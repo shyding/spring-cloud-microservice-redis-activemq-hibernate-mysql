@@ -8,27 +8,30 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "microservice-provider-sys", fallback = SysClient.SysClientFallback.class)
+@FeignClient(name = "microservice-provider-sys", path="/sys", fallback = SysClient.SysClientFallback.class)
 public interface SysClient extends Client {
     org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(SysClient.class);
 
-    @RequestMapping(value = "/sys/doSome", method = RequestMethod.POST)
+    @RequestMapping(value = "/doSome", method = RequestMethod.POST)
     String doSome(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/queryPrivilege", method = RequestMethod.POST)
+    @RequestMapping(value = "/queryPrivilege", method = RequestMethod.POST)
     String queryPrivilege(@RequestBody String json);
 
-    @RequestMapping(value = "/sys/signIn", method = RequestMethod.POST)
+    @RequestMapping(value = "/signIn", method = RequestMethod.POST)
     String signIn(@RequestBody String json);
 
-    @RequestMapping(value = "/sys/signOut", method = RequestMethod.POST)
+    @RequestMapping(value = "/signOut", method = RequestMethod.POST)
     String signOut(@RequestBody String json);
 
-    @RequestMapping(value = "/sys/hasLoginDeal", method = RequestMethod.POST)
+    @RequestMapping(value = "/hasLoginDeal", method = RequestMethod.POST)
     String hasLoginDeal(@RequestBody String json);
 
+    @RequestMapping(value = "/audit", method = RequestMethod.POST)
+    String audit(@RequestBody String json);
+
     @Component
-    class SysClientFallback extends ClientFallback implements SysClient  {
+    class SysClientFallback extends ClientFallback implements SysClient {
         @Override
         public String doSome(String entity, String json) {
             logger.info("doSome 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
@@ -54,6 +57,11 @@ public interface SysClient extends Client {
         @Override
         public String hasLoginDeal(@RequestParam("sessionId") String sessionId) {
             return "{\"result\":\"系统异常，处理重复登录出错\"}";
+        }
+
+        @Override
+        public String audit(@RequestParam("sessionId") String sessionId) {
+            return "{\"result\":\"系统异常，帮里事宜出错\"}";
         }
     }
 }

@@ -9,6 +9,8 @@ var dataList = (function($){
         "privilegeResource":"权限",
         "auditFlow":"流程",
         "product":"商品",
+        "productType":"商品类型",
+        "supplier":"供应商",
         "purchase":"采购",
         "stock":"库存",
         "order":"订单",
@@ -23,6 +25,8 @@ var dataList = (function($){
         "privilegeResource":"录入时间",
         "auditFlow":"录入时间",
         "product":"入库时间",
+        "productType":"录入时间",
+        "supplier":"录入时间",
         "purchase":"采购时间",
         "stock":"录入时间",
         "order":"生成时间",
@@ -37,6 +41,8 @@ var dataList = (function($){
         "privilegeResource":"类别",
         "auditFlow":"类别",
         "product":"类别",
+        "productType":"类别",
+        "supplier":"类别",
         "purchase":"类别",
         "stock":"类别",
         "order":"类别",
@@ -51,6 +57,8 @@ var dataList = (function($){
         "privilegeResource":"添加权限",
         "auditFlow":"添加流程",
         "product":"录入商品",
+        "productType":"添加商品类型",
+        "supplier":"添加供应商",
         "purchase":"采购申请",
         "stock":"商品入库、出库"
     };
@@ -64,6 +72,8 @@ var dataList = (function($){
         "audit":"/sys",
         "auditFlow":"/sys",
         "product":"/erp",
+        "productType":"/erp",
+        "supplier":"/erp",
         "purchase":"/erp",
         "stock":"/erp",
         "order":"/sale"
@@ -77,6 +87,8 @@ var dataList = (function($){
         "privilegeResource":"/view",
         "auditFlow":"/view",
         "product":"/view",
+        "productType":"/view",
+        "supplier":"/view",
         "purchase":"/view",
         "stock":"/view"
     };
@@ -90,6 +102,8 @@ var dataList = (function($){
         "audit":"/privateQuery",
         "auditFlow":"/complexQuery",
         "product":"/complexQuery",
+        "productType":"/complexQuery",
+        "supplier":"/complexQuery",
         "purchase":"/complexQuery",
         "stock":"/complexQuery",
         "order":"/complexQuery"
@@ -104,6 +118,8 @@ var dataList = (function($){
         "audit":"/view",
         "auditFlow":"/view",
         "product":"/view",
+        "productType":"/view",
+        "supplier":"/view",
         "purchase":"/view",
         "stock":"/view",
         "order":"/view"
@@ -118,6 +134,8 @@ var dataList = (function($){
         "audit":"<th>名称</th><th>流转时间</th><th>状态</th>",
         "auditFlow":"<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
         "product":"<th>名称</th>",
+        "productType":"<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
+        "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
         "purchase":"<th>名称</th><th>状态</th>",
         "stock":"<th>名称</th>",
         "order":"<th>名称</th>"
@@ -132,6 +150,8 @@ var dataList = (function($){
         "audit":["name", "inputDate", "state"],
         "auditFlow":["name", "entity", "company[name]", "state"],
         "product":["name"],
+        "productType":["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
+        "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
         "purchase":["name", "state"],
         "stock":["name"],
         "order":["name"]
@@ -146,6 +166,8 @@ var dataList = (function($){
         "audit":"name",
         "auditFlow":"name",
         "product":"name",
+        "productType":"name",
+        "supplier":"name",
         "purchase":"name",
         "stock":"stockNo",
         "order":"orderNo"
@@ -155,7 +177,9 @@ var dataList = (function($){
         "user":{"state":{0: "使用", 1: "注销"}},
         "audit":{"state":{0: "已办", 1: "待办"}},
         "auditFlow":{"state":{0: "在用", 1: "没用"}},
-        "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}}
+        "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}},
+        "supplier":{"level":{"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
+        "types[]":{0: "供应商", 1: "加工商"}}
     };
 
     var totalTableData = [];
@@ -188,6 +212,8 @@ var dataList = (function($){
         } else if (modules[entity] == "/erp") {
             $("#entity").empty()
                 .append(visitEntitiesOptions["product"])
+                .append(visitEntitiesOptions["productType"])
+                .append(visitEntitiesOptions["supplier"])
                 .append(visitEntitiesOptions["purchase"])
                 .append(visitEntitiesOptions["stock"]);
 
@@ -348,32 +374,62 @@ var dataList = (function($){
                                         var tdData = "";
 
                                         var pos = propertiesShowSequence[i].indexOf("[]");
-                                        /**
-                                         * dataList[key][propertiesShowSequence[i]] 是数组对象,propertiesShowSequence[i]值如：posts[][name]
-                                         */
+
                                         if (pos != -1) {
                                             var parentArrayProperty = propertiesShowSequence[i].substr(0, pos);
-                                            var childElementProperty = propertiesShowSequence[i].substr(pos+3);
+
+                                            if (pos+3 < propertiesShowSequence[i].length) {
+                                                /**
+                                                 * dataList[key][propertiesShowSequence[i]] 是数组对象,propertiesShowSequence[i]值如：posts[][name]
+                                                 */
+
+                                                var childElementProperty = propertiesShowSequence[i].substr(pos+3);
                                                 childElementProperty = childElementProperty.substr(0, childElementProperty.length-1);
 
-                                            if (dataList[key][parentArrayProperty] != undefined) {
-                                                for (var ii in dataList[key][parentArrayProperty]) {
-                                                    var childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
+                                                if (dataList[key][parentArrayProperty] != undefined) {
+                                                    for (var ii in dataList[key][parentArrayProperty]) {
+                                                        var childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
 
-                                                    if (dataList[key][parentArrayProperty][ii] != undefined) {
-                                                        if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                            tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
-                                                        } else {
-                                                            tdData += childElementValue + " ";
+                                                        if (dataList[key][parentArrayProperty][ii] != undefined) {
+                                                            if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                                tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
+                                                            } else {
+                                                                tdData += childElementValue + " ";
+                                                            }
+
+                                                            if (ii == 2) {
+                                                                tdData = $.trim(tdData) + "..";
+                                                                break;
+                                                            }
                                                         }
+                                                    }
+                                                }
 
-                                                        if (ii == 2) {
-                                                            tdData = $.trim(tdData) + "..";
-                                                            break;
+                                            } else {
+                                                /**
+                                                 * dataList[key][propertiesShowSequence[i]] 是数组对象,propertiesShowSequence[i]值如：types[]
+                                                 */
+
+                                                if (dataList[key][parentArrayProperty] != undefined) {
+                                                    for (var ii in dataList[key][parentArrayProperty]) {
+                                                        var childElementValue = dataList[key][parentArrayProperty][ii];
+
+                                                        if (dataList[key][parentArrayProperty] != undefined) {
+                                                            if (showTitleName[propertiesShowSequence[i]] != undefined) {
+                                                                tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
+                                                            } else {
+                                                                tdData += childElementValue + " ";
+                                                            }
+
+                                                            if (ii == 2) {
+                                                                tdData = $.trim(tdData) + "..";
+                                                                break;
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
+
 
                                         } else {
                                             pos = propertiesShowSequence[i].indexOf("[");

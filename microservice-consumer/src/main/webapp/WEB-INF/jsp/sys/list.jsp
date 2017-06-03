@@ -96,6 +96,12 @@
     <c:if test="${fn:contains(resources, '/product')}">
     visitEntitiesOptions["product"] = '<option value="product">商品</option>';
     </c:if>
+    <c:if test="${fn:contains(resources, '/productType/')}">
+    visitEntitiesOptions["productType"] = '<option value="productType">商品类型</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/supplier')}">
+    visitEntitiesOptions["supplier"] = '<option value="supplier">供应商</option>';
+    </c:if>
     <c:if test="${fn:contains(resources, '/stock')}">
     visitEntitiesOptions["stock"] = '<option value="stock">库存</option>';
     </c:if>
@@ -114,7 +120,7 @@
     <c:if test="${fn:contains(resources, '/customer')}">
     visitEntitiesOptions["customer"] = '<option value="customer">顾客</option>';
     </c:if>
-    <c:if test="${fn:contains(resources, '/user')}">
+    <c:if test="${fn:contains(resources, '/save/user')}">
     visitEntitiesOptions["user"] = '<option value="user">用户</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/privilegeResource')}">

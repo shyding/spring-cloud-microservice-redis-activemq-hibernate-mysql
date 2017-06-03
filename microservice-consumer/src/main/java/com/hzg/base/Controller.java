@@ -34,7 +34,7 @@ public class Controller {
         model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + session.getId()) + "_resources"));
         model.put("entity", entity);
         model.put("json", json);
-        return "/sys/list";
+        return "list";
     }
 
     @PostMapping("/save/{entity}")
@@ -42,13 +42,6 @@ public class Controller {
         logger.info("save start, entity:" + entity + ", json:" + json);
         writer.writeStringToJson(response, client.save(entity, json));
         logger.info("save end");
-    }
-
-    @PostMapping("/saveList/{entity}")
-    public void saveList(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
-        logger.info("saveList start, entity:" + entity + ", json:" + json);
-        writer.writeStringToJson(response, client.saveList(entity, json));
-        logger.info("saveList end");
     }
 
     @PostMapping("/update/{entity}")

@@ -8,25 +8,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface Client {
     org.apache.log4j.Logger log = org.apache.log4j.Logger.getLogger(Client.class);
 
-    @RequestMapping(value = "/sys/query", method = RequestMethod.POST)
+    @RequestMapping(value = "/query", method = RequestMethod.POST)
     String query(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/update", method = RequestMethod.POST)
+    @RequestMapping(value = "/update", method = RequestMethod.POST)
     String update(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/save", method = RequestMethod.POST)
+    @RequestMapping(value = "/save", method = RequestMethod.POST)
     String save(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/saveList", method = RequestMethod.POST)
+    @RequestMapping(value = "/saveList", method = RequestMethod.POST)
     String saveList(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/suggest", method = RequestMethod.POST)
+    @RequestMapping(value = "/suggest", method = RequestMethod.POST)
     String suggest(@RequestParam("entity") String entity, @RequestBody String json);
 
-    @RequestMapping(value = "/sys/complexQuery", method = RequestMethod.POST)
+    @RequestMapping(value = "/complexQuery", method = RequestMethod.POST)
     String complexQuery(@RequestParam("entity") String entity, @RequestBody String json, @RequestParam("position") int position, @RequestParam("rowNum") int rowNum);
 
-    @RequestMapping(value = "/sys/recordsSum", method = RequestMethod.POST)
+    @RequestMapping(value = "/recordsSum", method = RequestMethod.POST)
     String recordsSum(@RequestParam("entity") String entity, @RequestBody String json);
 
     class ClientFallback implements Client {

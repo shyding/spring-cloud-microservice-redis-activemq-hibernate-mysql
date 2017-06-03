@@ -4,6 +4,11 @@ var selector = (function($){
     var setFuncIndex = "";
 
     function setSelect(selectIds, showProperties, valueProperties, initPropertyValues, urls, queryJson, queryProperties, index) {
+        if (index == 0) {
+            isInited = false;
+            setFuncIndex = "";
+        }
+
         var select = $(document.getElementById(selectIds[index]));
         select.append("<option value=\"\">请选择</option>");
 

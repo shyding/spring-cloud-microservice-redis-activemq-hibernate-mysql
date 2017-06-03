@@ -5,9 +5,11 @@ package com.hzg.base;
  */
 
 import com.hzg.tools.ObjectToSql;
+import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.annotations.Type;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigInteger;
 import java.util.*;
@@ -33,6 +36,9 @@ public class Dao {
 
     @Autowired
     public ObjectToSql objectToSql;
+
+    @Autowired
+    private Writer writer;
 
     /**
      * 保存对象
@@ -140,7 +146,7 @@ public class Dao {
                 }
             }
         }
-        
+
         for (Integer unRelateId : unRelateIds) {
             if (!relateIds.contains(unRelateId)) {
                 result = sessionFactory.getCurrentSession().createSQLQuery(
@@ -334,6 +340,25 @@ public class Dao {
             }
         } catch (Exception e) {
             logger.info(e.getMessage());
+
+            try {
+                if (field.isAnnotationPresent(Type.class)){
+                    Class type = Class.forName(field.getAnnotation(Type.class).type());
+                    Object typeObj = type.newInstance();
+
+                    String returnType = (String) type.getMethod("returnedClassStr").invoke(typeObj);
+
+                    if (returnType.equals("Integer[]")) {
+                        value = writer.gson.fromJson((String)value, Integer[].class);
+                    }
+
+
+                    clazz.getMethod(methodName, field.getType()).invoke(object, value);
+                    isSet = true;
+                }
+            } catch (Exception e1) {
+                logger.info(e1.getMessage());
+            }
         }
 
         return isSet;
@@ -514,10 +539,11 @@ public class Dao {
     /**
      * 建议、提示查询
      * @param object
+     * @param limitFields
      * @return
      */
-    public List suggest(Object object){
-        return queryBySql(objectToSql.generateSuggestSqlByAnnotation(object), object.getClass());
+    public List suggest(Object object, Field[] limitFields){
+        return queryBySql(objectToSql.generateSuggestSqlByAnnotation(object, limitFields), object.getClass());
     }
 
     /**

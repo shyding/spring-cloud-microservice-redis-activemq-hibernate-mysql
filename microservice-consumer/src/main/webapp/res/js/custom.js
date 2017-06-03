@@ -227,6 +227,12 @@ function setSelect(src, value) {
     }
 }
 
+function setMutilSelect(src, values) {
+    for (var vi in values) {
+        setSelect(src, values[vi]);
+    }
+}
+
 function init(editable) {
     $("#edit").unbind("click").click(function(){
         editable = true;
@@ -234,6 +240,11 @@ function init(editable) {
         $('input, select').attr("readonly",false).css("border", "1px solid #ccc");
         $('#send, #delete, #recover').attr("disabled", false);
         $("#edit").attr("disabled", "disabled");
+    });
+
+    $("#editState").unbind("click").click(function(){
+        $('#delete, #recover').attr("disabled", false);
+        $("#editState").attr("disabled", "disabled");
     });
 
     if (!editable) {

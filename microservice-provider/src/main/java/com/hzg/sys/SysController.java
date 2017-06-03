@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
@@ -52,7 +53,6 @@ public class SysController {
 
             if (!isUsernameExist(user.getId(), user.getUsername())) {
                 user.setInputDate(inputDate);
-                user.setState(0);
 
                 if (user.getPassword().length() < 32) {
                     user.setPassword(DigestUtils.md5Hex(user.getPassword()).toUpperCase());
@@ -105,24 +105,6 @@ public class SysController {
         logger.info("save end, result:" + result);
     }
 
-    /**
-     * 保存实体列表
-     * @param response
-     * @param entity
-     * @param json
-     */
-    @Transactional
-    @PostMapping("/saveList")
-    public void saveList(HttpServletResponse response, String entity, @RequestBody String json){
-        logger.info("saveList start, parameter:" + entity + ":" + json);
-
-        int index = 0;
-        String result = "save " + index + " items success";
-
-        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
-        logger.info("saveList end, result:" + result);
-    }
-
     @Transactional
     @PostMapping("/update")
     public void update(HttpServletResponse response, String entity, @RequestBody String json){
@@ -132,17 +114,21 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName()) ) {
             User user = writer.gson.fromJson(json, User.class);
-            if (!isUsernameExist(user.getId(), user.getUsername())) {
+            if (!isUsernameExist(user.getId(), user.getUsername()) || user.getUsername() == null) {
 
                 List<Integer> relateIds = new ArrayList<>();
-                for (Post post : user.getPosts()) {
-                    relateIds.add(post.getId());
+                if (user.getPosts() != null) {
+                    for (Post post : user.getPosts()) {
+                        relateIds.add(post.getId());
+                    }
                 }
 
                 User dbUser = (User) sysDao.queryById(user.getId(), User.class);
                 List<Integer> unRelateIds = new ArrayList<>();
-                for (Post post : dbUser.getPosts()) {
-                    unRelateIds.add(post.getId());
+                if (dbUser.getPosts() != null) {
+                    for (Post post : dbUser.getPosts()) {
+                        unRelateIds.add(post.getId());
+                    }
                 }
 
                 /**
@@ -159,14 +145,18 @@ public class SysController {
             Post post = writer.gson.fromJson(json, Post.class);
 
             List<Integer> relateIds = new ArrayList<>();
-            for (PrivilegeResource privilegeResource : post.getPrivilegeResources()) {
-                relateIds.add(privilegeResource.getId());
+            if (post.getPrivilegeResources() != null) {
+                for (PrivilegeResource privilegeResource : post.getPrivilegeResources()) {
+                    relateIds.add(privilegeResource.getId());
+                }
             }
 
             Post dbPost = (Post) sysDao.queryById(post.getId(), Post.class);
             List<Integer> unRelateIds = new ArrayList<>();
-            for (PrivilegeResource privilegeResource : dbPost.getPrivilegeResources()) {
-                unRelateIds.add(privilegeResource.getId());
+            if (dbPost.getPrivilegeResources() != null) {
+                for (PrivilegeResource privilegeResource : dbPost.getPrivilegeResources()) {
+                    unRelateIds.add(privilegeResource.getId());
+                }
             }
 
             sysDao.updateRelateId(post.getId(), relateIds, unRelateIds, Post.class);
@@ -187,6 +177,10 @@ public class SysController {
         } else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
             Audit audit = writer.gson.fromJson(json, Audit.class);
             result = sysDao.updateById(audit.getId(), audit);
+
+        } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
+            AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
+            result = sysDao.updateById(auditFlow.getId(), auditFlow);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -199,37 +193,27 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             User user = writer.gson.fromJson(json, User.class);
-            List<User> users = sysDao.query(user);
-            for (User user1 : users) {
-                user1.setPassword(null);
-            }
-
-            writer.writeObjectToJson(response, users);
+            writer.writeObjectToJson(response, sysDao.query(user));
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
-            List<Post> posts = sysDao.query(post);
-            writer.writeObjectToJson(response, posts);
+            writer.writeObjectToJson(response, sysDao.query(post));
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
             Dept dept = writer.gson.fromJson(json, Dept.class);
-            List<Dept> depts = sysDao.query(dept);
-            writer.writeObjectToJson(response, depts);
+            writer.writeObjectToJson(response, sysDao.query(dept));
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
-            List<Company> companies = sysDao.query(company);
-            writer.writeObjectToJson(response, companies);
+            writer.writeObjectToJson(response, sysDao.query(company));
 
         }else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
-            List<PrivilegeResource> privilegeResources = sysDao.query(privilegeResource);
-            writer.writeObjectToJson(response, privilegeResources);
+            writer.writeObjectToJson(response, sysDao.query(privilegeResource));
 
         }else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
             Audit audit = writer.gson.fromJson(json, Audit.class);
-            List<Audit> audits = sysDao.query(audit);
-            writer.writeObjectToJson(response, audits);
+            writer.writeObjectToJson(response, sysDao.query(audit));
 
         }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
@@ -255,37 +239,44 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             User user = writer.gson.fromJson(json, User.class);
-            List<User> users = sysDao.suggest(user);
-            for (User user1 : users) {
-                user1.setPassword(null);
+            user.setState(0);
+
+            Field[] limitFields = new Field[1];
+            try {
+                limitFields[0] = user.getClass().getDeclaredField("state");
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
-            writer.writeObjectToJson(response, users);
+            writer.writeObjectToJson(response, sysDao.suggest(user, limitFields));
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
-            List<Post> posts = sysDao.suggest(post);
-            writer.writeObjectToJson(response, posts);
+            writer.writeObjectToJson(response, sysDao.suggest(post, null));
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
             Dept dept = writer.gson.fromJson(json, Dept.class);
-            List<Dept> depts = sysDao.suggest(dept);
-            writer.writeObjectToJson(response, depts);
+            writer.writeObjectToJson(response, sysDao.suggest(dept, null));
 
         }else if (entity.equalsIgnoreCase(Company.class.getSimpleName())) {
             Company company = writer.gson.fromJson(json, Company.class);
-            List<Company> companies = sysDao.suggest(company);
-            writer.writeObjectToJson(response, companies);
+            writer.writeObjectToJson(response,  sysDao.suggest(company, null));
 
         } else if (entity.equalsIgnoreCase(PrivilegeResource.class.getSimpleName())) {
             PrivilegeResource privilegeResource = writer.gson.fromJson(json, PrivilegeResource.class);
-            List<PrivilegeResource> privilegeResources = sysDao.suggest(privilegeResource);
-            writer.writeObjectToJson(response, privilegeResources);
+            writer.writeObjectToJson(response, sysDao.suggest(privilegeResource, null));
 
         } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
-            List<AuditFlow> auditFlows = sysDao.suggest(auditFlow);
-            writer.writeObjectToJson(response, auditFlows);
+            auditFlow.setState(0);
+
+            Field[] limitFields = new Field[1];
+            try {
+                limitFields[0] = auditFlow.getClass().getDeclaredField("state");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            writer.writeObjectToJson(response,  sysDao.suggest(auditFlow, limitFields));
         }
 
         logger.info("suggest end");
@@ -299,9 +290,6 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             List<User> users = sysDao.complexQuery(User.class, queryParameters, position, rowNum);
-            for (User user1 : users) {
-                user1.setPassword(null);
-            }
             writer.writeObjectToJson(response, users);
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
@@ -537,7 +525,10 @@ public class SysController {
             return ;
         }
 
-        List<User> dbUsers = sysDao.query(new User(username));
+        User user = new User(username);
+        user.setState(0); //有效用户
+
+        List<User> dbUsers = sysDao.query(user);
         if (dbUsers.size() == 1) {
             String encryptDbPassword = DigestUtils.md5Hex(dbUsers.get(0).getPassword().toUpperCase() + salt).toUpperCase();
 
@@ -567,8 +558,11 @@ public class SysController {
                 }
             }
 
+        } else if (dbUsers.size() < 1){
+           result = "查询不到 " + user.getUsername() + "，或者该用户已注销";
+
         } else if (dbUsers.size() > 1){
-           result = dbUsers.get(0).getName() + "是重名用户，请联系管理员处理";
+           result = dbUsers.get(0).getUsername() + " 是重名用户，请联系管理员处理";
         }
 
         /**

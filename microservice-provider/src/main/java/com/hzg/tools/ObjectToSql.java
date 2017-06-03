@@ -48,10 +48,10 @@ public class ObjectToSql {
                 String joinTableNickName = "t" + (i++), secondTableNickName = "t" + (i++);
 
                 fromPart += manyToManyTableInfo.get(1).toString() + " " + joinTableNickName + ", " +
-                            manyToManyTableInfo.get(4).toString() + " " + secondTableNickName + ", ";
+                        manyToManyTableInfo.get(4).toString() + " " + secondTableNickName + ", ";
 
                 wherePart += "t." + manyToManyTableInfo.get(0).toString() + " = " + joinTableNickName + "." + manyToManyTableInfo.get(2).toString() + " and " +
-                             joinTableNickName + "." + manyToManyTableInfo.get(3).toString() + " = " + secondTableNickName + "." + manyToManyTableInfo.get(5).toString() + " and ";
+                        joinTableNickName + "." + manyToManyTableInfo.get(3).toString() + " = " + secondTableNickName + "." + manyToManyTableInfo.get(5).toString() + " and ";
 
                 Map<String, String> columnSumValues = getColumnSumValues((Set<Object>)manyToManyTableInfo.get(6));
                 for (Map.Entry<String, String> entry : columnSumValues.entrySet()) {
@@ -107,21 +107,56 @@ public class ObjectToSql {
         return updateSql;
     }
 
-    public String generateSuggestSqlByAnnotation(Object object){
+    public String generateSuggestSqlByAnnotation(Object object, Field[] limitFields){
         Class objectClass = object.getClass();
 
         String suggestSql = "select t.* from " + getTableName(objectClass) + " t ";
         List<List<String>> columnValues = getColumnValues(objectClass, object);
-        String where = "";
+        String where = "", limitWhere = "";
+
         for (List<String> columnValue : columnValues) {
-            where += columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' or ";
+            boolean isLimitColumn = false;
+            if (limitFields != null) {
+                for (Field field : limitFields) {
+                    if (getColumn(field).equals(columnValue.get(0))) {
+                        isLimitColumn = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isLimitColumn) {
+                if (columnValue.get(1).indexOf("'") == 0 && (columnValue.get(1).lastIndexOf("'") == columnValue.get(1).length() - 1)) {
+                    where += columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' or ";
+
+                } else if (!columnValue.get(1).contains("'")) {
+                    where += columnValue.get(0) + " = " + columnValue.get(1) + " or ";
+                }
+
+            } else {
+                limitWhere = columnValue.get(0) + " = " + columnValue.get(1) + " and ";
+            }
         }
 
         if (where.length() > 0) {
-            where = " where " + where.substring(0, where.length()-" or ".length());
+            where = where.substring(0, where.length()-" or ".length());
         }
 
-        suggestSql = suggestSql + where + " limit 30";
+        if (limitWhere.length() > 0) {
+            limitWhere = limitWhere.substring(0, limitWhere.length()-" and ".length());
+        }
+
+        if (where.length() > 0 && limitWhere.length() > 0) {
+            suggestSql = suggestSql + " where " + " (" + where + ") and " + limitWhere;
+
+        } else if (where.length() > 0 && limitWhere.length() == 0) {
+            suggestSql = suggestSql + " where " + where;
+
+        } else if (where.length() == 0 && limitWhere.length() > 0) {
+            suggestSql = suggestSql + " where " + limitWhere;
+        }
+
+        suggestSql = suggestSql + " limit 30";
         logger.info("suggestSql: " + suggestSql);
 
         return suggestSql;
@@ -189,15 +224,15 @@ public class ObjectToSql {
                 if (Pattern.compile("in\\s*\\(").matcher(columnValue.get(1)).find()) {
                     wherePart += "t." + columnValue.get(0) + " " + columnValue.get(1).substring(1) + " and ";
 
-                /**
-                 * 值为数子
-                 */
+                    /**
+                     * 值为数子
+                     */
                 } else if (columnValue.get(1).indexOf("'") == -1) {
                     wherePart += "t." + columnValue.get(0) + " = " + columnValue.get(1) + " and ";
 
-                /**
-                 * 值为字符串
-                 */
+                    /**
+                     * 值为字符串
+                     */
                 } else {
                     wherePart += "t." + columnValue.get(0) + " like '%" + columnValue.get(1).substring(1, columnValue.get(1).length() - 1) + "%' and ";
                 }
@@ -210,7 +245,7 @@ public class ObjectToSql {
                 String joinTableNickName = "t" + (i++), secondTableNickName = "t" + (i++);
 
                 fromPart += manyToManyTableInfo.get(1).toString() + " " + joinTableNickName + ", " +
-                            manyToManyTableInfo.get(4).toString() + " " + secondTableNickName + ", ";
+                        manyToManyTableInfo.get(4).toString() + " " + secondTableNickName + ", ";
 
                 wherePart += "t." + manyToManyTableInfo.get(0).toString() + " = " + joinTableNickName + "." + manyToManyTableInfo.get(2).toString() + " and " +
                         joinTableNickName + "." + manyToManyTableInfo.get(3).toString() + " = " + secondTableNickName + "." + manyToManyTableInfo.get(5).toString() + " and ";
@@ -256,7 +291,7 @@ public class ObjectToSql {
 
                 String[] dateRange = entry.getValue().replace("/", "-").split(" - ");
                 wherePart += joinTableNickName + "." + entry.getKey() + " >= " + dateRange[0] + "' and " +
-                             joinTableNickName + "." + entry.getKey() + " <= '" + dateRange[1] + " and ";
+                        joinTableNickName + "." + entry.getKey() + " <= '" + dateRange[1] + " and ";
 
             } else {
                 wherePart += joinTableNickName + "." + entry.getKey() + " in (" + entry.getValue() + ") and ";
@@ -304,7 +339,24 @@ public class ObjectToSql {
         List<String> columnValue = null;
 
         // 检查类中属性是否含有 column 注解
-        String column = "";
+        String column = getColumn(field);
+
+        if (value != null && !String.valueOf(value).trim().equals("") && column != null) {
+            columnValue = new ArrayList<>();
+            columnValue.add(column);
+            columnValue.add(getValue(field, value));
+        }
+
+        return columnValue;
+    }
+
+    /**
+     * 获取类属性对应的数据库表 字段名
+     * @param field
+     * @return
+     */
+    public String getColumn(Field field) {
+        String column = null;
 
         if (field.isAnnotationPresent(Column.class)) {
             column = field.getAnnotation(Column.class).name();
@@ -314,13 +366,7 @@ public class ObjectToSql {
             column = field.getAnnotation(JoinColumn.class).name();
         }
 
-        if (value != null && !String.valueOf(value).trim().equals("") && !column.trim().equals("")) {
-            columnValue = new ArrayList<>();
-            columnValue.add(column);
-            columnValue.add(getValue(field, value));
-        }
-
-        return columnValue;
+        return column;
     }
 
     /**
@@ -636,7 +682,7 @@ public class ObjectToSql {
 
         } else {
             try {
-               valueStr += field.getType().getMethod("getId").invoke(value);
+                valueStr += field.getType().getMethod("getId").invoke(value);
             } catch (Exception e) {
                 logger.info(e.getMessage());
 

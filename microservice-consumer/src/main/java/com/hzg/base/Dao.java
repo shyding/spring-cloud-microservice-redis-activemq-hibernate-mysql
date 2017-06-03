@@ -1,5 +1,8 @@
 package com.hzg.base;
 
+/**
+ * Created by Administrator on 2017/4/20.
+ */
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundValueOperations;
@@ -50,5 +53,13 @@ public class Dao {
         boundValueOperations.set(object);
         //设置过期时间
         boundValueOperations.expire(seconds, TimeUnit.SECONDS);
+    }
+
+    /**
+     * 删除 key 对应的对象
+     * @param key
+     */
+    public void deleteFromRedis(String key) {
+        redisTemplate.opsForValue().getOperations().delete(key);
     }
 }

@@ -8,6 +8,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+/**
+ * Created by Administrator on 2017/3/16.
+ */
 @Component
 public class Writer {
 

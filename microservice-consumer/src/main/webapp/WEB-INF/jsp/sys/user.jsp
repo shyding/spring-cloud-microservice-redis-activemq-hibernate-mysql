@@ -119,17 +119,26 @@
                             <div class="form-group">
                                 <div class="col-md-6 col-md-offset-3">
                                     <button id="cancel" type="button" class="btn btn-primary">取消</button>
-                                    <button id="send" type="button" class="btn btn-success"><c:choose><c:when test="${entity != null}">更新</c:when><c:otherwise>保存</c:otherwise></c:choose></button>
+                                    <c:if test="${entity == null}">
+                                    <button id="send" type="button" class="btn btn-success">保存</button>
+                                    </c:if>
                                     <c:if test="${entity != null}">
-                                    <button id="edit" type="button" class="btn btn-primary">编辑</button>
                                     <c:choose>
-                                        <c:when test="${entity.state == 0}"><button id="delete" type="button" class="btn btn-danger">注销</button></c:when>
-                                        <c:otherwise><button id="recover" type="button" class="btn btn-success">置为可用</button></c:otherwise>
+                                        <c:when test="${entity.state == 0}">
+                                            <button id="send" type="button" class="btn btn-success">修改</button>
+                                            <button id="edit" type="button" class="btn btn-primary">编辑</button>
+                                            <button id="delete" type="button" class="btn btn-danger">注销</button>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <button id="editState" type="button" class="btn btn-primary">编辑</button>
+                                            <button id="recover" type="button" class="btn btn-success">置为可用</button>
+                                        </c:otherwise>
                                     </c:choose>
                                     </c:if>
                                 </div>
                             </div>
                             <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
+                            <input type="hidden" id="state" name="state:number" value="<c:choose><c:when test="${entity != null}">${entity.state}</c:when><c:otherwise>0</c:otherwise></c:choose>">
                         </form>
                     </div>
                 </div>

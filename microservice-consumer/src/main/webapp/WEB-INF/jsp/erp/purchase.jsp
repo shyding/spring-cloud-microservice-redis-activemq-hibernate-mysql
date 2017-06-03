@@ -40,7 +40,7 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购标题 <span class="required">*</span>
                                 </label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input id="name" name="name" value="${entity.title}" data-validate-length-range="5,30" data-validate-words="1" class="form-control col-md-7 col-xs-12" required>
+                                    <input id="name" name="name" value="${entity.name}" data-validate-length-range="5,30" data-validate-words="1" class="form-control col-md-7 col-xs-12" required>
                                 </div>
                             </div>
                             <div class="item form-group">
@@ -76,8 +76,8 @@
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text1">采购人</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input type="text" id="text1" name="text1" <c:if test="${entity.charger != null}">value="${entity.charger.name}"</c:if> class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" required />
-                                    <input type="hidden" id="charger[id]" name="charger[id]" <c:if test="${entity.charger != null}">value="${entity.charger.id}"</c:if>>
+                                    <input type="text" id="text1" name="text1" value="${entity.charger.name}" class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入姓名" required />
+                                    <input type="hidden" id="charger[id]" name="charger[id]" value="${entity.charger.id}">
                                 </div>
                             </div>
                             <div class="item form-group">
@@ -102,7 +102,7 @@
                                      </div>
                                      </c:if>
                                     <c:forEach items="${entity.details}" var="detail" varStatus="status">
-                                        <div id="detail" class="row">${status.count}.&nbsp;
+                                        <div id="detail" class="row">
                                             <input id="${status.count}1" name="details[][productName]" value="${detail.productName}" placeholder="商品名称" data-validate-length-range="6,30" data-validate-words="1" type="text" style="width:240px" required>&nbsp;&nbsp;&nbsp;&nbsp;
                                             <input id="${status.count}2" name="details[][amount]:number" value="${detail.amount}" placeholder="采购金额" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
                                             <input id="${status.count}3" name="details[][price]:number" value="${detail.price}" placeholder="采购单价" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
@@ -124,18 +124,25 @@
                             <div class="form-group" id="submitDiv">
                                 <div class="col-md-6 col-md-offset-3">
                                     <button id="cancel" type="button" class="btn btn-primary">取消</button>
-                                    <button id="send" type="button" class="btn btn-success">保存</button>
+                                    <c:if test="${entity == null}">
+                                        <button id="send" type="button" class="btn btn-success">保存</button>
+                                    </c:if>
                                     <c:if test="${entity != null}">
-                                        <button id="edit" type="button" class="btn btn-primary">编辑</button>
-                                        <c:choose>
-                                            <c:when test="${entity.state == 0}"><button id="delete" type="button" class="btn btn-danger">作废</button></c:when>
-                                            <c:otherwise><button id="recover" type="button" class="btn btn-success">打开</button></c:otherwise>
-                                        </c:choose>
+                                        <c:if test="${entity.state == 0}">
+                                            <button id="send" type="button" class="btn btn-success">更新</button>
+                                            <button id="edit" type="button" class="btn btn-primary">编辑</button>
+                                            <button id="delete" type="button" class="btn btn-danger">作废</button>
+                                        </c:if>
+                                        <c:if test="${entity.state == 2}">
+                                            <button id="editState" type="button" class="btn btn-primary">编辑</button>
+                                            <button id="recover" type="button" class="btn btn-success">恢复</button>
+                                        </c:if>
                                     </c:if>
                                 </div>
                             </div>
-                            <input type="hidden" id="state" name="state:number" value="0">
-                            <input type="hidden" id="inputer[id]" name="inputer[id]" <c:if test="${userId != null}">value="${userId}"</c:if>>
+                            <input type="hidden" id="state" name="state:number" value="<c:choose><c:when test="${entity != null}">${entity.state}</c:when><c:otherwise>0</c:otherwise></c:choose>">
+                            <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
+                            <input type="hidden" id="inputer[id]" name="inputer[id]" value="${userId}">
                         </form>
                     </div>
                 </div>
@@ -145,6 +152,10 @@
 </div>
 <script type="text/javascript">
     init(<c:out value="${entity == null}"/>);
+
+    <c:if test="${entity != null}">
+    setSelect(document.getElementById("type"), "${entity.type}");
+    </c:if>
 
     $('#date').daterangepicker({
         locale: {
@@ -184,7 +195,7 @@
         document.getElementById("1" + count).focus();
 
         $(":input[name='text2']").coolautosuggest({
-            url:"<%=request.getContextPath()%>/sys/suggest/supplier/name/",
+            url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
             showProperty: 'name',
             onSelected:function(result){
                 if(result!=null){
@@ -205,7 +216,7 @@
     });
 
     $(":input[name='text2']").coolautosuggest({
-        url:"<%=request.getContextPath()%>/sys/suggest/supplier/name/",
+        url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
         showProperty: 'name',
         onSelected:function(result){
             if(result!=null){
@@ -215,19 +226,19 @@
     });
 
     $("#send").bind("click", function(){
-        $('#form').submitForm('<%=request.getContextPath()%>/erp/save/<%=Purchase.class.getSimpleName().toLowerCase()%>');
+        $('#form').submitForm('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>');
     });
 
     $("#delete").click(function(){
         if (confirm("确定作废该采购单吗？")) {
-            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
+            $("#form").sendData('<%=request.getContextPath()%>/erp/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
                 '{"id":${entity.id},"state":2}');
         }
     });
 
     $("#recover").click(function(){
         if (confirm("确定恢复该采购单吗？")) {
-            $("#form").sendData('<%=request.getContextPath()%>/sys/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
+            $("#form").sendData('<%=request.getContextPath()%>/erp/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
                 '{"id":${entity.id},"state":0}');
         }
     });

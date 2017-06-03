@@ -139,9 +139,8 @@ public class SysController extends com.hzg.base.Controller {
         String salt = strUtil.generateRandomStr(256);
         dao.storeToRedis("salt_" + session.getId(), salt, 7200);
 
-        if (session.getAttribute("result") != null) {
-            model.put("result", session.getAttribute("result"));
-            session.removeAttribute("result");
+        if (dao.getFromRedis("result_" + session.getId()) != null) {
+            model.put("result", dao.getFromRedis("result_" + session.getId()));
         }
         model.put("salt", "\"" + salt + "\"");
 
@@ -155,7 +154,7 @@ public class SysController extends com.hzg.base.Controller {
      * @return
      */
     @PostMapping("/user/{name}")
-    public String user(@PathVariable("name") String name, HttpSession session, String json) {
+    public String user(@PathVariable("name") String name, String json, HttpSession session) {
         logger.info("user start, name:" + name + ", json:" + json);
 
         String page;
@@ -179,11 +178,11 @@ public class SysController extends com.hzg.base.Controller {
             }
 
         } else {
-            session.setAttribute("result", result.get("result"));
+            dao.storeToRedis("result_" + session.getId(), result.get("result"), 1800);
             page = "redirect:/sys/user/signIn";
 
             if (name.equals("signOut")) {
-                session.removeAttribute("result");
+                dao.deleteFromRedis("result_" + session.getId());
                 page = "redirect:/";
             }
         }

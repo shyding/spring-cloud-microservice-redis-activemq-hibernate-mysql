@@ -1,5 +1,6 @@
 <%@ page import="com.hzg.sys.User" %>
 <%@ page import="com.hzg.sys.Audit" %>
+<%@ page import="com.hzg.erp.Product" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
@@ -33,10 +34,10 @@
                     <li><a id="auditA" href="#/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D" onclick="render('/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D');"><i class="fa fa-home"></i> 待办事宜 <span class="fa fa-chevron-right"></span></a></li>
 
                     <c:if test="${resources != null}">
-                    <c:if test="${fn:contains(resources, '/erp/')}">
+                    <c:if test="${fn:contains(resources, '/erp/save')}">
                         <li><a><i class="fa fa-edit"></i> ERP <span class="fa fa-chevron-down"></span></a>
                             <ul class="nav child_menu">
-                                <li><a href="#/erp/list/product/{}">管理</a></li>
+                                <li><a href="#/erp/list/<%=Product.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>
                                 <c:if test="${fn:contains(resources, '/erp/save/product')}">
                                     <li><a href="#/erp/view/product/-1">录入商品</a></li>
                                 </c:if>
@@ -58,7 +59,7 @@
                         </li>
                     </c:if>
 
-                    <c:if test="${fn:contains(resources, '/sys/')}">
+                    <c:if test="${fn:contains(resources, '/sys/save')}">
                     <li><a><i class="fa fa-edit"></i> 后台 <span class="fa fa-chevron-down"></span></a>
                         <ul class="nav child_menu">
                             <li><a href="#/sys/list/<%=User.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>

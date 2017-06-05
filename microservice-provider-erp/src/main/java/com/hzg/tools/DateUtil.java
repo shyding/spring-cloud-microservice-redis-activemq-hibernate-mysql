@@ -6,15 +6,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: DateUtil.java
- * 类的详细说明
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/26
- */
 @Component
 public class DateUtil {
     private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

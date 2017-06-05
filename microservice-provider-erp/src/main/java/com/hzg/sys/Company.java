@@ -3,15 +3,9 @@ package com.hzg.sys;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Company.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/12
- */
 @Entity(name = "hzg_sys_company")
 public class Company implements Serializable {
 
@@ -41,6 +35,18 @@ public class Company implements Serializable {
     @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "chargerId")
     private User charger;
+
+    @Override
+    public String toString() {
+        return "Company{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", phone='" + phone + '\'' +
+                ", address='" + address + '\'' +
+                ", inputDate='" + inputDate + '\'' +
+                ", charger=" + charger +
+                '}';
+    }
 
     public static long getSerialVersionUID() {
         return serialVersionUID;

@@ -4,14 +4,6 @@ import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Dept.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/12
- */
 @Entity(name = "hzg_sys_dept")
 public class Dept implements Serializable {
 
@@ -45,6 +37,19 @@ public class Dept implements Serializable {
     @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "chargerId")
     private User charger;
+
+    @Override
+    public String toString() {
+        return "Dept{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", phone='" + phone + '\'' +
+                ", address='" + address + '\'' +
+                ", inputDate='" + inputDate + '\'' +
+                ", company=" + company +
+                ", charger=" + charger +
+                '}';
+    }
 
     public static long getSerialVersionUID() {
         return serialVersionUID;

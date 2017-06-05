@@ -9,12 +9,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import javax.jms.Queue;
 
 /**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: MQSender.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/3/28
+ * Created by Administrator on 2017/3/28.
  */
 @Controller
 @RequestMapping("/mq")

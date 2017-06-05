@@ -4,14 +4,6 @@ import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: User.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/12
- */
 @Entity(name = "hzg_sys_privilege_resource")
 public class PrivilegeResource implements Serializable {
 
@@ -69,5 +61,16 @@ public class PrivilegeResource implements Serializable {
 
     public void setInputDate(Timestamp inputDate) {
         this.inputDate = inputDate;
+    }
+
+
+    @Override
+    public String toString() {
+        return "privilegeResource{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", uri='" + uri + '\'' +
+                ", inputDate=" + inputDate +
+                '}';
     }
 }

@@ -3,15 +3,6 @@ package com.hzg.erp;
 import javax.persistence.*;
 import java.io.Serializable;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Product.java
- * 类的详细说明
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/5/25
- */
 @Entity(name = "hzg_product")
 public class Product implements Serializable {
     private static final long serialVersionUID = 345435245233228L;

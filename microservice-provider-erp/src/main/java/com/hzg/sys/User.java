@@ -6,26 +6,13 @@ import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: User.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/12
- */
 @Entity(name = "hzg_sys_user")
-public class User implements Serializable {
+public class User  implements Serializable {
 
     private static final long serialVersionUID = 345435245233221L;
 
     public User(){
         super();
-    }
-
-    public User(String username){
-        super();
-        this.username = username;
     }
 
     @Id
@@ -62,6 +49,22 @@ public class User implements Serializable {
             , joinColumns = {@JoinColumn(name = "userId")}
             , inverseJoinColumns = {@JoinColumn(name = "postId")})
     private Set<Post> posts = new HashSet<Post>();
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", gender='" + gender + '\'' +
+                ", username='" + username + '\'' +
+                ", password='" + password + '\'' +
+                ", email='" + email + '\'' +
+                ", inputDate='" + inputDate + '\'' +
+                ", passModifyDate='" + passModifyDate + '\'' +
+                ", state=" + state +
+                ", posts=" + posts +
+                '}';
+    }
 
     public static long getSerialVersionUID() {
         return serialVersionUID;

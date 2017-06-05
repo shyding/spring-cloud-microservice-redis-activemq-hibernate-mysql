@@ -8,14 +8,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Writer.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/3/16
- */
 @Component
 public class Writer {
 

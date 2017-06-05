@@ -10,14 +10,6 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Supplier.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/5/25
- */
 @Entity(name = "hzg_supplier")
 public class Supplier implements Serializable {
 

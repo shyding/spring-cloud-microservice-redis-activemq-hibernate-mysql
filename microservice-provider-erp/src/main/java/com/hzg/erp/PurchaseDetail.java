@@ -3,14 +3,6 @@ package com.hzg.erp;
 import javax.persistence.*;
 import java.io.Serializable;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: PurchaseDetail.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/5/25
- */
 @Entity(name = "hzg_purchase_detail")
 public class PurchaseDetail implements Serializable {
 

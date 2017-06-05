@@ -1,4 +1,4 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -6,14 +6,6 @@ import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: Post.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/4/12
- */
 @Entity(name = "hzg_sys_post")
 public class Post implements Serializable {
 

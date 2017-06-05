@@ -1,5 +1,6 @@
 package com.hzg.mq;
 
+import com.hzg.user.UserController;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
@@ -12,12 +13,7 @@ import javax.jms.JMSException;
 import javax.jms.Queue;
 
 /**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: MQReceiver.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/3/28
+ * Created by Administrator on 2017/3/28.
  */
 @Controller
 @RequestMapping("/mq")

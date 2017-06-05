@@ -84,7 +84,7 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购描述 <span class="required">*</span>
                                 </label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <textarea id="describes" name="describes" value="${entity.describes}" class="form-control col-md-7 col-xs-12" data-validate-length-range="6,256" data-validate-words="1"required></textarea>
+                                    <textarea id="describes" name="describes" class="form-control col-md-7 col-xs-12" data-validate-length-range="6,256" data-validate-words="1"required>${entity.describes}</textarea>
                                 </div>
                             </div>
                             <div class="item form-group">
@@ -98,19 +98,21 @@
                                         <input id="4" name="details[][quantity]:number" placeholder="采购数量" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
                                         <input id="5" name="details[][unit]" placeholder="采购单位" data-validate-length-range="1,6" type="text" required>&nbsp;&nbsp;&nbsp;&nbsp;<br>
                                         <input type="text" id="text2" name="text2" placeholder="供应商" style="width:340px;margin-top:6px" required />
-                                        <input type="hidden" id="details[]supplier[id]" name="details[]supplier[id]">
+                                        <input type="hidden" id="details[][supplier[id]]" name="details[][supplier[id]]:number">
                                      </div>
                                      </c:if>
+                                    <c:set var="cursor" value="0" />
                                     <c:forEach items="${entity.details}" var="detail" varStatus="status">
                                         <div id="detail" class="row">
-                                            <input id="${status.count}1" name="details[][productName]" value="${detail.productName}" placeholder="商品名称" data-validate-length-range="6,30" data-validate-words="1" type="text" style="width:240px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="${status.count}2" name="details[][amount]:number" value="${detail.amount}" placeholder="采购金额" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="${status.count}3" name="details[][price]:number" value="${detail.price}" placeholder="采购单价" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="${status.count}4" name="details[][quantity]:number" value="${detail.quantity}" placeholder="采购数量" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="${status.count}5" name="details[][unit]" value="${detail.unit}" placeholder="采购单位" data-validate-length-range="1,6" type="text" required>&nbsp;&nbsp;&nbsp;&nbsp;<br>
-                                            <input type="text" id="${status.count}text2" name="text2" value="${detail.supplier.name}" placeholder="供应商" style="width:340px;margin-top:6px" required />
-                                            <input type="hidden" id="${status.count}details[]supplier[id]" value="${detail.supplier.id}" name="details[]supplier[id]">
+                                            <input id="1<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][productName]" value="${detail.productName}" placeholder="商品名称" data-validate-length-range="6,30" data-validate-words="1" type="text" style="width:240px" required>&nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input id="2<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][amount]:number" value="${detail.amount}" placeholder="采购金额" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input id="3<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][price]:number" value="${detail.price}" placeholder="采购单价" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input id="4<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][quantity]:number" value="${detail.quantity}" placeholder="采购数量" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input id="5<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][unit]" value="${detail.unit}" placeholder="采购单位" data-validate-length-range="1,6" type="text" required>&nbsp;&nbsp;&nbsp;&nbsp;<br>
+                                            <input type="text" id="text2<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="text2" value="${detail.supplier.name}" placeholder="供应商" style="width:340px;margin-top:6px" required />
+                                            <input type="hidden" id="details[][supplier[id]]<c:if test="${status.count > 1}">${status.count-1}</c:if>" value="${detail.supplier.id}" name="details[][supplier[id]]:number">
                                         </div>
+                                        <c:set var="cursor" value="${status.count-1}" />
                                     </c:forEach>
                                 </div></div>
                             </div>
@@ -175,15 +177,30 @@
         console.log(start.toISOString(), end.toISOString(), label);
     });
 
-    var count = 0;
+    var cursor = ${cursor};
+
+    if (cursor > 0) {
+        for (var ci = 1; ci <= cursor; ci++) {
+            $("#text2"+ci).coolautosuggest({
+                url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
+                showProperty: 'name',
+                onSelected:function(result){
+                    if(result!=null){
+                        $(document.getElementById("details[][supplier[id]]"+ci)).val(result.id);
+                    }
+                }
+            });
+        }
+    }
+
     $('#addItem').click(function () {
-        count++;
+        cursor++;
         var detailHtml = String($("#detail").html());
 
         var detailItems = document.getElementById("detail").children;
         for (var index in detailItems) {
             var id = String(detailItems[index].id);
-            detailHtml = detailHtml.replace('id="' + id + '"', 'id="' + id + String(count) +'"');
+            detailHtml = detailHtml.replace('id="' + id + '"', 'id="' + id + String(cursor) +'"');
         }
         var detailsHtmlParts = detailHtml.split("<br>");
 
@@ -194,12 +211,12 @@
 
         document.getElementById("1" + count).focus();
 
-        $(":input[name='text2']").coolautosuggest({
+        $("#text2"+count).coolautosuggest({
             url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
             showProperty: 'name',
             onSelected:function(result){
                 if(result!=null){
-                    $(document.getElementById("charger[id]")).val(result.id);
+                    $(document.getElementById("details[][supplier[id]]"+count)).val(result.id);
                 }
             }
         });
@@ -215,12 +232,12 @@
         }
     });
 
-    $(":input[name='text2']").coolautosuggest({
+    $("#text2").coolautosuggest({
         url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
         showProperty: 'name',
         onSelected:function(result){
             if(result!=null){
-                $(document.getElementById("charger[id]")).val(result.id);
+                $(document.getElementById("details[][supplier[id]]")).val(result.id);
             }
         }
     });

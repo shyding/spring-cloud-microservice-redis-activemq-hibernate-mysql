@@ -1,4 +1,4 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.SignInUtil;
@@ -116,26 +116,28 @@ public class SysController {
             User user = writer.gson.fromJson(json, User.class);
             if (!isUsernameExist(user.getId(), user.getUsername()) || user.getUsername() == null) {
 
-                List<Integer> relateIds = new ArrayList<>();
                 if (user.getPosts() != null) {
+                    List<Integer> relateIds = new ArrayList<>();
                     for (Post post : user.getPosts()) {
                         relateIds.add(post.getId());
                     }
-                }
 
-                User dbUser = (User) sysDao.queryById(user.getId(), User.class);
-                List<Integer> unRelateIds = new ArrayList<>();
-                if (dbUser.getPosts() != null) {
-                    for (Post post : dbUser.getPosts()) {
-                        unRelateIds.add(post.getId());
+                    User dbUser = (User) sysDao.queryById(user.getId(), User.class);
+                    List<Integer> unRelateIds = new ArrayList<>();
+                    if (dbUser.getPosts() != null) {
+                        for (Post post : dbUser.getPosts()) {
+                            unRelateIds.add(post.getId());
+                        }
                     }
+
+                    sysDao.updateRelateId(user.getId(), relateIds, unRelateIds, User.class);
                 }
 
                 /**
                  * 由于保存实体后，就马上从数据库查询该实体，导致关联关系还是旧的关联关系，
                  * 所以先重置关联关系，再保存实体，这样查询出来的关联关系就是最新的
                  */
-                sysDao.updateRelateId(user.getId(), relateIds, unRelateIds, User.class);
+
                 result = sysDao.updateById(user.getId(), user);
             } else {
                 result = "用户名已经存在";
@@ -144,22 +146,23 @@ public class SysController {
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             Post post = writer.gson.fromJson(json, Post.class);
 
-            List<Integer> relateIds = new ArrayList<>();
             if (post.getPrivilegeResources() != null) {
+                List<Integer> relateIds = new ArrayList<>();
                 for (PrivilegeResource privilegeResource : post.getPrivilegeResources()) {
                     relateIds.add(privilegeResource.getId());
                 }
-            }
 
-            Post dbPost = (Post) sysDao.queryById(post.getId(), Post.class);
-            List<Integer> unRelateIds = new ArrayList<>();
-            if (dbPost.getPrivilegeResources() != null) {
-                for (PrivilegeResource privilegeResource : dbPost.getPrivilegeResources()) {
-                    unRelateIds.add(privilegeResource.getId());
+                Post dbPost = (Post) sysDao.queryById(post.getId(), Post.class);
+                List<Integer> unRelateIds = new ArrayList<>();
+                if (dbPost.getPrivilegeResources() != null) {
+                    for (PrivilegeResource privilegeResource : dbPost.getPrivilegeResources()) {
+                        unRelateIds.add(privilegeResource.getId());
+                    }
                 }
+
+                sysDao.updateRelateId(post.getId(), relateIds, unRelateIds, Post.class);
             }
 
-            sysDao.updateRelateId(post.getId(), relateIds, unRelateIds, Post.class);
             result = sysDao.updateById(post.getId(), post);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
@@ -598,9 +601,8 @@ public class SysController {
             signInUtil.setUser(signInInfo.get("sessionId"), username);
         }
 
-        logger.info("signIn end");
-
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        logger.info("signIn end");
     }
 
 
@@ -628,9 +630,8 @@ public class SysController {
             result = "success";
         }
 
-        logger.info("signOut end");
-
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        logger.info("signOut end");
     }
 
     /**
@@ -652,6 +653,7 @@ public class SysController {
 
             if (user != null) {
                 //移除之前登录的用户
+                sysDao.deleteFromRedis("salt_" + signInUtil.getSessionIdByUser(username));
                 signInUtil.removeUser(username);
 
                 sysDao.storeToRedis(username, user, 1800);
@@ -666,8 +668,7 @@ public class SysController {
             result = "no operation";
         }
 
-        logger.info("hasLoginDeal end");
-
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        logger.info("hasLoginDeal end");
     }
 }

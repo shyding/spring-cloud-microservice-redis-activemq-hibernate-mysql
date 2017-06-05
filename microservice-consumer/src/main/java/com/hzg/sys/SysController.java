@@ -136,11 +136,23 @@ public class SysController extends com.hzg.base.Controller {
      */
     @GetMapping("/user/signIn")
     public String signIn(Map<String, Object> model, HttpSession session) {
-        String salt = strUtil.generateRandomStr(256);
-        dao.storeToRedis("salt_" + session.getId(), salt, 7200);
+        String result = (String)dao.getFromRedis("result_" + session.getId());
 
-        if (dao.getFromRedis("result_" + session.getId()) != null) {
-            model.put("result", dao.getFromRedis("result_" + session.getId()));
+        boolean isNeedChangeSalt = true;
+        if (result != null && result.contains("已经登录")) {
+            isNeedChangeSalt = false;
+        }
+
+        String salt = "";
+        if (isNeedChangeSalt) {
+            salt = strUtil.generateRandomStr(256);
+            dao.storeToRedis("salt_" + session.getId(), salt, 7200);
+        } else {
+            salt = (String)dao.getFromRedis("salt_" + session.getId());
+        }
+
+        if (result != null) {
+            model.put("result", result);
         }
         model.put("salt", "\"" + salt + "\"");
 
@@ -178,7 +190,7 @@ public class SysController extends com.hzg.base.Controller {
             }
 
         } else {
-            dao.storeToRedis("result_" + session.getId(), result.get("result"), 1800);
+            dao.storeToRedis("result_" + session.getId(), result.get("result"), 30);
             page = "redirect:/sys/user/signIn";
 
             if (name.equals("signOut")) {

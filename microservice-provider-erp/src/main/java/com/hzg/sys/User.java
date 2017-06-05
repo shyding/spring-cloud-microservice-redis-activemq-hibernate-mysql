@@ -1,4 +1,4 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -13,6 +13,11 @@ public class User  implements Serializable {
 
     public User(){
         super();
+    }
+
+    public User(String username){
+        super();
+        this.username = username;
     }
 
     @Id
@@ -48,23 +53,7 @@ public class User  implements Serializable {
     @JoinTable(name = "hzg_sys_userpost_relation"
             , joinColumns = {@JoinColumn(name = "userId")}
             , inverseJoinColumns = {@JoinColumn(name = "postId")})
-    private Set<Post> posts = new HashSet<Post>();
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", gender='" + gender + '\'' +
-                ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
-                ", email='" + email + '\'' +
-                ", inputDate='" + inputDate + '\'' +
-                ", passModifyDate='" + passModifyDate + '\'' +
-                ", state=" + state +
-                ", posts=" + posts +
-                '}';
-    }
+    private Set<Post> posts;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;

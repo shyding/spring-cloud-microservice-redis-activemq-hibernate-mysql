@@ -3,11 +3,10 @@ package com.hzg;
 import com.hzg.base.Dao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
-import javax.servlet.http.HttpSession;
 import java.util.Map;
 import java.util.logging.Logger;
-
 
 @Controller
 public class Index {
@@ -20,13 +19,13 @@ public class Index {
      * 跳转到默认页面
      */
     @RequestMapping("/")
-    public String index(HttpSession session, Map<String, Object> model) {
-        String username = (String)dao.getFromRedis("sessionId_" + session.getId());
+    public String index(Map<String, Object> model, @CookieValue(name="sessionId")String sessionId) {
+        String username = (String)dao.getFromRedis("sessionId_" + sessionId);
 
         if (username != null) {
             //如果当前有用相同用户名已登录系统的用户，则跳转到登录页面
             String signInedUserSessionId = (String)dao.getFromRedis("user_" + username);
-            if (signInedUserSessionId != null && !signInedUserSessionId.equals(session.getId())) {
+            if (signInedUserSessionId != null && !signInedUserSessionId.equals(sessionId)) {
                 return "redirect:/sys/user/signIn";
             }
         }
@@ -38,6 +37,8 @@ public class Index {
             return "redirect:/sys/user/signIn";
         }
 
+        model.put("sessionId", sessionId);
+        model.put("username", username);
         model.put("resources", dao.getFromRedis(username + "_resources"));
 
         return "index";

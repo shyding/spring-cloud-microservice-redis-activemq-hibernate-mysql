@@ -10,7 +10,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +33,8 @@ public class ErpController extends com.hzg.base.Controller {
     }
 
     @GetMapping("/view/{entity}/{id}")
-    public String viewById(HttpSession session, Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("id") Integer id) {
+    public String viewById(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("id") Integer id,
+                           @CookieValue(name="sessionId")String sessionId) {
         logger.info("viewById start, entity:" + entity + ", id:" + id);
 
         List<Object> entities = null;
@@ -54,7 +54,7 @@ public class ErpController extends com.hzg.base.Controller {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<ProductType>>() {}.getType());
         }
 
-        User user = (User)dao.getFromRedis((String)dao.getFromRedis("sessionId_" + session.getId()));
+        User user = (User)dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId));
 
         model.put("entity", entities.isEmpty() ? null : entities.get(0));
         model.put("userId", user.getId());
@@ -64,7 +64,7 @@ public class ErpController extends com.hzg.base.Controller {
     }
 
     @RequestMapping(value = "/privateQuery/{entity}", method = {RequestMethod.GET, RequestMethod.POST})
-    public void privateQuery(HttpSession session, HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
+    public void privateQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
         logger.info("privateQuery start, entity:" + entity + ", json:" + json);
         String privateCondition = "";
 

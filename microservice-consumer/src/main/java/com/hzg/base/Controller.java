@@ -4,12 +4,12 @@ import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +30,9 @@ public class Controller {
     }
 
     @GetMapping("/list/{entity}/{json}")
-    public String list(HttpSession session, Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("json") String json) {
-        model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + session.getId()) + "_resources"));
+    public String list(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("json") String json,
+            @CookieValue(name="sessionId")String sessionId) {
+        model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId) + "_resources"));
         model.put("entity", entity);
         model.put("json", json);
         return "list";

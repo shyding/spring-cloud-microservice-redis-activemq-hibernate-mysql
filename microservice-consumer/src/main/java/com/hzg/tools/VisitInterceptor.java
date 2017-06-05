@@ -7,6 +7,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +25,8 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
     public RedisTemplate<String, Object> redisTemplate;
     @Autowired
     public Writer writer;
+    @Autowired
+    public CookieUtils cookieUtils;
 
     /**
      * 拦截访问的 uri，在可以访问的 uri 里，则通过，否则返回错误提示
@@ -36,7 +40,7 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
             return true;
         }
 
-        String sessionId = request.getSession().getId();
+        String sessionId = cookieUtils.getCookieValue(request, "sessionId");
         String username = (String)redisTemplate.opsForValue().get("sessionId_" + sessionId);
         String resources = null;
 
@@ -64,7 +68,7 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
                  * 表单提交 mac 校验
                  */
                 if (macValidate(request, visitingURI, sessionId)) {
-                    return pass(username, sessionId);
+                    return pass(response, username, sessionId);
                 } else {
                     return notPass(response, "MAC 校验不通过");
                 }
@@ -85,7 +89,7 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
 
                 if (resources.contains(parUrisStr.substring(0, parUrisStr.lastIndexOf("/")) + "/{")) {
                     if (macValidate(request, visitingURI, sessionId)) {
-                        return pass(username, sessionId);
+                        return pass(response, username, sessionId);
                     } else {
                         return notPass(response, "MAC 校验不通过");
                     }
@@ -108,7 +112,7 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
      * @param sessionId
      * @return
      */
-    public Boolean pass(String username, String sessionId) {
+    public Boolean pass(javax.servlet.http.HttpServletResponse response, String username, String sessionId) {
         /**
          * 表示用户在线，重新设置 半小时 后会话过期
          */
@@ -117,6 +121,8 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         redisTemplate.boundValueOps("sessionId_" + sessionId).expire(1800, TimeUnit.SECONDS);
         redisTemplate.boundValueOps("user_" + username).expire(1800, TimeUnit.SECONDS);
         redisTemplate.boundValueOps("salt_" + sessionId).expire(1800, TimeUnit.SECONDS);
+
+        cookieUtils.addCookie(response, "sessionId", sessionId);
 
         return true;
     }

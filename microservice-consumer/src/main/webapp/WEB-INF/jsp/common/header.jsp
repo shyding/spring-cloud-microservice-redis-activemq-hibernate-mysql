@@ -123,7 +123,7 @@
                         <li><a href="javascript:;">Help</a></li>
                         <li><a href="#" id="signOut"><i class="fa fa-sign-out pull-right"></i> 注销 </a></li>
                         <form action="<%=request.getContextPath()%>/sys/user/signOut" id="signOutForm" method="post">
-                            <input type="hidden" id="json" name="json" value='{"sessionId":"<%=session.getId()%>"}' />
+                            <input type="hidden" id="json" name="json" value='{"sessionId":"${sessionId}"}' />
                         </form>
                     </ul>
                 </li>

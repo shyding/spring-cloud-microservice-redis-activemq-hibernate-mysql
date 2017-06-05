@@ -65,11 +65,11 @@
 
                         <div>
                             <h1><i class="fa fa-paw"></i> Gentelella Alela!</h1>
-                            <p>©2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>
+                            <p>?2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>
                         </div>
                     </div>
                     <input type="hidden" id="encryptPassword" name="encryptPassword" />
-                    <input type="hidden" name="sessionId" value="<%=session.getId()%>" />
+                    <input type="hidden" name="sessionId" value="${sessionId}" />
                 </form>
                 <form action="<%=request.getContextPath()%>/sys/user/signIn" id="signInForm" method="post">
                     <input type="hidden" id="json" name="json" />
@@ -106,7 +106,7 @@
 
                         <div>
                             <h1><i class="fa fa-paw"></i> Gentelella Alela!</h1>
-                            <p>©2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>
+                            <p>?2016 All Rights Reserved. Gentelella Alela! is a Bootstrap 3 template. Privacy and Terms</p>
                         </div>
                     </div>
                 </form>
@@ -137,9 +137,9 @@
         /**
          * pin 的值不能和在网络上传输的加密的密码值一样
          */
-        $.cookie("pin", faultylabs.MD5(${salt}+faultylabs.MD5(jQuery.trim($("#password").val()))), {path:'/'});
+        $.cookie("pin", faultylabs.MD5("${salt}"+faultylabs.MD5(jQuery.trim($("#password").val()))), {path:'/'});
 
-        $("#encryptPassword").val(faultylabs.MD5(faultylabs.MD5(jQuery.trim($("#password").val()))+${salt}));
+        $("#encryptPassword").val(faultylabs.MD5(faultylabs.MD5(jQuery.trim($("#password").val()))+"${salt}"));
         $("#password").attr("disabled","disabled");
 
         $("#json").val(JSON.stringify($("#form").serializeJSON()));
@@ -155,7 +155,7 @@
     $("#againSignIn").click(function(){
         <c:if test="${result !=null}">
         <c:if test="${fn:contains(result, '已经登录')}">
-            $("#username").val("${fn:substringBefore(result, '已经登录')}");
+        $("#username").val("${fn:substringBefore(result, '已经登录')}");
         </c:if>
         </c:if>
         $("#signInForm").attr("action", "<%=request.getContextPath()%>/sys/user/hasLoginDeal");

@@ -80,7 +80,7 @@ public class SysController extends com.hzg.base.Controller {
 
     @RequestMapping(value = "/privateQuery/{entity}", method = {RequestMethod.GET, RequestMethod.POST})
     public void privateQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum,
-                             @PathVariable("entity") String entity, @CookieValue(name="sessionId")String sessionId) {
+                             @PathVariable("entity") String entity, @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
         logger.info("privateQuery start, entity:" + entity + ", json:" + json);
         String privateCondition = "";
 
@@ -162,6 +162,7 @@ public class SysController extends com.hzg.base.Controller {
     @GetMapping("/user/signResult")
     public String signResult(Map<String, Object> model, String sessionId) {
         model.put("result", dao.getFromRedis("result_" + sessionId));
+        model.put("salt", dao.getFromRedis("salt_" + sessionId));
         model.put("sessionId", sessionId);
         return "/signIn";
     }

@@ -137,7 +137,7 @@
         /**
          * pin 的值不能和在网络上传输的加密的密码值一样
          */
-        $.cookie("pin", faultylabs.MD5("${salt}"+faultylabs.MD5(jQuery.trim($("#password").val()))), {path:'/'});
+        localStorage.setItem('pin', faultylabs.MD5("${salt}"+faultylabs.MD5(jQuery.trim($("#password").val()))));
 
         $("#encryptPassword").val(faultylabs.MD5(faultylabs.MD5(jQuery.trim($("#password").val()))+"${salt}"));
         $("#password").attr("disabled","disabled");

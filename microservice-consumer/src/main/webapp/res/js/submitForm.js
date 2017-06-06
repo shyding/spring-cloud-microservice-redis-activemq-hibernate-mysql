@@ -8,7 +8,7 @@
             return;
         }
         var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
-        var mac = faultylabs.MD5(formJson + $.cookie("pin"));
+        var mac = faultylabs.MD5(formJson + localStorage.getItem("pin"));
         $.ajax({
             type: "post",
             url: url,

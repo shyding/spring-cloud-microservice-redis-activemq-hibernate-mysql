@@ -31,7 +31,7 @@ public class Controller {
 
     @GetMapping("/list/{entity}/{json}")
     public String list(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("json") String json,
-            @CookieValue(name="sessionId")String sessionId) {
+            @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
         model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId) + "_resources"));
         model.put("entity", entity);
         model.put("json", json);

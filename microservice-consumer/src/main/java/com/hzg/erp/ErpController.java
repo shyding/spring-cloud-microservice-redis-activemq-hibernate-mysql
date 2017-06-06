@@ -34,7 +34,7 @@ public class ErpController extends com.hzg.base.Controller {
 
     @GetMapping("/view/{entity}/{id}")
     public String viewById(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("id") Integer id,
-                           @CookieValue(name="sessionId")String sessionId) {
+                           @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
         logger.info("viewById start, entity:" + entity + ", id:" + id);
 
         List<Object> entities = null;

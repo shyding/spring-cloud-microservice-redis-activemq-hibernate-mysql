@@ -19,7 +19,7 @@ public class Index {
      * 跳转到默认页面
      */
     @RequestMapping("/")
-    public String index(Map<String, Object> model, @CookieValue(name="sessionId")String sessionId) {
+    public String index(Map<String, Object> model, @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
         String username = (String)dao.getFromRedis("sessionId_" + sessionId);
 
         if (username != null) {

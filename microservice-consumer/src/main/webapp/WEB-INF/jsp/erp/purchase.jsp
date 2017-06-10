@@ -80,6 +80,19 @@
                                     <input type="hidden" id="charger[id]" name="charger[id]" value="${entity.charger.id}">
                                 </div>
                             </div>
+                            <c:set var="supplierName" />
+                            <c:set var="supplierId" />
+                            <c:forEach items="${entity.details}" var="detail" end="0">
+                                <c:set var="supplierName" value="${detail.supplier.name}" />
+                                <c:set var="supplierId" value="${detail.supplier.id}" />
+                            </c:forEach>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text2">供应商</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input type="text" id="text2" name="text2" value="${supplierName}" placeholder="供应商" class="form-control col-md-7 col-xs-12" style="width:40%" required />
+                                    <input type="hidden" id="supplier[id]" value="${supplierId}" name="supplier[id]:number">
+                                </div>
+                            </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购描述 <span class="required">*</span>
                                 </label>
@@ -89,42 +102,126 @@
                             </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">采购条目</label>
-                                <div class="col-md-6 col-sm-6 col-xs-12"><div class="item form-group" id="details">
-                                    <c:if test="${entity == null}">
-                                    <div id="detail" class="row">
-                                        <input id="1" name="details[][productName]" placeholder="商品名称" data-validate-length-range="6,30" data-validate-words="1" type="text" style="width:240px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                        <input id="2" name="details[][amount]:number" placeholder="采购金额" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                        <input id="3" name="details[][price]:number" placeholder="采购单价" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                        <input id="4" name="details[][quantity]:number" placeholder="采购数量" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                        <input id="5" name="details[][unit]" placeholder="采购单位" data-validate-length-range="1,6" type="text" required>&nbsp;&nbsp;&nbsp;&nbsp;<br>
-                                        <input type="text" id="text2" name="text2" placeholder="供应商" style="width:340px;margin-top:6px" required />
-                                        <input type="hidden" id="details[][supplier[id]]" name="details[][supplier[id]]:number">
-                                     </div>
-                                     </c:if>
-                                    <c:set var="cursor" value="0" />
-                                    <c:forEach items="${entity.details}" var="detail" varStatus="status">
-                                        <div id="detail" class="row">
-                                            <input id="1<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][productName]" value="${detail.productName}" placeholder="商品名称" data-validate-length-range="6,30" data-validate-words="1" type="text" style="width:240px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="2<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][amount]:number" value="${detail.amount}" placeholder="采购金额" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="3<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][price]:number" value="${detail.price}" placeholder="采购单价" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="4<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][quantity]:number" value="${detail.quantity}" placeholder="采购数量" type="number" style="line-height: 28px" required>&nbsp;&nbsp;&nbsp;&nbsp;
-                                            <input id="5<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="details[][unit]" value="${detail.unit}" placeholder="采购单位" data-validate-length-range="1,6" type="text" required>&nbsp;&nbsp;&nbsp;&nbsp;<br>
-                                            <input type="text" id="text2<c:if test="${status.count > 1}">${status.count-1}</c:if>" name="text2" value="${detail.supplier.name}" placeholder="供应商" style="width:340px;margin-top:6px" required />
-                                            <input type="hidden" id="details[][supplier[id]]<c:if test="${status.count > 1}">${status.count-1}</c:if>" value="${detail.supplier.id}" name="details[][supplier[id]]:number">
-                                        </div>
-                                        <c:set var="cursor" value="${status.count-1}" />
-                                    </c:forEach>
-                                </div></div>
                             </div>
+
+                            <input type="hidden" id="state" name="state:number" value="<c:choose><c:when test="${entity != null}">${entity.state}</c:when><c:otherwise>0</c:otherwise></c:choose>">
+                            <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
+                            <input type="hidden" id="inputer[id]" name="inputer[id]" value="${userId}">
+                        </form>
+                    </div>
+
+
+                    <div class="x_content" style="overflow: auto">
+                        <table id="productList" class="table-sheet" width="100%">
+                            <thead><tr><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>证书</th>
+                                <th data-property-name="th-mountMaterial">镶嵌材质</th><th data-property-name="th-quality">特性</th>
+                                <th data-property-name="th-color">颜色</th><th data-property-name="th-type">种类</th>
+                                <th data-property-name="th-size">尺寸</th><th data-property-name="th-weight">重量</th>
+                                <th data-property-name="th-flaw">瑕疵</th><th data-property-name="th-theme">题材</th>
+                                <th data-property-name="th-style">款式</th><th data-property-name="th-transparency">透明度</th>
+                                <th data-property-name="th-carver">雕工</th><th data-property-name="th-originPlace">产地</th>
+                                <th data-property-name="th-shape">形状</th><th>采购价</th><th>采购价</th><th>市场价</th>
+                                <th>结缘价</th><th>特性</th></tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><input type="text" name="details[][product[name]]:string" required></td>
+                                <td><input type="text" name="details[][product[no]]:string" required></td>
+                                <td>
+                                    <select name="details[][product[type[id]]]:number" required>
+                                    <c:forEach items="${productTypes}" var="productType">
+                                        <option value="${productType.id}">${productType.name}</option>
+                                    </c:forEach>
+                                    </select>
+                                </td>
+                                <td><input type="text" name="details[][quantity]:number" value="1" required></td>
+                                <td>
+                                    <select name="details[][unit]:string" required>
+                                        <option value="件">件</option>
+                                        <option value="克">克</option>
+                                        <option value="克拉">克拉</option>
+                                        <option value="只">只</option>
+                                        <option value="双">双</option>
+                                        <option value="条">条</option>
+                                        <option value="枚">枚</option>
+                                        <option value="副">副</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" name="details[][product[properties[certificate]]]:string" data-skip-falsy="true"></td>
+                                <td>
+                                    <input type="text" data-property-name="mountMaterial" data-input-type="multiple" value="" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="quality" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="color" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="type" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="size" name="propertyValue" required>
+                                    <input type="hidden" name="details[][product[properties[]]:object" required>
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="weight" name="propertyValue" required>
+                                    <input type="hidden" name="details[][product[properties[]]:object" required>
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="flaw" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="theme" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="style" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="transparency" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="carver" name="propertyValue" data-skip-falsy="true">
+                                    <input type="hidden" name="details[][product[properties[]]:object" data-skip-falsy="true">
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="originPlace"  name="propertyValue" required>
+                                    <input type="hidden" name="details[][product[properties[]]:object" required>
+                                </td>
+                                <td>
+                                    <input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue" required>
+                                    <input type="hidden" value="" name="details[][product[properties[]]:object" required>
+                                </td>
+                                <td><input type="text" name="details[][product[costPrice]]:number" required></td>
+                                <td><input type="text" name="details[][product[unitPrice]]:number" required></td>
+                                <td><input type="text" name="details[][product[price]]:number" data-skip-falsy="true"></td>
+                                <td><input type="text" name="details[][product[fatePrice]]:number" data-skip-falsy="true"></td>
+                                <td><input type="text" name="details[][product[feature]]:string" required></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="x_content">
+                        <div class="form-horizontal form-label-left">
                             <div class="form-group">
-                                <div class="col-md-6 col-md-offset-3">
+                                <div class="col-md-6 col-md-offset-0" style="margin-top: 10px">
                                     <button id="addItem" type="button" class="btn btn-success">添加采购条目</button>
                                 </div>
                             </div>
 
                             <div class="ln_solid"></div>
                             <div class="form-group" id="submitDiv">
-                                <div class="col-md-6 col-md-offset-3">
+                                <div class="col-md-6 col-md-offset-10">
                                     <button id="cancel" type="button" class="btn btn-primary">取消</button>
                                     <c:if test="${entity == null}">
                                         <button id="send" type="button" class="btn btn-success">保存</button>
@@ -142,10 +239,7 @@
                                     </c:if>
                                 </div>
                             </div>
-                            <input type="hidden" id="state" name="state:number" value="<c:choose><c:when test="${entity != null}">${entity.state}</c:when><c:otherwise>0</c:otherwise></c:choose>">
-                            <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
-                            <input type="hidden" id="inputer[id]" name="inputer[id]" value="${userId}">
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -177,51 +271,6 @@
         console.log(start.toISOString(), end.toISOString(), label);
     });
 
-    var cursor = ${cursor};
-
-    if (cursor > 0) {
-        for (var ci = 1; ci <= cursor; ci++) {
-            $("#text2"+ci).coolautosuggest({
-                url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
-                showProperty: 'name',
-                onSelected:function(result){
-                    if(result!=null){
-                        $(document.getElementById("details[][supplier[id]]"+ci)).val(result.id);
-                    }
-                }
-            });
-        }
-    }
-
-    $('#addItem').click(function () {
-        cursor++;
-        var detailHtml = String($("#detail").html());
-
-        var detailItems = document.getElementById("detail").children;
-        for (var index in detailItems) {
-            var id = String(detailItems[index].id);
-            detailHtml = detailHtml.replace('id="' + id + '"', 'id="' + id + String(cursor) +'"');
-        }
-        var detailsHtmlParts = detailHtml.split("<br>");
-
-        $('#details').append('<div class="row">' +
-            detailsHtmlParts[0] +
-            '<a href="#minus" onclick="this.parentNode.parentNode.removeChild(this.parentNode);"><i class="fa fa-minus-circle"></i></a>' +
-            detailsHtmlParts[1] + "</div>");
-
-        document.getElementById("1" + count).focus();
-
-        $("#text2"+count).coolautosuggest({
-            url:"<%=request.getContextPath()%>/erp/suggest/supplier/name/",
-            showProperty: 'name',
-            onSelected:function(result){
-                if(result!=null){
-                    $(document.getElementById("details[][supplier[id]]"+count)).val(result.id);
-                }
-            }
-        });
-    });
-
     $("#text1").coolautosuggest({
         url:"<%=request.getContextPath()%>/sys/suggest/user/name/",
         showProperty: 'name',
@@ -237,7 +286,7 @@
         showProperty: 'name',
         onSelected:function(result){
             if(result!=null){
-                $(document.getElementById("details[][supplier[id]]")).val(result.id);
+                $(document.getElementById("supplier[id]")).val(result.id);
             }
         }
     });
@@ -261,6 +310,9 @@
     });
 
     $(document).unbind("keydown");
+
+    tableSheet.init("productList", 15, "<%=request.getContextPath()%>");
+    $('#addItem').click(function(){tableSheet.addRow("productList");});
 
     <c:choose><c:when test="${entity != null}">document.title = "采购单查看";</c:when><c:otherwise> document.title = "采购单填写";</c:otherwise></c:choose>
 </script>

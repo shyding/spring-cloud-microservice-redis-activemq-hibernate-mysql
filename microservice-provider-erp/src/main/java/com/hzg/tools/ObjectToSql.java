@@ -430,27 +430,19 @@ public class ObjectToSql {
         String[] joinTableInfo = getJoinTableInfo(field);
 
         if (joinTableInfo != null && value != null) {
-            Set<Object> objects = (Set<Object>)value;
-            if (objects.size() > 0) {
-                columnValue = new ArrayList<>();
+            columnValue = new ArrayList<>();
 
-                //ManyToMany  关联表里的 tableName 信息
-                columnValue.add("id"); // 主表 id
-                columnValue.add(joinTableInfo[0]); // 连接表表名
-                columnValue.add(joinTableInfo[1]); // 连接主表 id 的表名
-                columnValue.add(joinTableInfo[2]); // 连接次表 id 的表名
+            //ManyToMany  关联表里的 tableName 信息
+            columnValue.add("id"); // 主表 id
+            columnValue.add(joinTableInfo[0]); // 连接表表名
+            columnValue.add(joinTableInfo[1]); // 连接主表 id 的表名
+            columnValue.add(joinTableInfo[2]); // 连接次表 id 的表名
 
-                String tableName = getTableName(objects.toArray()[0].getClass());
-                if (tableName.equals("")) {
-                    tableName = getTableName((Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]);
-                }
+            columnValue.add(getTableName((Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0])); // 次表
+            columnValue.add("id"); // 次表 id
+            columnValue.add(value); // 次表对象值
+            columnValue.add(((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]); // 次表 clazz 类
 
-                columnValue.add(tableName); // 次表
-                columnValue.add("id"); // 次表 id
-                columnValue.add(value); // 次表对象值
-                columnValue.add(((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]); // 次表 clazz 类
-
-            }
         }
 
         return columnValue;
@@ -571,33 +563,25 @@ public class ObjectToSql {
         List<Object> columnValue = null;
 
         if(field.isAnnotationPresent(OneToMany.class)  && value != null){
-            Set<Object> objects = (Set<Object>)value;
-            if (objects.size() > 0) {
-                columnValue = new ArrayList<>();
+            columnValue = new ArrayList<>();
 
-                Class clazz = (Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0];
+            Class clazz = (Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0];
 
-                String tableName = getTableName(objects.toArray()[0].getClass());
-                if (tableName.equals("")) {
-                    tableName = getTableName(clazz);
+            String joinColumn = "";
+            Field[] fields = clazz.getDeclaredFields();
+            for (Field field1 : fields) {
+                if (field1.getName().equals(field.getAnnotation(OneToMany.class).mappedBy())) {
+                    joinColumn = field1.getAnnotation(JoinColumn.class).name();
+                    break;
                 }
-
-                String joinColumn = "";
-                Field[] fields = clazz.getDeclaredFields();
-                for (Field field1 : fields) {
-                    if (field1.getName().equals(field.getAnnotation(OneToMany.class).mappedBy())) {
-                        joinColumn = field1.getAnnotation(JoinColumn.class).name();
-                        break;
-                    }
-                }
-
-                //OneToMany 关联表里的 tableName 信息
-                columnValue.add("id"); // 主表 id
-                columnValue.add(tableName); // 次表
-                columnValue.add(joinColumn); // 次表连接主表 id 的字段名
-                columnValue.add(value); // 次表对象值
-                columnValue.add(clazz); // 次表 class 类
             }
+
+            //OneToMany 关联表里的 tableName 信息
+            columnValue.add("id"); // 主表 id
+            columnValue.add(getTableName((Class)((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0])); // 次表
+            columnValue.add(joinColumn); // 次表连接主表 id 的字段名
+            columnValue.add(value); // 次表对象值
+            columnValue.add(clazz); // 次表 class 类
         }
 
         return columnValue;

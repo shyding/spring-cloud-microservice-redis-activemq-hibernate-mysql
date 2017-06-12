@@ -97,8 +97,11 @@ var tableSheet = (function ($) {
 
                         var typeSelect = $($(this).parent().parent().find("select")[0]);
 
-                        queryJson["types"][0]["id"] = parseInt(typeSelect.val());
-                        queryJson["name"] = getChildPropertyName(propertyName, typeSelect.find("option:selected").text());
+                        queryJson["types"] = "[{id:" + parseInt(typeSelect.val()) + "}]";
+                        var childPropertyName = getChildPropertyName(propertyName, typeSelect.find("option:selected").text());
+                        if (childPropertyName != null) {
+                            queryJson["name"] = childPropertyName;
+                        }
 
                         return queryJson;
                     },
@@ -207,7 +210,7 @@ var tableSheet = (function ($) {
     }
 
     function getChildPropertyName(propertyName, typeName) {
-        var name = "特性";
+        var name = null;
 
         if (propertyName == "quality") {
 

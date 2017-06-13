@@ -295,12 +295,10 @@
           }
         }
         else if(e.keyCode==13){
-          if(settings.idField!=null){
-            if(me.checkSelected(textField.val())==false){
-              textField.val("");
-              settings.idField.val("");
-            }
-          }
+            var target=holder.find("#" + suggestRow + currRow);
+            me.unSelectAll(target);
+
+            highlightmultiple(target, "enter");
 
           // Callback function
           if(typeof settings.onSelected == "function"){
@@ -311,8 +309,6 @@
               settings.onSelected.call(this, null);
             }
           }
-
-          me.hide();
         }
       }
       else{
@@ -335,17 +331,20 @@
           textField.val(obj.find("." + suggestText).text());
 
       } else if(textField.data("input-type") == "multiple") {
-          if (eventName == "click") {
+          if (eventName == "click" || eventName == "enter") {
               if ($.trim(textField.val()) == "") {
                   textField.val(obj.find("." + suggestText).text());
-              } else {
+
+              } else if (textField.val().indexOf(obj.find("." + suggestText).text()) == -1) {
                   textField.val(textField.val() + "#" + obj.find("." + suggestText).text());
-
               }
-
-              me.hide();
           }
       }
+
+      if ((eventName == "click") || eventName == "enter") {
+          me.hide();
+      }
+
       if(settings.idField!=null){
         settings.idField.val(obj.attr("id_field"));
       }

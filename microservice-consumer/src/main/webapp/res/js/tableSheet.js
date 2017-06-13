@@ -75,10 +75,10 @@ var tableSheet = (function ($) {
         }
 
         if (item != null) {
-            setInputEvent(item, propertyName)
+            setInputValue(item, propertyName)
         } else if (suggestInputs != null) {
             for (var si = 0; si < suggestInputs.length; si++) {
-                setInputEvent($(suggestInputs[si]), propertyName);
+                setInputValue($(suggestInputs[si]), propertyName);
             }
         }
 
@@ -90,41 +90,13 @@ var tableSheet = (function ($) {
                     showProperty: 'value',
 
                     getQueryData: function(paramName){
-                        var queryJson = suggestsProperties[propertyName]["json"];
-                        if ($.trim(this.value) != "" && paramName != null) {
-                            queryJson["\"" + paramName + "\""] =  + this.value;
-                        }
-
-                        var typeSelect = $($(this).parent().parent().find("select")[0]);
-
-                        queryJson["types"] = "[{id:" + parseInt(typeSelect.val()) + "}]";
-                        var childPropertyName = getChildPropertyName(propertyName, typeSelect.find("option:selected").text());
-                        if (childPropertyName != null) {
-                            queryJson["name"] = childPropertyName;
-                        }
-
-                        return queryJson;
+                       return getQueryData(this, propertyName, paramName);
                     },
 
                     onSelected:function(result){
-                        if(result!=null){
-                            var input = $(this).parent().children('input')[1];
-                            var value = '{"property":{"id":' + result.id + '},"name":"' + result.name + '", "value":"' + result.value + '"}';
-
-                            if ($(this).data("input-type") == undefined || $(this).data("input-type") == null) {
-                                input.value = value;
-
-                            } else {
-                                if ($(this).data("input-type") == "multiple") {
-                                    if ($.trim(input.value) == "") {
-                                        input.value = value;
-                                    } else {
-                                        $($(this).parent()).append('<input type="hidden" name="' + input.name + '" value="' + value + '" data-skip-falsy="true">');
-                                    }
-                                }
-                            }
-                        }
+                        onSelectedSetValue(this, result);
                     }
+
                 });
             }
         } catch(e) {
@@ -132,85 +104,166 @@ var tableSheet = (function ($) {
         }
     }
 
-    function setInputEvent(item, propertyName) {
-        var value = item.val();
-        var childPropertyName = getChildPropertyName(propertyName,  item.parent().parent().find("select").find("option:selected").text());
-
-        if (item.data("input-type") != undefined && item.data("input-type") != null) {
-            if (item.data("input-type") == "multiple") {
-                item.blur(function(){
-                   var valueArray = value.split("#");
-                   var inputs = item.parent().children('input');
-
-                   var setValues = new Array(), notSetValues = new Array();
-                   for (var vai = 0; vai < valueArray.length; vai++) {
-                       var isSet = false;
-
-                       for (var ii = 1; ii < inputs.length; ii++) {
-                           if ($.trim(valueArray[vai]) != "" && inputs[ii].value.indexOf('"' + valueArray[vai] + '"') != -1) {
-                               isSet = true;
-                               setValues[setValues.length] = ii;
-
-                               break
-                           }
-                       }
-
-                       if (isSet == false) {
-                           if ($.trim(valueArray[vai]) != "") {
-                               notSetValues[notSetValues.length] = vai;
-                           }
-                       }
-                   }
-
-                   var name = inputs[1].name;
-
-                    /**
-                     * 移除错误的值
-                     */
-                   if (setValues.length > 0) {
-                       for (ii = 1; ii < inputs.length; ii++) {
-                           isSet = false;
-
-                           for (var svi = 0; svi < setValues.length; svi++) {
-                               if (ii == setValues[svi]) {
-                                   isSet = true;
-                                   break;
-                               }
-                           }
-
-                           if (!isSet) {
-                               $(inputs[ii]).remove();
-                           }
-                       }
-                   }
-
-                    /**
-                     * 添加没有设置的值
-                     */
-                   for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
-                       var itemValue = '{"name":"' + childPropertyName + '", "value":"' + notSetValues[nsvi] + '"}';
-
-                       item.parent().append('<input type="hidden" name="' + name + '" value="' + itemValue + '" data-skip-falsy="true">');
-                   }
-                });
+    function getQueryData(inputElement, propertyName, paramName) {
+        var queryJson = suggestsProperties[propertyName]["json"];
+        if ($.trim(inputElement.value) != "") {
+            if ($(inputElement).data("input-type") == undefined || $(inputElement).data("input-type") == null ||
+                ($(inputElement).data("input-type") != undefined && $(inputElement).data("input-type") != "multiple")){
+                queryJson[paramName] = $.trim(inputElement.value);
             }
+        } else {
+            delete queryJson[paramName];
+        }
+
+
+        var typeSelect = $($(inputElement).parent().parent().find("select")[0]);
+
+        queryJson["types"] = "[{id:" + parseInt(typeSelect.val()) + "}]";
+        var childPropertyName = getChildPropertyName(propertyName, typeSelect.find("option:selected").text());
+        if (childPropertyName != null) {
+            queryJson["name"] = childPropertyName;
+        }
+
+        return queryJson;
+    }
+
+    function onSelectedSetValue(inputElement, result) {
+        if(result!=null && inputElement.tagName != undefined && inputElement.tagName.toLowerCase() == "input"){
+            var input = $(inputElement).parent().children('input')[1];
+            var value = '{"property":{"id":' + result.id + '},"name":"' + result.name + '","value":"' + result.value + '"}';
+
+            if ($(inputElement).data("input-type") == undefined || $(inputElement).data("input-type") == null) {
+                if (input != undefined) {
+                    input.value = value;
+                }
+
+            } else {
+                if ($(inputElement).data("input-type") == "multiple" && input != undefined) {
+
+                    if ($.trim(input.value) == "") {
+                        input.value = value;
+
+                    } else {
+                        var inputs = $(inputElement).parent().children('input');
+
+                        var isSet = false;
+                        for (var ii = 1; ii < inputs.length; ii++) {
+                            if ($.trim(value).indexOf(inputs[ii].value) != -1) {
+                                isSet = true;
+                                break
+                            }
+                        }
+
+                        console.log("setSelect value:" + value);
+                        for (var k = 0; k < inputs.length; k++) {
+                            console.log("setSelect inputs:" + inputs[k].value);
+                        }
+
+                        if (!isSet) {
+                            $($(inputElement).parent()).append("<input type='hidden' name='" + input.name + "' value='" + value + "' data-skip-falsy='true'>");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function setInputValue(inputElement, propertyName) {
+        if (inputElement.data("input-type") != undefined && inputElement.data("input-type") != null && inputElement.data("input-type") == "multiple") {
+            inputElement.blur(function() {
+                var valueArray = inputElement.val().split("#");
+                var inputs = inputElement.parent().children('input');
+
+                var setValues = new Array(), notSetValues = new Array();
+                var svl = 0, nsvi = 0;
+                for (var vai = 0; vai < valueArray.length; vai++) {
+                    var isSet = false;
+
+                    for (var ii = 1; ii < inputs.length; ii++) {
+                        if ($.trim(valueArray[vai]) != "" && $.trim(inputs[ii].value).indexOf('"' + $.trim(valueArray[vai]) + '"') != -1) {
+                            isSet = true;
+                            setValues[svl++] = ii;
+
+                            break;
+                        }
+                    }
+
+                    if (isSet == false) {
+                        if ($.trim(valueArray[vai]) != "") {
+                            notSetValues[nsvi++] = vai;
+                        }
+                    }
+                }
+
+                for (var k = 0; k < setValues.length; k++) {
+                    console.log("setValues:" + setValues[k]);
+                }
+                for (var k = 0; k < notSetValues.length; k++) {
+                    console.log("notSetValues:" + notSetValues[k]);
+                }
+                for (var k = 0; k < inputs.length; k++) {
+                    console.log("inputs:" + inputs[k].value);
+                }
+
+                /**
+                 * 移除错误的值
+                 */
+                if (setValues.length > 0) {
+                    for (ii = 1; ii < inputs.length; ii++) {
+                        isSet = false;
+
+                        for (var svi = 0; svi < setValues.length; svi++) {
+                            if (ii == setValues[svi]) {
+                                isSet = true;
+                                break;
+                            }
+                        }
+
+                        if (!isSet) {
+                            $(inputs[ii]).remove();
+                        }
+                    }
+
+                } else {
+                    if (inputs.length > 1) {
+                        inputs[1].value = "";
+
+                        for (ii = 2; ii < inputs.length; ii++) {
+                            $(inputs[ii]).remove();
+                        }
+                    }
+                }
+
+                var name = "details[][product[properties[]]:object";
+                if (inputs.length > 1) {
+                    name = inputs[1].name;
+                }
+
+                /**
+                 * 添加没有设置的值
+                 */
+                for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
+                    var itemValue = '{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '", "value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
+                    inputElement.parent().append("<input type='hidden' name='" + name + "' value='" + itemValue + "' data-skip-falsy='true'>");
+                }
+            });
 
         } else {
-            item.blur(function(){
-                var input = item.parent().children('input')[1];
+            inputElement.blur(function() {
+                var input = $(inputElement.parent().children('input')[1]);
 
                 /**
                  * 不是建议框里的值，则重新复制
                  */
-                if (input.val().indexOf('"' + value + '"') == -1) {
-                    input.val('{"name":"' + childPropertyName + '", "value":"' + value + '"}');
+                if (input.val().indexOf('"' + inputElement.val() + '"') == -1) {
+                    input.val('{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '", "value":"' + inputElement.val() + '"}');
                 }
             });
         }
     }
 
     function getChildPropertyName(propertyName, typeName) {
-        var name = null;
+        var name = suggestsProperties[propertyName]["json"]["name"];
 
         if (propertyName == "quality") {
 

@@ -163,9 +163,12 @@ function render(url){
     $.ajax({
         type: "get",
         url:  url,
+
         success: function (pageContent) {
-            setHisUrls(url);
-            $("#pageContent").empty().html(pageContent);
+            if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
+                setHisUrls(url);
+                $("#pageContent").empty().html(pageContent);
+            }
         }
     });
 }
@@ -175,25 +178,38 @@ function renderAudit(element, url){
         type: "get",
         url:  url,
         success: function (pageContent) {
-            element.empty().html(pageContent);
+            if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
+                element.empty().html(pageContent);
 
-            /**
-             * 蕴藏部分元素
-             */
-            element.find(".page-title").css("display", "none");
-            element.find(".clearfix").css("display", "none");
-            element.find(".x_title").css("display", "none");
-            var children = document.getElementById("form").children;
-            var index = children.length-1;
-            for (;index >= 0; index--) {
-                if (children[index].tagName.toLowerCase() == "div") {
-                    children[index].innerHTML="";
-                    break;
+                /**
+                 * 蕴藏部分元素
+                 */
+                element.find(".page-title").css("display", "none");
+                element.find(".clearfix").css("display", "none");
+                element.find(".x_title").css("display", "none");
+                var children = document.getElementById("form").children;
+                var index = children.length - 1;
+                for (; index >= 0; index--) {
+                    if (children[index].tagName.toLowerCase() == "div") {
+                        children[index].innerHTML = "";
+                        break;
+                    }
                 }
+                $('#result').attr("readonly", false).css("border", "1px solid #ccc");
             }
-            $('#result').attr("readonly",false).css("border", "1px solid #ccc");
         }
     });
+}
+
+function isValid(pageContent, contextPath) {
+    if (typeof pageContent == 'object' && pageContent.result == "对不起，你访问的页面不存在，或者会话已经过期") {
+        $("#pageContent").empty().html("<div class='right_col' style='height: 100%'>" + pageContent.result +
+            "<br/><br/><a href='" + contextPath + "/sys/user/signIn'>请重新登录</a></div>");
+
+        return false;
+    }
+
+    return true;
 }
 
 function setHisUrls(url) {

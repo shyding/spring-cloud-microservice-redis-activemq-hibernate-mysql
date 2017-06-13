@@ -128,39 +128,36 @@ var tableSheet = (function ($) {
     }
 
     function onSelectedSetValue(inputElement, result) {
-        if(result!=null && inputElement.tagName != undefined && inputElement.tagName.toLowerCase() == "input"){
-            var input = $(inputElement).parent().children('input')[1];
+        if(result!=null && inputElement.is('input')){
+            var input = inputElement.parent().children('input')[1];
             var value = '{"property":{"id":' + result.id + '},"name":"' + result.name + '","value":"' + result.value + '"}';
 
-            if ($(inputElement).data("input-type") == undefined || $(inputElement).data("input-type") == null) {
+            if (inputElement.data("input-type") == undefined || inputElement.data("input-type") == null) {
                 if (input != undefined) {
                     input.value = value;
                 }
 
             } else {
-                if ($(inputElement).data("input-type") == "multiple" && input != undefined) {
+                if (inputElement.data("input-type") == "multiple" && input != undefined) {
 
                     if ($.trim(input.value) == "") {
                         input.value = value;
 
                     } else {
-                        var inputs = $(inputElement).parent().children('input');
+                        var inputs = inputElement.parent().children('input');
 
                         var isSet = false;
                         for (var ii = 1; ii < inputs.length; ii++) {
-                            if ($.trim(value).indexOf(inputs[ii].value) != -1) {
+                            if (value.indexOf(inputs[ii].value) != -1) {
                                 isSet = true;
                                 break
                             }
                         }
 
-                        console.log("setSelect value:" + value);
-                        for (var k = 0; k < inputs.length; k++) {
-                            console.log("setSelect inputs:" + inputs[k].value);
-                        }
+                        console.log("onSelectedSetValue:" + isSet);
 
                         if (!isSet) {
-                            $($(inputElement).parent()).append("<input type='hidden' name='" + input.name + "' value='" + value + "' data-skip-falsy='true'>");
+                            $(inputElement.parent()).append("<input type='hidden' name='" + input.name + "' value='" + value + "' data-skip-falsy='true'>");
                         }
                     }
                 }
@@ -169,98 +166,103 @@ var tableSheet = (function ($) {
     }
 
     function setInputValue(inputElement, propertyName) {
-        if (inputElement.data("input-type") != undefined && inputElement.data("input-type") != null && inputElement.data("input-type") == "multiple") {
-            inputElement.blur(function() {
-                var valueArray = inputElement.val().split("#");
-                var inputs = inputElement.parent().children('input');
+        if (inputElement.is('input')) {
+            if (inputElement.data("input-type") != undefined && inputElement.data("input-type") != null && inputElement.data("input-type") == "multiple") {
+                inputElement.blur(function () {
+                    var valueArray = inputElement.val().split("#");
+                    var inputs = inputElement.parent().children('input');
 
-                var setValues = new Array(), notSetValues = new Array();
-                var svl = 0, nsvi = 0;
-                for (var vai = 0; vai < valueArray.length; vai++) {
-                    var isSet = false;
+                    var setValues = new Array(), notSetValues = new Array();
+                    var svl = 0, nsvi = 0;
+                    for (var vai = 0; vai < valueArray.length; vai++) {
+                        var isSet = false;
 
-                    for (var ii = 1; ii < inputs.length; ii++) {
-                        if ($.trim(valueArray[vai]) != "" && $.trim(inputs[ii].value).indexOf('"' + $.trim(valueArray[vai]) + '"') != -1) {
-                            isSet = true;
-                            setValues[svl++] = ii;
-
-                            break;
-                        }
-                    }
-
-                    if (isSet == false) {
-                        if ($.trim(valueArray[vai]) != "") {
-                            notSetValues[nsvi++] = vai;
-                        }
-                    }
-                }
-
-                for (var k = 0; k < setValues.length; k++) {
-                    console.log("setValues:" + setValues[k]);
-                }
-                for (var k = 0; k < notSetValues.length; k++) {
-                    console.log("notSetValues:" + notSetValues[k]);
-                }
-                for (var k = 0; k < inputs.length; k++) {
-                    console.log("inputs:" + inputs[k].value);
-                }
-
-                /**
-                 * 移除错误的值
-                 */
-                if (setValues.length > 0) {
-                    for (ii = 1; ii < inputs.length; ii++) {
-                        isSet = false;
-
-                        for (var svi = 0; svi < setValues.length; svi++) {
-                            if (ii == setValues[svi]) {
+                        for (var ii = 1; ii < inputs.length; ii++) {
+                            if ($.trim(valueArray[vai]) != "" && $.trim(inputs[ii].value).indexOf('"' + $.trim(valueArray[vai]) + '"') != -1) {
                                 isSet = true;
+                                setValues[svl++] = ii;
+
                                 break;
                             }
                         }
 
-                        if (!isSet) {
-                            $(inputs[ii]).remove();
+                        if (isSet == false) {
+                            if ($.trim(valueArray[vai]) != "") {
+                                notSetValues[nsvi++] = vai;
+                            }
                         }
                     }
 
-                } else {
+                    /**
+                     * 移除错误的值
+                     */
+                    if (setValues.length > 0) {
+                        for (ii = 1; ii < inputs.length; ii++) {
+                            isSet = false;
+
+                            for (var svi = 0; svi < setValues.length; svi++) {
+                                if (ii == setValues[svi]) {
+                                    isSet = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isSet) {
+                                $(inputs[ii]).remove();
+                            }
+                        }
+
+                    } else {
+                        if (inputs.length > 1) {
+                            for (ii = 2; ii < inputs.length; ii++) {
+                                $(inputs[ii]).remove();
+                            }
+
+                            inputs[1].value = "";
+                        }
+                    }
+
+                    var name = "details[][product[properties[]]:object";
                     if (inputs.length > 1) {
-                        inputs[1].value = "";
-
-                        for (ii = 2; ii < inputs.length; ii++) {
-                            $(inputs[ii]).remove();
-                        }
+                        name = inputs[1].name;
                     }
-                }
 
-                var name = "details[][product[properties[]]:object";
-                if (inputs.length > 1) {
-                    name = inputs[1].name;
-                }
+                    /**
+                     * 添加没有设置的值
+                     */
+                    for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
+                        var itemValue = '{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '","value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
 
-                /**
-                 * 添加没有设置的值
-                 */
-                for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
-                    var itemValue = '{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '", "value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
-                    inputElement.parent().append("<input type='hidden' name='" + name + "' value='" + itemValue + "' data-skip-falsy='true'>");
-                }
-            });
+                        var isSet = false;
+                        for (var ii = 1; ii < inputs.length; ii++) {
+                            if (inputs[ii].value.indexOf(itemValue) != -1) {
+                                isSet = true;
+                                break
+                            }
+                        }
 
-        } else {
-            inputElement.blur(function() {
-                var input = $(inputElement.parent().children('input')[1]);
+                        if (!isSet) {
+                            inputElement.parent().append("<input type='hidden' name='" + name + "' value='" + itemValue + "' data-skip-falsy='true'>");
+                        }
 
-                /**
-                 * 不是建议框里的值，则重新复制
-                 */
-                if (input.val().indexOf('"' + inputElement.val() + '"') == -1) {
-                    input.val('{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '", "value":"' + inputElement.val() + '"}');
-                }
-            });
+                    }
+                });
+
+            } else {
+                inputElement.blur(function () {
+                    var input = $(inputElement.parent().children('input')[1]);
+
+                    /**
+                     * 不是建议框里的值，则重新复制
+                     */
+                    if (input.val().indexOf('"' + inputElement.val() + '"') == -1) {
+                        input.val('{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '","value":"' + inputElement.val() + '"}');
+                    }
+                });
+            }
         }
     }
+
 
     function getChildPropertyName(propertyName, typeName) {
         var name = suggestsProperties[propertyName]["json"]["name"];

@@ -1,3 +1,8 @@
+/**
+ * modified from  Query Plugin coolautosuggest
+ * coolautosuggest homepage:  http://stuff.w3shaman.com/jquery-plugins/coolautosuggest/
+ */
+
 (function($) {
   function autosuggestm(settings, txtField){
     var divId=settings.divId;
@@ -123,7 +128,7 @@
                           }
                         }
 
-                        holder.html('<div style="position:absolute;z-index: 999;">' + html + '</div>');
+                        holder.html('<div  style="position:absolute;">' + html + '</div>');
 
                         for(i=1;i<=arr.length;i++){
                           var target=holder.find("#" + suggestRow + i);
@@ -143,14 +148,12 @@
 
                           target.on("click touchstart", function(e){
                             var t = $(this);
-                              highlightmultiple(t, "click");
+                            highlightmultiple(t, "click");
 
                             // Callback function
                             if(typeof settings.onSelected == "function"){
-                              settings.onSelected.call(this, arrData[t.attr("seq_id")]);
+                              settings.onSelected.call(textField, arrData[t.attr("seq_id")]);
                             }
-
-                            autoSubmit();
                           });
 
                           target.mousemove(function(e){
@@ -208,20 +211,12 @@
         else{
           hovered=false;
         }
-
-        if(typeof settings.onSelected == "function" && currRow>0){
-          settings.onSelected.call(this, arrData[currRow-1]);
-          //me.hide();
-        }
       }
     );
 
     this.show=function(height){
       holder.css({
-        "position":"absolute",
-        "left":textField.position().left + "px",
-        "top":textField.position().top + textField.height() + 5 + "px",
-        "height":height + "px"
+          "position":"relative"
       });
 
       holder.css({
@@ -303,10 +298,7 @@
           // Callback function
           if(typeof settings.onSelected == "function"){
             if(currRow>0){
-              settings.onSelected.call(this, arrData[currRow-1]);
-            }
-            else{
-              settings.onSelected.call(this, null);
+              settings.onSelected.call(textField, arrData[currRow-1]);
             }
           }
         }
@@ -349,8 +341,6 @@
         settings.idField.val(obj.attr("id_field"));
       }
     }
-
-
 
     function autoSubmit() {
       if(settings.submitOnSelect==true){

@@ -1,11 +1,14 @@
 package com.hzg.erp;
 
+import org.hibernate.annotations.Type;
+
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.Set;
 
 @Entity(name = "hzg_product")
 public class Product implements Serializable {
-    private static final long serialVersionUID = 345435245233228L;
+    private static final long serialVersionUID = 345435245233232L;
 
     public Product(){
         super();
@@ -16,8 +19,8 @@ public class Product implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
-    @Column(name="productNo",length=15)
-    private Integer productNo;
+    @Column(name="no",length=15)
+    private String no;
 
     @Column(name="name",length=30)
     private String name;
@@ -26,13 +29,15 @@ public class Product implements Serializable {
     @JoinColumn(name = "typeId")
     private ProductType type;
 
-    @Column(name="certificateInfo",length=60)
-    private String certificateInfo;
+    @Column(name="certificate",length=60)
+    private String certificate;
 
-    @Column(name="price", length = 8, precision = 2)
+    @Column(name="price", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float price;
 
-    @Column(name="fatePrice", length = 8, precision = 2)
+    @Column(name="fatePrice", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float fatePrice;
 
     @Column(name="feature",length=6)
@@ -49,11 +54,16 @@ public class Product implements Serializable {
     @JoinColumn(name = "describeId")
     private ProductDescribe describe;
 
-    @Column(name="costPrice", length = 8, precision = 2)
+    @Column(name="costPrice", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float costPrice;
 
-    @Column(name="unitPrice", length = 8, precision = 2)
+    @Column(name="unitPrice", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float unitPrice;
+
+    @OneToMany(mappedBy = "product", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<ProductOwnProperty> properties;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -67,12 +77,12 @@ public class Product implements Serializable {
         this.id = id;
     }
 
-    public Integer getProductNo() {
-        return productNo;
+    public String getNo() {
+        return no;
     }
 
-    public void setProductNo(Integer productNo) {
-        this.productNo = productNo;
+    public void setNo(String no) {
+        this.no = no;
     }
 
     public String getName() {
@@ -91,12 +101,12 @@ public class Product implements Serializable {
         this.type = type;
     }
 
-    public String getCertificateInfo() {
-        return certificateInfo;
+    public String getCertificate() {
+        return certificate;
     }
 
-    public void setCertificateInfo(String certificateInfo) {
-        this.certificateInfo = certificateInfo;
+    public void setCertificate(String certificate) {
+        this.certificate = certificate;
     }
 
     public Float getPrice() {
@@ -161,5 +171,13 @@ public class Product implements Serializable {
 
     public void setUnitPrice(Float unitPrice) {
         this.unitPrice = unitPrice;
+    }
+
+    public Set<ProductOwnProperty> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(Set<ProductOwnProperty> properties) {
+        this.properties = properties;
     }
 }

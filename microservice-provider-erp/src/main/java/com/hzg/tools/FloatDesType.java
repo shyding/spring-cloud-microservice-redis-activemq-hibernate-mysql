@@ -3,16 +3,16 @@ package com.hzg.tools;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.usertype.UserType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
-import java.sql.*;
-import java.util.Arrays;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 
 @Component
-public class IntegersType implements UserType {
-
+public class FloatDesType implements UserType {
     protected static final int[] SQL_TYPES = { Types.VARCHAR };
 
     @Override
@@ -27,7 +27,7 @@ public class IntegersType implements UserType {
 
     @Override
     public Serializable disassemble(Object value) throws HibernateException {
-        return (Integer[]) this.deepCopy(value);
+        return (Float) this.deepCopy(value);
     }
 
     @Override
@@ -56,10 +56,10 @@ public class IntegersType implements UserType {
             return null;
         }
         if(resultSet.getArray(names[0]) == null){
-            return new Integer[0];
+            return null;
         }
 
-        return ((Writer) SpringUtil.getBean("writer")).gson.fromJson(names[0], Integer[].class);
+        return Float.parseFloat(((Des) SpringUtil.getBean("des")).decrypt(names[0]));
     }
 
     @Override
@@ -68,7 +68,7 @@ public class IntegersType implements UserType {
         if (value == null) {
             statement.setNull(index, SQL_TYPES[0]);
         } else {
-            statement.setString(index, Arrays.deepToString((Integer[])value));
+            statement.setString(index, ((Des) SpringUtil.getBean("des")).encrypt(String.valueOf(value)));
         }
     }
 
@@ -78,12 +78,12 @@ public class IntegersType implements UserType {
     }
 
     @Override
-    public Class<Integer[]> returnedClass() {
-        return Integer[].class;
+    public Class<Float> returnedClass() {
+        return Float.class;
     }
 
     public String returnedClassStr() {
-        return "Integer[]";
+        return "Float";
     }
 
     @Override

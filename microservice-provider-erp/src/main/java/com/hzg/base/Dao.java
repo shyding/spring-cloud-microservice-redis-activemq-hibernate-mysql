@@ -4,6 +4,7 @@ package com.hzg.base;
  * Created by Administrator on 2017/4/20.
  */
 
+import com.hzg.tools.Des;
 import com.hzg.tools.ObjectToSql;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
@@ -39,6 +40,9 @@ public class Dao {
 
     @Autowired
     private Writer writer;
+
+    @Autowired
+    private Des des;
 
     /**
      * 保存对象
@@ -350,8 +354,10 @@ public class Dao {
 
                     if (returnType.equals("Integer[]")) {
                         value = writer.gson.fromJson((String)value, Integer[].class);
-                    }
 
+                    } else if (returnType.equals("FloatDesType")) {
+                        value = Float.parseFloat(des.decrypt((String)value));
+                    }
 
                     clazz.getMethod(methodName, field.getType()).invoke(object, value);
                     isSet = true;

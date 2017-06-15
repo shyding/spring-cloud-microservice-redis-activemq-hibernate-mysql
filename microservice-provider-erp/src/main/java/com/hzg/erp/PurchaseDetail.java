@@ -1,5 +1,7 @@
 package com.hzg.erp;
 
+import org.hibernate.annotations.Type;
+
 import javax.persistence.*;
 import java.io.Serializable;
 
@@ -28,7 +30,8 @@ public class PurchaseDetail implements Serializable {
     @Column(name="productName",length=30)
     private String productName;
 
-    @Column(name="amount", length = 8, precision = 2)
+    @Column(name="amount", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float amount;
 
     @Column(name="quantity", length = 8, precision = 2)
@@ -37,10 +40,12 @@ public class PurchaseDetail implements Serializable {
     @Column(name="unit",length=8)
     private String unit;
 
-    @Column(name="price", length = 8, precision = 2)
+    @Column(name="price", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
     private Float price;
 
-    @Column(name="supplierId",length=30)
+    @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name="supplierId")
     private Supplier supplier;
 
     public static long getSerialVersionUID() {

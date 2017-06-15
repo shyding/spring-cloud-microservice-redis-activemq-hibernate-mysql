@@ -76,7 +76,7 @@ public class Supplier implements Serializable {
     @ManyToMany(cascade = {CascadeType.DETACH}, fetch = FetchType.LAZY)
     @JoinTable(name = "hzg_supplierproducttype_relation"
             , joinColumns = {@JoinColumn(name = "supplierId")}
-            , inverseJoinColumns = {@JoinColumn(name = "productTypeId")})
+            , inverseJoinColumns = {@JoinColumn(name = "typeId")})
     private Set<ProductType> productTypes;
 
     public static long getSerialVersionUID() {

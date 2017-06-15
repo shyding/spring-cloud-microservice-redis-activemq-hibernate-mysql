@@ -1,5 +1,6 @@
 package com.hzg.erp;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.SignInUtil;
 import com.hzg.tools.Writer;
@@ -51,8 +52,27 @@ public class ErpController {
 
             if (purchase.getDetails() != null) {
                 for (PurchaseDetail detail : purchase.getDetails()) {
+                    Product product = detail.getProduct();
+                    sysDao.save(product);
+
+                    if (product.getProperties() != null) {
+                        for (ProductOwnProperty ownProperty : product.getProperties()) {
+                            ownProperty.setProduct(product);
+                            sysDao.save(ownProperty);
+                        }
+                    }
+
+                    detail.setProduct(product);
+                    detail.setProductName(product.getName());
+                    detail.setAmount(product.getUnitPrice() * detail.getQuantity());
+                    detail.setPrice(product.getUnitPrice());
+
+                    detail.setSupplier(product.getSupplier());
                     detail.setPurchase(purchase);
+
                     sysDao.save(detail);
+
+
                 }
             }
 
@@ -68,6 +88,10 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             ProductType productType = writer.gson.fromJson(json, ProductType.class);
             result = sysDao.save(productType);
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
+            result = sysDao.save(productProperty);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -102,6 +126,10 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             ProductType productType = writer.gson.fromJson(json, ProductType.class);
             result = sysDao.updateById(productType.getId(), productType);
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
+            result = sysDao.updateById(productProperty.getId(), productProperty);
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -123,6 +151,9 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             writer.writeObjectToJson(response, sysDao.query(writer.gson.fromJson(json, ProductType.class)));
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            writer.writeObjectToJson(response, sysDao.query(writer.gson.fromJson(json, ProductProperty.class)));
         }
 
         logger.info("query end");
@@ -165,6 +196,10 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             ProductType productType = writer.gson.fromJson(json, ProductType.class);
             writer.writeObjectToJson(response, sysDao.suggest(productType, null));
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
+            writer.writeObjectToJson(response, sysDao.suggest(productProperty, null));
         }
 
         logger.info("suggest end");
@@ -187,6 +222,9 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             writer.writeObjectToJson(response, sysDao.complexQuery(ProductType.class, queryParameters, position, rowNum));
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            writer.writeObjectToJson(response, sysDao.complexQuery(ProductProperty.class, queryParameters, position, rowNum));
         }
 
         logger.info("complexQuery end");
@@ -216,6 +254,9 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
             recordsSum =  sysDao.recordsSum(ProductType.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(ProductProperty.class, queryParameters);
         }
 
         writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");

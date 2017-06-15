@@ -202,7 +202,7 @@ function renderAudit(element, url){
 }
 
 function isValid(pageContent, contextPath) {
-    if (typeof pageContent == 'object' && pageContent.result == "对不起，你访问的页面不存在，或者会话已经过期") {
+    if (typeof pageContent == 'object' && pageContent.result.indexOf("对不起，你访问的页面不存在，或者会话已经过期") != -1) {
         $("#pageContent").empty().html("<div class='right_col' style='height: 100%'>" + pageContent.result +
             "<br/><br/><a href='" + contextPath + "/sys/user/signIn'>请重新登录</a></div>");
 

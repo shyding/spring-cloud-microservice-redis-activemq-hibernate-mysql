@@ -154,13 +154,15 @@ var tableSheet = (function ($) {
                             }
                         }
 
-                        console.log("onSelectedSetValue:" + isSet);
-
                         if (!isSet) {
                             $(inputElement.parent()).append("<input type='hidden' name='" + input.name + "' value='" + value + "' data-skip-falsy='true'>");
                         }
                     }
                 }
+            }
+
+            if (inputElement.parent().next() != undefined && inputElement.parent().next().children('input')[0] != undefined) {
+                inputElement.parent().next().children('input')[0].focus();
             }
         }
     }
@@ -338,9 +340,56 @@ var tableSheet = (function ($) {
         return name;
     }
 
+    function addPurchase(uri){
+        var $form = $("#form");
+        if (!validator.checkAll($form)) {
+            return;
+        }
+
+        var json = JSON.stringify($form.serializeJSON());
+        json = json.substring(0, json.length-1) + ',"details":[';
+
+
+        var trs = $("#productList tbody tr");
+
+        for (var i = 0; i < trs.length; i++) {
+            var inputs = $(trs[i]).find("input");
+            var tds = $(trs[i]).find("td");
+
+            if (tds.length > 0) {
+                var inputsHalfCount = (tds.length-4)/2,  notEmptyCounts = 0;
+
+                for (var j = 0; j < inputs.length; j++) {
+                    if ($.trim(inputs[j].value) != "" && inputs[j].type == "text") {
+                        notEmptyCounts++;
+                    }
+                }
+
+                if (notEmptyCounts > inputsHalfCount) {
+                    for (var j = 0; j < inputs.length; j++) {
+                        if ($.trim(inputs[j].value) == "" && $(inputs[j]).attr("required") != undefined) {
+                            alert("请输入值");
+                            $(inputs[j]).focus();
+
+                            return false;
+                        }
+                    }
+
+                    json += JSON.stringify($(trs[i]).find(":input").not('[value=""]').not('[name="propertyValue"]').serializeJSON()["details"][0]) + ",";
+                }
+            }
+
+        }
+
+        json = json.substring(0, json.length-1) + ']}';
+
+        $form.sendData(uri, json);
+    }
+
     return {
         init: init,
         addRow: addRow,
-        suggests: suggests
+        suggests: suggests,
+        addPurchase: addPurchase
     }
 })(jQuery);

@@ -23,13 +23,13 @@
                 }
             },
 
-            success: function(data){
-                if (data.result.indexOf("success") != -1) {
+            success: function(result){
+                if (result.result.indexOf("success") != -1) {
                     submitSucc = true;
                     alert("提交成功");
                 } else {
                     submitSucc = false;
-                    alert(data.result);
+                    alert(result.result);
                 }
             }
         });
@@ -37,8 +37,8 @@
         preFormJson = formJson;
     },
 
-    $.fn.sendData = function (url, json) {
-        var mac = faultylabs.MD5(json + $.cookie("pin"));
+    $.fn.sendData = function (url, json, callBack) {
+        var mac = faultylabs.MD5(json + localStorage.getItem("pin"));
         $.ajax({
             type: "post",
             url: url,
@@ -53,19 +53,46 @@
                 }
             },
 
-            success: function(data){
-                if (data.result.indexOf("success") != -1) {
+            success: function(result){
+                if (callBack != undefined) {
+                    callBack(result);
+                }
+
+                if (result.result.indexOf("success") != -1) {
                     submitSucc = true;
                     alert("提交成功");
                 } else {
                     submitSucc = false;
-                    alert(data.result);
+                    alert(result.result);
                 }
             }
         });
 
         preJson = json;
     },
+
+     //jQuery 方式发送 FormData 请求
+     $.fn.sendFormData = function(url, formData, callBack) {
+         $.ajax({
+             type: "post",
+             url: url,
+             data: formData,
+             /**
+              * 必须false才会自动加上正确的Content-Type
+              */
+             contentType: false,
+             /**
+              * 必须false才会避开jQuery对 formdata 的默认处理
+              * XMLHttpRequest会对 formdata 进行正确的处理
+              */
+             processData: false,
+             success: function (result) {
+                 if (callBack != undefined) {
+                     callBack(result);
+                 }
+             }
+         });
+     },
 
     $.fn.isFullSet = function(){
         var isFullSet = true;

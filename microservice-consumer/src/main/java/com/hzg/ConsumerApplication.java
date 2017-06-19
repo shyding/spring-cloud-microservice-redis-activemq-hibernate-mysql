@@ -29,8 +29,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.filter.CharacterEncodingFilter;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import redis.clients.jedis.JedisPoolConfig;
@@ -76,10 +74,8 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
     @Value("${redis.pool.test-on-borrow}")
     private boolean testOnBorrow;
 
-    @Value("${noAuthUris}")
-    private String noAuthUrisStr;
-    @Value("${macValidateUris}")
-    private String macValidateUris;
+    @Value("${sessionTime}")
+    private Integer sessionTime;
 
     /**
      * 设置 mq 队列
@@ -190,14 +186,10 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
         return registration;
     }
 
+    // 设置会话时间
     @Bean
-    public List<String> noAuthUris(){
-        return Arrays.asList(noAuthUrisStr.split(","));
-    }
-
-    @Bean
-    public List<String> macValidateUris(){
-        return Arrays.asList(macValidateUris.split(","));
+    public Integer sessionTime(){
+        return sessionTime;
     }
 
     @Bean
@@ -217,6 +209,7 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
         registry.addInterceptor(visitInterceptor).addPathPatterns("/**")//要拦截的请求
              .excludePathPatterns("/res/**");//不拦截静态资源
     }
+
 
     /**
      * 本地服务实例的信息

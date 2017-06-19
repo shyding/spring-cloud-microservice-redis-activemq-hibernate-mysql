@@ -340,7 +340,12 @@ var tableSheet = (function ($) {
         return name;
     }
 
-    function addPurchase(uri){
+    var uploadFilesUrl = "", imageServerUrl = "";
+
+    function addPurchase(uri, uploadFilesUrl, imageServerUrl){
+        tableSheet.uploadFilesUrl = uploadFilesUrl;
+        tableSheet.imageServerUrl = imageServerUrl;
+
         var $form = $("#form");
         if (!validator.checkAll($form)) {
             return;
@@ -353,29 +358,44 @@ var tableSheet = (function ($) {
         var trs = $("#productList tbody tr");
 
         for (var i = 0; i < trs.length; i++) {
-            var inputs = $(trs[i]).find("input");
+            var textInputs = $(trs[i]).find("input");
             var tds = $(trs[i]).find("td");
 
             if (tds.length > 0) {
                 var inputsHalfCount = (tds.length-4)/2,  notEmptyCounts = 0;
 
-                for (var j = 0; j < inputs.length; j++) {
-                    if ($.trim(inputs[j].value) != "" && inputs[j].type == "text") {
+                for (var j = 0; j < textInputs.length; j++) {
+                    if ($.trim(textInputs[j].value) != "" && textInputs[j].type == "text") {
                         notEmptyCounts++;
                     }
                 }
 
                 if (notEmptyCounts > inputsHalfCount) {
-                    for (var j = 0; j < inputs.length; j++) {
-                        if ($.trim(inputs[j].value) == "" && $(inputs[j]).attr("required") != undefined) {
+                    for (var j = 0; j < textInputs.length; j++) {
+                        if ($.trim(textInputs[j].value) == "" && $(textInputs[j]).attr("required") != undefined) {
                             alert("请输入值");
-                            $(inputs[j]).focus();
+                            $(textInputs[j]).focus();
 
                             return false;
                         }
                     }
 
-                    json += JSON.stringify($(trs[i]).find(":input").not('[value=""]').not('[name="propertyValue"]').serializeJSON()["details"][0]) + ",";
+                    var inputs = $(trs[i]).find(":input");
+                    var imageParentDirPath, no;
+                    for (var x = 0; x < inputs.length; x++) {
+                        if ($(inputs[x]).attr("name") != undefined) {
+                            if ($(inputs[x]).attr("name") == "details[][product[describe[imageParentDirPath]]]:string") {
+                                imageParentDirPath = inputs[x];
+                            }
+
+                            if ($(inputs[x]).attr("name") == "details[][product[no]]:string") {
+                                no = inputs[x];
+                            }
+                        }
+                    }
+                    imageParentDirPath.value += "/" + no.value;
+
+                    json += JSON.stringify(inputs.not('[value=""]').not('[name="propertyValue"]').serializeJSON()["details"][0]) + ",";
                 }
             }
 
@@ -383,13 +403,82 @@ var tableSheet = (function ($) {
 
         json = json.substring(0, json.length-1) + ']}';
 
-        $form.sendData(uri, json);
+        $form.sendData(uri, json, function(result){
+            if (result.result.indexOf("success") != -1) {
+                for (var i = 0; i < trs.length; i++) {
+                    var fileInfo = getUploadFileInfo(trs[i]);
+                    if (fileInfo != null) {
+                        sendFormData("snapshoot", fileInfo["dir"], fileInfo["file"], uploadFilesUrl, imageServerUrl);
+                    }
+                }
+
+            }
+        });
+    }
+
+    function uploadFile(theItem, uploadFilesUrl, imageServerUrl){
+        var fileInfo = getUploadFileInfo(theItem.parentNode.parentNode);
+        if (fileInfo != null) {
+            sendFormData("snapshoot", fileInfo["dir"], fileInfo["file"], uploadFilesUrl, imageServerUrl);
+        }
+    }
+
+    function sendFormData(name, dir, file, uploadFilesUrl, imageServerUrl){
+        var fd = new FormData();
+        fd.append("name", name);
+        fd.append("dir", dir);
+        fd.append("file", $(file)[0].files[0]);
+
+        $("#form").sendFormData(uploadFilesUrl, fd, function(result){
+
+            var resultTd = $(file).parent().next();
+            if (result.result.indexOf("success") == -1) {
+                resultTd.html(result.result + ',请选择文件后，点击<a href="#uploadFile" onclick="tableSheet.uploadFile(this, tableSheet.uploadFilesUrl, tableSheet.imageServerUrl);">上传</a>');
+
+            } else {
+                resultTd.html('<a id="' + dir + '" href="' + imageServerUrl + result.filePath + '" class="lightbox">查看图片</a>');
+                $("#" + dir).lightbox({
+                    fitToScreen: true,
+                    imageClickClose: false
+                });
+
+            }
+        });
+    }
+
+    function getUploadFileInfo(node){
+        var inputs = $(node).find("input");
+
+        var file = null, no = null;
+        if (inputs.length > 0) {
+            for (var x = 0; x < inputs.length; x++) {
+
+                if ($(inputs[x]).attr("name") != undefined) {
+                    if ($(inputs[x]).attr("name") == "file" && $.trim(inputs[x].value) != "") {
+                        file = inputs[x];
+                    }
+
+                    if ($(inputs[x]).attr("name") == "details[][product[no]]:string" && $.trim(inputs[x].value) != "") {
+                        no = inputs[x];
+                    }
+                }
+            }
+        }
+
+        if (file != null && no != null) {
+            return {"file":file, "dir":no.value};
+        } else {
+            null;
+        }
     }
 
     return {
         init: init,
         addRow: addRow,
         suggests: suggests,
-        addPurchase: addPurchase
+        addPurchase: addPurchase,
+        uploadFile: uploadFile,
+        uploadFilesUrl: uploadFilesUrl,
+        imageServerUrl: imageServerUrl
     }
 })(jQuery);

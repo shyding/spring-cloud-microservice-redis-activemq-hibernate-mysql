@@ -62,6 +62,10 @@ public class ErpController {
                         }
                     }
 
+                    ProductDescribe describe = product.getDescribe();
+                    describe.setProduct(product);
+                    sysDao.save(product.getDescribe());
+
                     detail.setProduct(product);
                     detail.setProductName(product.getName());
                     detail.setAmount(product.getUnitPrice() * detail.getQuantity());

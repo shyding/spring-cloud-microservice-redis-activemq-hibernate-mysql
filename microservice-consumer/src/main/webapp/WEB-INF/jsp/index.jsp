@@ -19,6 +19,8 @@
     <link type="text/css" href="../../res/css/jquery.coolautosuggest.css" rel="stylesheet">
     <!-- bootstrap-daterangepicker -->
     <link href="../../res/gentelella/vendors/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet">
+    <%--jquery lightbox--%>
+    <link type="text/css" href="../../res/css/lightbox.css" rel="stylesheet">
     <!-- iCheck -->
     <link href="../../res/gentelella/vendors/iCheck/skins/flat/green.css" rel="stylesheet">
     <!-- Datatables -->
@@ -74,6 +76,9 @@
 <script src="../../res/gentelella/vendors/pdfmake/build/vfs_fonts.js"></script>
 <%--jquery suggest--%>
 <script src="../../res/js/jquery.coolautosuggest.js"></script>
+<script src="../../res/js/jquery.coolautosuggest.m.js"></script>
+<%--jquery lightbox--%>
+<script src="../../res/js/jquery.lightbox.js"></script>
 <%-- custom --%>
 <script src="../../res/js/custom.js"></script>
 <!-- form submit -->
@@ -84,4 +89,5 @@
 <script src="../../res/js/dataList.js"></script>
 <script src="../../res/js/jquery.cookie.js"></script>
 <script src="../../res/js/jquery-ui-1.10.0.custom.min.js"></script>
+<script src="../../res/js/tableSheet.js"></script>
 </html>

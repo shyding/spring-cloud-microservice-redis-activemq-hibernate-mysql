@@ -63,5 +63,12 @@ ribbon:
 
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
-noAuthUris: /user/,/list/,/privateQuery/audit,/view/audit
-macValidateUris: /save/,/update/,/sys/audit
+visitInterceptor:
+  noAuthUris: /user/,/list/,/privateQuery/audit,/view/audit
+  macValidateUris: /save/,/update/,/sys/audit
+
+sessionTime: 7200     # 会话时长,单位秒
+
+fileServerInfo:
+  uploadFilesUrl: http://localhost:8080/stream_hzg_upload/uploadFile  # 上传文件地址
+  imageServerUrl: http://static.demohzg.com            # 浏览图片服务器地址

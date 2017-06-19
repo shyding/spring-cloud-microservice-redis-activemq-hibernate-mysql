@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%@ page import="com.hzg.sys.*" %>
 <%@ page import="com.hzg.erp.Purchase" %>
+<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -119,7 +119,7 @@
                                 <th data-property-name="th-size">尺寸</th><th data-property-name="th-weight">重量</th>
                                 <th data-property-name="th-shape">形状</th><th data-property-name="th-carver">雕工</th>
                                 <th data-property-name="th-originPlace">产地</th><th>证书</th><th>采购价</th>
-                                <th>采购单价</th><th>市场价</th><th>结缘价</th><th>图片</th></tr>
+                                <th>采购单价</th><th>市场价</th><th>结缘价</th><th>图片</th><th>图片上传情况</th></tr>
                             </thead>
                             <tbody>
                             <tr>
@@ -212,7 +212,11 @@
                                 <td><input type="text" name="details[][product[unitPrice]]:number" required></td>
                                 <td><input type="text" name="details[][product[price]]:number"></td>
                                 <td><input type="text" name="details[][product[fatePrice]]:number"></td>
-                                <td><input type="file" name="details[][product[describe[imageUrl]]]:String" ></td>
+                                <td>
+                                    <input type="file" name="file" >
+                                    <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value="/${currentDay}">
+                                </td>
+                                <td>未上传</td>
                             </tr>
                             </tbody>
                         </table>
@@ -318,10 +322,14 @@
 
     $(document).unbind("keydown");
 
+    $("#edit").click(function(){
+        $(".table-sheet tbody tr td input").css("border", "1px solid #ccc");
+    });
+
     tableSheet.init("productList", 15, "<%=request.getContextPath()%>");
     $('#addItem').click(function(){tableSheet.addRow("productList");});
 
-    $("#send").bind("click", function(){tableSheet.addPurchase('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>');});
+    $("#send").bind("click", function(){tableSheet.addPurchase('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>', '<%=FileServerInfo.uploadFilesUrl%>', '<%=FileServerInfo.imageServerUrl%>');});
 
     <c:choose><c:when test="${entity != null}">document.title = "采购单查看";</c:when><c:otherwise> document.title = "采购单填写";</c:otherwise></c:choose>
 </script>

@@ -3,22 +3,20 @@ package com.hzg.tools;
 import com.hzg.sys.User;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@ConfigurationProperties("visitInterceptor")
 public class VisitInterceptor extends HandlerInterceptorAdapter {
 
-    @Autowired
     public List<String> noAuthUris;
-    @Autowired
     public List<String> macValidateUris;
 
     @Autowired
@@ -27,6 +25,9 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
     public Writer writer;
     @Autowired
     public CookieUtils cookieUtils;
+
+    @Autowired
+    public Integer sessionTime;
 
     /**
      * 拦截访问的 uri，在可以访问的 uri 里，则通过，否则返回错误提示
@@ -116,11 +117,11 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         /**
          * 表示用户在线，重新设置 半小时 后会话过期
          */
-        redisTemplate.boundValueOps(username).expire(1800, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps(username + "_resources").expire(1800, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("sessionId_" + sessionId).expire(1800, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("user_" + username).expire(1800, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("salt_" + sessionId).expire(1800, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(username).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(username + "_resources").expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps("sessionId_" + sessionId).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps("user_" + username).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps("salt_" + sessionId).expire(sessionTime, TimeUnit.SECONDS);
 
         cookieUtils.addCookie(response, "sessionId", sessionId);
 
@@ -186,5 +187,21 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
         }
 
         return pass;
+    }
+
+    public List<String> getNoAuthUris() {
+        return noAuthUris;
+    }
+
+    public void setNoAuthUris(List<String> noAuthUris) {
+        this.noAuthUris = noAuthUris;
+    }
+
+    public List<String> getMacValidateUris() {
+        return macValidateUris;
+    }
+
+    public void setMacValidateUris(List<String> macValidateUris) {
+        this.macValidateUris = macValidateUris;
     }
 }

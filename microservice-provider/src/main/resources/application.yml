@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: microservice-provider
+    name: microservice-provider-sys
   jpa:
     generate-ddl: false
     show-sql: true
@@ -11,7 +11,7 @@ spring:
       ddl-auto: none
 
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/test
+    url: jdbc:mysql:loadbalance://127.0.0.1:3306/hzg_new_db?roundRobinLoadBalance=true  #connect mysql cluster url: jdbc:mysql:loadbalance://192.168.31.128:3306,192.168.31.129:3306/db?roundRobinLoadBalance=true
     username: root
     password: root
     driver-class-name: com.mysql.jdbc.Driver
@@ -25,6 +25,10 @@ spring:
     password: admin
     pool:
       max-connections: 2
+
+  http:
+    encoding:
+      charset: utf-8
 
 hibernate:
     dialect: org.hibernate.dialect.MySQL5Dialect
@@ -47,3 +51,5 @@ eureka:
         defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka
   instance:
      preferIpAddress: true
+
+sessionTime: 7200     #会话时长,单位秒

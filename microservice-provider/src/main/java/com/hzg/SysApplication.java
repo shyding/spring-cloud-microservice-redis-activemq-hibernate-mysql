@@ -1,7 +1,6 @@
 package com.hzg;
 
 import org.apache.activemq.command.ActiveMQQueue;
-import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -20,9 +19,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.jms.annotation.EnableJms;
-import org.springframework.orm.hibernate4.HibernateTransactionManager;
-import org.springframework.orm.hibernate4.LocalSessionFactoryBean;
-import org.springframework.orm.hibernate4.support.OpenSessionInViewFilter;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
+import org.springframework.orm.hibernate5.support.OpenSessionInViewFilter;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,15 +32,12 @@ import javax.jms.Queue;
 import javax.sql.DataSource;
 import java.util.*;
 
-/**
- * Created by Administrator on 2017/3/28.
- */
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableJms
 @RestController
 @EnableTransactionManagement
-public class ProviderApplication {
+public class SysApplication {
     @Autowired
     private DataSource dataSource;
 
@@ -70,6 +66,8 @@ public class ProviderApplication {
     private Integer maxWait;
     @Value("${redis.pool.test-on-borrow}")
     private boolean testOnBorrow;
+    @Value("${sessionTime}")
+    private Integer sessionTime;
 
     // 设置 mq 队列
     @Bean
@@ -168,6 +166,12 @@ public class ProviderApplication {
         return registration;
     }
 
+    // 设置会话时间
+    @Bean
+    public Integer sessionTime(){
+        return sessionTime;
+    }
+
     /**
      * 本地服务实例的信息
      * @return
@@ -180,6 +184,6 @@ public class ProviderApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(ProviderApplication.class, args);
+        SpringApplication.run(SysApplication.class, args);
     }
 }

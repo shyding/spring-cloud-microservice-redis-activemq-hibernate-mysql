@@ -14,6 +14,9 @@ public class SignInUtil {
     @Autowired
     public RedisTemplate<String, Object> redisTemplate;
 
+    @Autowired
+    public Integer sessionTime;
+
     //如果用户失败登录次数 >= waitToSignInCount，则需要等待 2^signInFailCount * waitTimeUnit 毫秒，才可以再次登录
     public  int waitToSignInCount = 3;
     public  int waitTimeUnit = 10 * 1000;
@@ -131,8 +134,8 @@ public class SignInUtil {
      */
     public  void setUser(String sessionId, String username) {
         if (!isUserExist(username)) {
-            redisTemplate.boundValueOps("sessionId_" + sessionId).set(username, 1800, TimeUnit.SECONDS);
-            redisTemplate.boundValueOps("user_" + username).set(sessionId, 1800, TimeUnit.SECONDS);
+            redisTemplate.boundValueOps("sessionId_" + sessionId).set(username, sessionTime, TimeUnit.SECONDS);
+            redisTemplate.boundValueOps("user_" + username).set(sessionId, sessionTime, TimeUnit.SECONDS);
         }
     }
 

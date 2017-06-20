@@ -1,6 +1,7 @@
 package com.hzg.tools;
 
 import com.google.gson.reflect.TypeToken;
+import org.hibernate.annotations.Type;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,8 @@ public class ObjectToSql {
     private Writer writer;
     @Autowired
     private DateUtil dateUtil;
+    @Autowired
+    private Des des;
 
     public String generateSelectSqlByAnnotation(Object object){
         Class objectClass = object.getClass();
@@ -649,34 +652,54 @@ public class ObjectToSql {
     public String getValue(Field field, Object value) {
         String valueStr = "";
 
-        if (field.getType().getSimpleName().equals("String")) {
-            valueStr += "'" + value.toString() + "'";
+        if (field.isAnnotationPresent(Type.class)) {
+            try {
+                Class type = Class.forName(field.getAnnotation(Type.class).type());
+                Object typeObj = type.newInstance();
 
-        } else if (field.getType().getSimpleName().equals("Integer") ||
-                field.getType().getSimpleName().equals("int")) {
-            valueStr += String.valueOf(value);
+                String returnType = (String) type.getMethod("returnedClassStr").invoke(typeObj);
 
-        } else if (field.getType().getSimpleName().equals("Double") ||
-                field.getType().getSimpleName().equals("double")){
-            valueStr +=  String.valueOf(value);
+                if (returnType.equals("Integer[]")) {
+                    valueStr += "'" +  Arrays.deepToString((Integer[])value)  + "'";
 
-        } else if (field.getType().getSimpleName().equals("Float") ||
-                field.getType().getSimpleName().equals("float")){
-            valueStr +=  String.valueOf(value);
+                } else if (returnType.equals("FloatDesType")) {
+                    valueStr += "'" + des.encrypt(String.valueOf(value)) + "'";
+                }
+
+            } catch (Exception e){
+                e.printStackTrace();
+            }
 
         } else {
-            try {
-                valueStr += field.getType().getMethod("getId").invoke(value);
-            } catch (Exception e) {
-                logger.info(e.getMessage());
+            if (field.getType().getSimpleName().equals("String")) {
+                valueStr += "'" + value.toString() + "'";
 
-                /**
-                 * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
-                 */
-                if (Pattern.compile("in\\s*\\(").matcher(value.toString()).find()) {
-                    valueStr += value.toString();
-                } else {
-                    valueStr += "'" + value.toString() + "'";
+            } else if (field.getType().getSimpleName().equals("Integer") ||
+                    field.getType().getSimpleName().equals("int")) {
+                valueStr += String.valueOf(value);
+
+            } else if (field.getType().getSimpleName().equals("Double") ||
+                    field.getType().getSimpleName().equals("double")) {
+                valueStr += String.valueOf(value);
+
+            } else if (field.getType().getSimpleName().equals("Float") ||
+                    field.getType().getSimpleName().equals("float")) {
+                valueStr += String.valueOf(value);
+
+            } else {
+                try {
+                    valueStr += field.getType().getMethod("getId").invoke(value);
+                } catch (Exception e) {
+                    logger.info(e.getMessage());
+
+                    /**
+                     * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
+                     */
+                    if (Pattern.compile("in\\s*\\(").matcher(value.toString()).find()) {
+                        valueStr += value.toString();
+                    } else {
+                        valueStr += "'" + value.toString() + "'";
+                    }
                 }
             }
         }

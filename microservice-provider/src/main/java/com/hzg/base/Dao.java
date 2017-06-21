@@ -4,6 +4,7 @@ package com.hzg.base;
  * Created by Administrator on 2017/4/20.
  */
 
+import com.hzg.tools.Des;
 import com.hzg.tools.ObjectToSql;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
@@ -40,6 +41,9 @@ public class Dao {
     @Autowired
     private Writer writer;
 
+    @Autowired
+    private Des des;
+
     /**
      * 保存对象
      * @param object
@@ -51,6 +55,23 @@ public class Dao {
         storeToRedis(clazz.getName() + "_" + getId(object, clazz), object);
 
         return "success";
+    }
+
+
+    /**
+     * 删除对象
+     * @param object
+     * @return
+     */
+    public String delete(Object object) {
+        Class clazz = object.getClass();
+        Integer id = getId(object, clazz);
+
+        int result = sessionFactory.getCurrentSession().createSQLQuery(
+                "delete from " + objectToSql.getTableName(clazz) + " where id = " + id).executeUpdate();
+        deleteFromRedis(clazz.getName() + "_" + id);
+
+        return (result > 0 ? "success" : "fail") + "," + result + " item deleted";
     }
 
 
@@ -350,8 +371,10 @@ public class Dao {
 
                     if (returnType.equals("Integer[]")) {
                         value = writer.gson.fromJson((String)value, Integer[].class);
-                    }
 
+                    } else if (returnType.equals("FloatDesType")) {
+                        value = Float.parseFloat(des.decrypt((String)value));
+                    }
 
                     clazz.getMethod(methodName, field.getType()).invoke(object, value);
                     isSet = true;
@@ -427,11 +450,20 @@ public class Dao {
                 if (field.isAnnotationPresent(ManyToOne.class) ||
                         field.isAnnotationPresent(OneToOne.class)) {
 
-                    String relateId = String.valueOf(getId(clazz.getMethod(objectToSql.getMethodPerfix + partMethodName).invoke(dbObject), field.getType()));
-                    Object relateDbObject = getFromRedis(field.getType().getName() + "_" + relateId);
+                    Integer relateId = getId(clazz.getMethod(objectToSql.getMethodPerfix + partMethodName).invoke(dbObject), field.getType());
 
-                    if (relateDbObject == null) {
-                        relateDbObject = queryStoreObjectById(Integer.valueOf(relateId), field.getType());
+                    Object relateDbObject = null;
+                    if (relateId != null) {
+                        relateDbObject = getFromRedis(field.getType().getName() + "_" +  String.valueOf(relateId));
+
+                        if (relateDbObject == null) {
+                            relateDbObject = queryStoreObjectById(relateId, field.getType());
+                        }
+
+                    } else {
+                        if (field.isAnnotationPresent(OneToOne.class)){
+                            relateDbObject = queryOneToOneObject(field, dbObject);
+                        }
                     }
 
                     clazz.getMethod(objectToSql.setMethodPerfix + partMethodName, field.getType()).invoke(dbObject, relateDbObject);
@@ -445,15 +477,24 @@ public class Dao {
                         Set<Object> relateDbObjects = new HashSet<>();
 
                         for (Object relateObject : relateObjects) {
-                            String relateId = String.valueOf(getId(relateObject, relateObject.getClass()));
-                            Object relateDbObject = getFromRedis(relateObject.getClass().getName() + "_" + relateId);
+                            Integer relateId = getId(relateObject, relateObject.getClass());
 
-                            if (relateDbObject == null) {
-                                relateDbObject = queryStoreObjectById(Integer.valueOf(relateId), relateObject.getClass());
+                            if (relateId != null) {
+                                Object relateDbObject = getFromRedis(relateObject.getClass().getName() + "_" +  String.valueOf(relateId));
+
+                                if (relateDbObject == null) {
+                                    relateDbObject = queryStoreObjectById(relateId, relateObject.getClass());
+                                }
+
+                                relateDbObjects.add(relateDbObject);
+
+                            } else {
+                                relateDbObjects = queryOneOrManyToManyObjects(field, dbObject);
+                                break;
                             }
-
-                            relateDbObjects.add(relateDbObject);
                         }
+
+
                         relateObjects = relateDbObjects;
 
                     } else {
@@ -470,6 +511,49 @@ public class Dao {
     }
 
     /**
+     * 一对一，多对一的属性值为空时，就查询该属性值
+     * @param field
+     * @param object
+     * @return
+     */
+    public Object queryOneToOneObject(Field field, Object object) {
+
+        Class fieldClazz = field.getType();
+
+        Object relateObject = null;
+        try {
+            relateObject = fieldClazz.newInstance();
+        } catch (Exception e){
+            logger.info(e.getMessage());
+            e.printStackTrace();
+        }
+
+        String joinFieldName = null;
+        for (Field field1 : field.getType().getDeclaredFields()) {
+            if (field1.getType() == object.getClass()) {
+                joinFieldName = field1.getName();
+                break;
+            }
+        }
+
+        try {
+            fieldClazz.getMethod(objectToSql.setMethodPerfix + joinFieldName.substring(0, 1).toUpperCase() + joinFieldName.substring(1),
+                    object.getClass()).invoke(relateObject, object);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+            e.printStackTrace();
+        }
+
+        List fieldValues = query(relateObject);
+
+        if (fieldValues != null && fieldValues.size() > 0) {
+            relateObject = fieldValues.get(0);
+        }
+
+        return relateObject;
+    }
+
+    /**
      * 多对多，一对多的属性值为空时，就查询这些属性值
      * sql 语句 select t.* 中把主表缩写 t 的  改为次表缩写 tn 就可以查询次表信息：select tn.*
      * @param field
@@ -477,7 +561,6 @@ public class Dao {
      * @return
      */
     public Set<Object> queryOneOrManyToManyObjects(Field field, Object object) {
-
 
         Class fieldActualClazz = (Class) ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0];
         String fieldTableName = objectToSql.getTableName(fieldActualClazz);

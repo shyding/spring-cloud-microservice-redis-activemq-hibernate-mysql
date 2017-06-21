@@ -1,4 +1,4 @@
-package com.hzg.base;
+﻿package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
@@ -461,9 +461,7 @@ public class Dao {
                         }
 
                     } else {
-                        if (field.isAnnotationPresent(OneToOne.class)){
-                            relateDbObject = queryOneToOneObject(field, dbObject);
-                        }
+                        relateDbObject = queryOneOrManyToOneObject(field, dbObject);
                     }
 
                     clazz.getMethod(objectToSql.setMethodPerfix + partMethodName, field.getType()).invoke(dbObject, relateDbObject);
@@ -516,38 +514,38 @@ public class Dao {
      * @param object
      * @return
      */
-    public Object queryOneToOneObject(Field field, Object object) {
-
-        Class fieldClazz = field.getType();
+    public Object queryOneOrManyToOneObject(Field field, Object object) {
 
         Object relateObject = null;
-        try {
-            relateObject = fieldClazz.newInstance();
-        } catch (Exception e){
-            logger.info(e.getMessage());
-            e.printStackTrace();
-        }
 
-        String joinFieldName = null;
-        for (Field field1 : field.getType().getDeclaredFields()) {
-            if (field1.getType() == object.getClass()) {
-                joinFieldName = field1.getName();
-                break;
+        List dbObjects = query(objectToSql.generateSelectSqlByAnnotation(object));
+        if (dbObjects != null && dbObjects.size() > 0) {
+            Object dbObject = dbObjects.get(0);
+
+            String fieldName = field.getName();
+
+            Field[] fields = dbObject.getClass().getDeclaredFields();
+            for (Field field1 : fields) {
+                if (field1.getName().equals(fieldName)) {
+
+                    try {
+                        relateObject = dbObject.getClass().getMethod(
+                                objectToSql.getMethodPerfix + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1)).invoke(dbObject);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    break;
+                }
             }
         }
 
-        try {
-            fieldClazz.getMethod(objectToSql.setMethodPerfix + joinFieldName.substring(0, 1).toUpperCase() + joinFieldName.substring(1),
-                    object.getClass()).invoke(relateObject, object);
-        } catch (Exception e) {
-            logger.info(e.getMessage());
-            e.printStackTrace();
-        }
+        if (relateObject != null) {
+            List fieldValues = query(relateObject);
 
-        List fieldValues = query(relateObject);
-
-        if (fieldValues != null && fieldValues.size() > 0) {
-            relateObject = fieldValues.get(0);
+            if (fieldValues != null && fieldValues.size() > 0) {
+                relateObject = fieldValues.get(0);
+            }
         }
 
         return relateObject;

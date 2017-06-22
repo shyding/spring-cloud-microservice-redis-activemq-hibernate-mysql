@@ -1,4 +1,4 @@
-﻿package com.hzg.base;
+package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
@@ -14,7 +14,6 @@ import org.hibernate.annotations.Type;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundValueOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.*;
@@ -657,6 +656,42 @@ public class Dao {
         }
         sql = sql.replace("t.*", "count(t.id)");
         return (BigInteger)sessionFactory.getCurrentSession().createSQLQuery(sql).uniqueResult();
+    }
+
+
+    /**
+     * 值是否重复
+     * @param clazz
+     * @param fieldName
+     * @param value
+     * @param id
+     * @return
+     */
+    public boolean isValueRepeat(Class clazz, String fieldName, String value, Integer id) {
+        boolean isRepeat = true;
+
+        Object object = null;
+        try {
+            object = clazz.newInstance();
+            Field field = clazz.getDeclaredField(fieldName);
+
+            clazz.getMethod(objectToSql.setMethodPerfix + field.getName().substring(0, 1).toUpperCase() + field.getName().substring(1),
+                    field.getType()).invoke(object, value);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        List<Object> objects = query(object);
+
+        if (objects.size() == 0) {
+            isRepeat = false;
+        } else if (objects.size() == 1) {
+            if (id == getId(objects.get(0), clazz)) {
+                isRepeat = false;
+            }
+        }
+
+        return isRepeat;
     }
 
 

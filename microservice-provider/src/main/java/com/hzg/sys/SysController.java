@@ -1,4 +1,4 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.SignInUtil;
@@ -51,7 +51,7 @@ public class SysController {
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
             User user = writer.gson.fromJson(json, User.class);
 
-            if (!isUsernameExist(user.getId(), user.getUsername())) {
+            if (!sysDao.isValueRepeat(User.class, "username", user.getUsername(), user.getId())) {
                 user.setInputDate(inputDate);
 
                 if (user.getPassword().length() < 32) {
@@ -114,7 +114,7 @@ public class SysController {
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName()) ) {
             User user = writer.gson.fromJson(json, User.class);
-            if (!isUsernameExist(user.getId(), user.getUsername()) || user.getUsername() == null) {
+            if (!sysDao.isValueRepeat(User.class, "username", user.getUsername(), user.getId()) || user.getUsername() == null) {
 
                 if (user.getPosts() != null) {
                     List<Integer> relateIds = new ArrayList<>();
@@ -361,24 +361,6 @@ public class SysController {
         logger.info("recordsSum end");
     }
 
-    boolean isUsernameExist(Integer id, String username) {
-        boolean isExist = true;
-
-        User user = new User();
-        user.setUsername(username);
-        List<User> users = sysDao.query(user);
-
-        if (users.size() == 0) {
-            isExist = false;
-        } else if (users.size() == 1) {
-            if (id == users.get(0).getId()) {
-                isExist = false;
-            }
-        }
-
-        return isExist;
-    }
-
     /**
      * 查询岗位已有权限，及没有的权限
      * @param response
@@ -574,7 +556,7 @@ public class SysController {
         if (signInUtil.isUserExist(username) && result.equals("success")) {
             if (signInUtil.getSessionIdByUser(username) != null) {
                 if (!signInUtil.getSessionIdByUser(username).equals(signInInfo.get("sessionId"))) {
-                    sysDao.storeToRedis(username + "_" + signInInfo.get("sessionId"), dbUsers.get(0), 1800);
+                    sysDao.storeToRedis(username + "_" + signInInfo.get("sessionId"), dbUsers.get(0), signInUtil.sessionTime);
                     result = username + "已经登录";
                 }
             }
@@ -596,8 +578,8 @@ public class SysController {
                 post.setPrivilegeResources(null);
             }
 
-            sysDao.storeToRedis(username, dbUsers.get(0), 1800);
-            sysDao.storeToRedis(username + "_resources", resources, 1800);
+            sysDao.storeToRedis(username, dbUsers.get(0), signInUtil.sessionTime);
+            sysDao.storeToRedis(username + "_resources", resources, signInUtil.sessionTime);
             signInUtil.setUser(signInInfo.get("sessionId"), username);
         }
 
@@ -656,7 +638,7 @@ public class SysController {
                 sysDao.deleteFromRedis("salt_" + signInUtil.getSessionIdByUser(username));
                 signInUtil.removeUser(username);
 
-                sysDao.storeToRedis(username, user, 1800);
+                sysDao.storeToRedis(username, user, signInUtil.sessionTime);
                 signInUtil.setUser(sessionId, username);
 
                 sysDao.deleteFromRedis(tempUserKey);

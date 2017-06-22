@@ -24,7 +24,9 @@ var tableSheet = (function ($) {
     function init(tableId, rowCount, rootPath){
         contextPath = rootPath;
 
-        trHtml = "<tr>" + $("#" + tableId + " tbody:last-child").html() + "</tr>";
+        var trs = $("#" + tableId + " tbody tr");
+
+        trHtml = "<tr>" + $(trs[trs.length - 1]).html() + "</tr>";
 
         var tbodyHtml = "";
         for (var rowIndex = 0; rowIndex < rowCount; rowIndex++) {
@@ -381,7 +383,7 @@ var tableSheet = (function ($) {
                     }
 
                     var inputs = $(trs[i]).find(":input");
-                    var imageParentDirPath, no;
+                    var imageParentDirPath, imageTopDirPath, no;
                     for (var x = 0; x < inputs.length; x++) {
                         if ($(inputs[x]).attr("name") != undefined) {
                             if ($(inputs[x]).attr("name") == "details[][product[describe[imageParentDirPath]]]:string") {
@@ -391,9 +393,14 @@ var tableSheet = (function ($) {
                             if ($(inputs[x]).attr("name") == "details[][product[no]]:string") {
                                 no = inputs[x];
                             }
+
+                            if ($(inputs[x]).attr("name") == "imageTopDirPath") {
+                                imageTopDirPath = inputs[x];
+                            }
                         }
                     }
-                    imageParentDirPath.value += "/" + no.value;
+
+                    imageParentDirPath.value = imageTopDirPath.value + "/" + no.value;
 
                     json += JSON.stringify(inputs.not('[value=""]').not('[name="propertyValue"]').serializeJSON()["details"][0]) + ",";
                 }
@@ -436,8 +443,8 @@ var tableSheet = (function ($) {
                 resultTd.html(result.result + ',请选择文件后，点击<a href="#uploadFile" onclick="tableSheet.uploadFile(this, tableSheet.uploadFilesUrl, tableSheet.imageServerUrl);">上传</a>');
 
             } else {
-                resultTd.html('<a id="' + dir + '" href="' + imageServerUrl + result.filePath + '" class="lightbox">查看图片</a>');
-                $("#" + dir).lightbox({
+                resultTd.html('<a id="' + dir + '" href="' + imageServerUrl + '/' + result.filePath + '" class="lightbox">查看图片</a>');
+                $(document.getElementById(dir)).lightbox({
                     fitToScreen: true,
                     imageClickClose: false
                 });
@@ -449,7 +456,7 @@ var tableSheet = (function ($) {
     function getUploadFileInfo(node){
         var inputs = $(node).find("input");
 
-        var file = null, no = null;
+        var file = null, imageParentDirPath = null;
         if (inputs.length > 0) {
             for (var x = 0; x < inputs.length; x++) {
 
@@ -458,15 +465,15 @@ var tableSheet = (function ($) {
                         file = inputs[x];
                     }
 
-                    if ($(inputs[x]).attr("name") == "details[][product[no]]:string" && $.trim(inputs[x].value) != "") {
-                        no = inputs[x];
+                    if ($(inputs[x]).attr("name") == "details[][product[describe[imageParentDirPath]]]:string" && $.trim(inputs[x].value) != "") {
+                        imageParentDirPath = inputs[x];
                     }
                 }
             }
         }
 
-        if (file != null && no != null) {
-            return {"file":file, "dir":no.value};
+        if (file != null && imageParentDirPath != null) {
+            return {"file":file, "dir":imageParentDirPath.value};
         } else {
             null;
         }

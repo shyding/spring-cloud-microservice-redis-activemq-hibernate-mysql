@@ -1,5 +1,8 @@
 package com.hzg.erp;
 
+import com.hzg.tools.ProductUtil;
+import com.hzg.tools.SpringUtil;
+import com.hzg.tools.Writer;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
@@ -179,5 +182,93 @@ public class Product implements Serializable {
 
     public void setProperties(Set<ProductOwnProperty> properties) {
         this.properties = properties;
+    }
+
+    public String getStateName() {
+        switch (state) {
+            case 1 : return "采购";
+            case 2 : return "入库";
+            case 3 : return "出库";
+            case 4 : return "在售";
+            case 5 : return "售完";
+            default : return "";
+        }
+    }
+
+    public String getPropertyValue(String name) {
+        String realName = ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyName(name, type.getName());
+
+        if (properties != null) {
+            for (ProductOwnProperty property : properties) {
+                if (property.getName().equals(realName)) {
+                    return property.getValue();
+                }
+            }
+        }
+
+        return "";
+    }
+
+    public String getPropertyJson(String name) {
+        String json = "";
+
+        String realName = ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyName(name, type.getName());
+
+        if (properties != null) {
+            for (ProductOwnProperty property : properties) {
+                if (property.getName().equals(realName)) {
+
+                    if (property.getProperty() != null) {
+                        json = "{\"property\":{\"id\":" + property.getProperty().getId() + "},\"name\":\"" + property.getName() + "\",\"value\":\"" + property.getValue() + "\"}";
+                    } else {
+                        json = "{\"name\":\"" + property.getName() + "\",\"value\":\"" + property.getValue() + "\"}";
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        return json;
+    }
+
+    public String getPropertyJson(String name, String value) {
+        String json = "";
+
+        String realName = ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyName(name, type.getName());
+
+        if (properties != null) {
+            for (ProductOwnProperty property : properties) {
+                if (property.getName().equals(realName) && property.getValue().equals(value)) {
+
+                    if (property.getProperty() != null) {
+                        json = "{\"property\":{\"id\":" + property.getProperty().getId() + "},\"name\":\"" + property.getName() + "\",\"value\":\"" + property.getValue() + "\"}";
+                    } else {
+                        json = "{\"name\":\"" + property.getName() + "\",\"value\":\"" + property.getValue() + "\"}";
+                    }
+
+
+                    break;
+                }
+            }
+        }
+
+        return json;
+    }
+
+    public String getMutilPropertyValues(String name) {
+        String values = "";
+
+        String realName = ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyName(name, type.getName());
+
+        if (properties != null) {
+            for (ProductOwnProperty property : properties) {
+                if (property.getName().equals(realName)) {
+                    values += property.getValue() + "#";
+                }
+            }
+        }
+
+        return values == null ? "" : values.substring(0, values.length()-1);
     }
 }

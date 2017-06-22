@@ -1,7 +1,20 @@
+<%--
+**
+* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+* 文件名: purchase.jsp
+*
+* @author smjie
+* @Date  2017/5/25
+* @version 1.00
+*
+--%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.erp.Purchase" %>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
+<%@ page import="com.hzg.erp.PurchaseDetail" %>
+<%@ page import="com.hzg.erp.ProductType" %>
+<%@ page import="java.util.List" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -80,10 +93,8 @@
                             </div>
                         </div>
                         <c:set var="supplierName" />
-                        <c:set var="supplierId" />
                         <c:forEach items="${entity.details}" var="detail" end="0">
-                            <c:set var="supplierName" value="${detail.supplier.name}" />
-                            <c:set var="supplierId" value="${detail.supplier.id}" />
+                            <c:set var="supplierName" value="${detail.product.supplier.name}" />
                         </c:forEach>
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text2">供应商</label>
@@ -111,7 +122,7 @@
                     <form id="form1">
                     <div class="x_content" style="overflow: auto">
                         <table id="productList" class="table-sheet" width="100%">
-                            <thead><tr><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>制作</th>
+                            <thead><tr><c:if test="${entity.details != null}"><th>状态</th></c:if><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>制作</th>
                                 <th data-property-name="th-mountMaterial">镶嵌材质</th><th data-property-name="th-quality">特性</th>
                                 <th data-property-name="th-color">颜色</th><th data-property-name="th-type">种类</th>
                                 <th data-property-name="th-theme">题材</th><th data-property-name="th-style">款式</th>
@@ -122,102 +133,227 @@
                                 <th>采购单价</th><th>市场价</th><th>结缘价</th><th>图片</th><th>图片上传情况</th></tr>
                             </thead>
                             <tbody>
-                            <tr>
-                                <td><input type="text" name="details[][product[name]]:string" required></td>
-                                <td><input type="text" name="details[][product[no]]:string" required></td>
-                                <td>
-                                    <select name="details[][product[type[id]]]:number" required>
-                                    <c:forEach items="${productTypes}" var="productType">
-                                        <option value="${productType.id}">${productType.name}</option>
-                                    </c:forEach>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input type="text" name="details[][quantity]:number" value="1" required>
-                                    <input type="hidden" name="details[][product[supplier[id]]]:number" required>
-                                </td>
-                                <td>
-                                    <select name="details[][unit]:string" required>
-                                        <option value="件">件</option>
-                                        <option value="克">克</option>
-                                        <option value="克拉">克拉</option>
-                                        <option value="只">只</option>
-                                        <option value="双">双</option>
-                                        <option value="条">条</option>
-                                        <option value="枚">枚</option>
-                                        <option value="副">副</option>
-                                        <option value="其他">其他</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <select name="details[][product[feature]]:string" required>
-                                        <option value="定制">定制</option>
-                                        <option value="加工">加工</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="mountMaterial" value="" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="quality" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="color" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="type" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="theme" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="style" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="transparency" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="flaw" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="size" name="propertyValue" required>
-                                    <input type="hidden" name="details[][product[properties[]]:object" required>
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="weight" name="propertyValue" required>
-                                    <input type="hidden" name="details[][product[properties[]]:object" required>
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue" required>
-                                    <input type="hidden" name="details[][product[properties[]]:object" required>
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="carver" name="propertyValue">
-                                    <input type="hidden" name="details[][product[properties[]]:object">
-                                </td>
-                                <td>
-                                    <input type="text" data-property-name="originPlace" name="propertyValue" required>
-                                    <input type="hidden" name="details[][product[properties[]]:object" required>
-                                </td>
-                                <td><input type="text" name="details[][product[certificate]]:string"></td>
-                                <td><input type="text" name="details[][product[costPrice]]:number" required></td>
-                                <td><input type="text" name="details[][product[unitPrice]]:number" required></td>
-                                <td><input type="text" name="details[][product[price]]:number"></td>
-                                <td><input type="text" name="details[][product[fatePrice]]:number"></td>
-                                <td>
-                                    <input type="file" name="file" >
-                                    <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value="/${currentDay}">
-                                </td>
-                                <td>未上传</td>
-                            </tr>
+                            <%
+                                int detailsCount = 0;
+                                List<ProductType> types = (List<ProductType>)request.getAttribute("productTypes");
+                            %>
+                            <c:if test="${entity.details != null}">
+                            <c:forEach items="${entity.details}" var="detail">
+                                <%
+                                    PurchaseDetail detail=(PurchaseDetail)pageContext.getAttribute("detail");
+                                    detailsCount++;
+
+                                    String typeOptions = "";
+                                    for (ProductType type : types) {
+                                        typeOptions += "<option value=\"" + type.getId() + "\"" + (detail.getProduct().getType().getId() == type.getId() ? " selected" : "") + ">" + type.getName() + "</option>";
+                                    }
+
+                                    String unitOptions =
+                                            "<option value=\"件\">件</option>" +
+                                            "<option value=\"克\">克</option>" +
+                                            "<option value=\"克拉\">克拉</option>" +
+                                            "<option value=\"只\">只</option>" +
+                                            "<option value=\"双\">双</option>" +
+                                            "<option value=\"条\">条</option>" +
+                                            "<option value=\"枚\">枚</option>" +
+                                            "<option value=\"副\">副</option>" +
+                                            "<option value=\"其他\">其他</option>"
+                                            .replace("\"" + detail.getUnit() + "\"", "\"" + detail.getUnit() + "\" selected");
+
+                                    String featureOptions =
+                                            "<option value=\"定制\">定制</option>" +
+                                            "<option value=\"加工\">加工</option>"
+                                            .replace("\"" + detail.getProduct().getFeature() + "\"", "\"" + detail.getProduct().getFeature() + "\" selected");
+                                %>
+                                <tr class="state${detail.product.state}">
+                                    <td><input type="text" value="${detail.product.stateName}" class="readonly" readonly></td>
+                                    <td><input type="text" name="details[][product[name]]:string" value="${detail.product.name}" required></td>
+                                    <td><input type="text" name="details[][product[no]]:string" value="${detail.product.no}" required></td>
+                                    <td><select name="details[][product[type[id]]]:number" required><%=typeOptions%></select></td>
+                                    <td><input type="text" name="details[][quantity]:number" value="${detail.quantity}" required></td>
+                                    <td><select name="details[][unit]:string" required><%=unitOptions%></select></td>
+                                    <td><select name="details[][product[feature]]:string" required><%=featureOptions%></select></td>
+                                    <td>
+                                        <input type="text" data-property-name="mountMaterial" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("镶嵌材质")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("镶嵌材质")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="quality" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("特性")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("特性")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="color" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("颜色")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("颜色")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="type" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("种类")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("种类")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="theme" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("题材")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("题材")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="style" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("款式")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("款式")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="transparency" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("透明度")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("透明度")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="flaw" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("瑕疵")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("瑕疵")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="size" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("尺寸")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("尺寸")%>' required>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="weight" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("重量")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("重量")%>' required>
+                                    </td>
+                                    <td>
+                                        <%
+                                            String values = detail.getProduct().getMutilPropertyValues("形状");
+                                        %>
+                                        <input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue" value='<%=values%>' required>
+                                        <%
+                                            String[] valuesArr = values.split("#");
+                                            for (String value : valuesArr) {
+                                        %>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("形状", value)%>' required>
+                                        <%
+                                            }
+                                        %>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="carver" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("雕工")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("雕工")%>'>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="originPlace" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("产地")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("产地")%>' required>
+                                    </td>
+                                    <td><input type="text" name="details[][product[certificate]]:string" value="${detail.product.certificate}"></td>
+                                    <td><input type="text" name="details[][product[costPrice]]:number" value="${detail.product.costPrice}" required></td>
+                                    <td><input type="text" name="details[][product[unitPrice]]:number" value="${detail.product.unitPrice}" required></td>
+                                    <td><input type="text" name="details[][product[price]]:number" value="${detail.product.price}"></td>
+                                    <td><input type="text" name="details[][product[fatePrice]]:number" value="${detail.product.fatePrice}"></td>
+                                    <td>
+                                        <input type="file" name="file">
+                                        <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value='<%=detail.getProduct().getDescribe().getImageParentDirPath()%>'>
+                                        <input type="hidden" name="imageTopDirPath" value='<%=detail.getProduct().getDescribe().getImageParentDirPath().replace("/"+detail.getProduct().getNo(), "")%>' required>
+                                        <input type="hidden" name="details[][product[id]]:number" value="${detail.product.id}" required>
+                                        <input type="hidden" name="details[][product[describe[id]]]:number" value='<%=detail.getProduct().getDescribe().getId()%>' required>
+                                        <input type="hidden" name="details[][product[state]]:number" value="${detail.product.state}" required>
+                                        <input type="hidden" name="details[][product[supplier[id]]]:number" value="${detail.product.supplier.id}" required>
+                                        <input type="hidden" name="details[][id]:number" value="${detail.id}" required>
+                                        <input type="hidden" name="details[][purchase[id]]:number" value="${detail.purchase.id}" required>
+                                        <input type="hidden" name="details[][supplier[id]]:number" value="${detail.product.supplier.id}" required>
+                                    </td>
+                                    <td><a id="${detail.product.no}" href="<%=FileServerInfo.imageServerUrl%>/${detail.product.describe.imageParentDirPath}/snapshoot.jpg" class="lightbox">查看图片</a></td>
+                                </tr>
+                            </c:forEach>
+                            </c:if>
+                                <tr>
+                                    <c:if test="${entity.details != null}"><td><input type="text" class="readonly" readonly></td></c:if>
+                                    <td><input type="text" name="details[][product[name]]:string" required></td>
+                                    <td><input type="text" name="details[][product[no]]:string" required></td>
+                                    <td>
+                                        <select name="details[][product[type[id]]]:number" required>
+                                            <c:forEach items="${productTypes}" var="productType">
+                                                <option value="${productType.id}">${productType.name}</option>
+                                            </c:forEach>
+                                        </select>
+                                    </td>
+                                    <td><input type="text" name="details[][quantity]:number" value="1" required></td>
+                                    <td>
+                                        <select name="details[][unit]:string" required>
+                                            <option value="件">件</option>
+                                            <option value="克">克</option>
+                                            <option value="克拉">克拉</option>
+                                            <option value="只">只</option>
+                                            <option value="双">双</option>
+                                            <option value="条">条</option>
+                                            <option value="枚">枚</option>
+                                            <option value="副">副</option>
+                                            <option value="其他">其他</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="details[][product[feature]]:string" required>
+                                            <option value="定制">定制</option>
+                                            <option value="加工">加工</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="mountMaterial" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="quality" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="color" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="type" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="theme" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="style" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="transparency" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="flaw" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="size" name="propertyValue" required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="weight" name="propertyValue" required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue" required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="carver" name="propertyValue">
+                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                    </td>
+                                    <td>
+                                        <input type="text" data-property-name="originPlace" name="propertyValue" required>
+                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                    </td>
+                                    <td><input type="text" name="details[][product[certificate]]:string"></td>
+                                    <td><input type="text" name="details[][product[costPrice]]:number" required></td>
+                                    <td><input type="text" name="details[][product[unitPrice]]:number" required></td>
+                                    <td><input type="text" name="details[][product[price]]:number"></td>
+                                    <td><input type="text" name="details[][product[fatePrice]]:number"></td>
+                                    <td>
+                                        <input type="file" name="file" >
+                                        <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value="">
+                                        <input type="hidden" name="imageTopDirPath" value="${currentDay}">
+                                        <input type="hidden" name="details[][product[state]]:number" value="1" required>
+                                        <input type="hidden" name="details[][product[supplier[id]]]:number" required>
+                                        <input type="hidden" name="details[][supplier[id]]:number" required>
+                                    </td>
+                                    <td><input type="text" value="未上传" class="readonly" readonly></td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -241,7 +377,7 @@
                                     <c:if test="${entity != null}">
                                         <c:if test="${entity.state == 0}">
                                             <button id="send" type="button" class="btn btn-success">更新</button>
-                                            <button id="edit" type="button" class="btn btn-primary">编辑</button>
+                                            <button id="editSheet" type="button" class="btn btn-primary">编辑</button>
                                             <button id="delete" type="button" class="btn btn-danger">作废</button>
                                         </c:if>
                                         <c:if test="${entity.state == 2}">
@@ -261,8 +397,31 @@
 <script type="text/javascript">
     init(<c:out value="${entity == null}"/>);
 
+    $("#editSheet").unbind("click").click(function(){
+        editable = true;
+
+        $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
+        $('#form1 tr :input').attr("readonly",false);
+        $('.state2, .state3, .state4, .state5').find(":input").attr("readonly",true);
+        $('.readonly').attr("readonly",true);
+        $('#send, #delete, #recover').attr("disabled", false);
+        $("#editSheet").attr("disabled", "disabled");
+    });
+
+    $("#editState").unbind("click").click(function(){
+        $('#delete, #recover').attr("disabled", false);
+        $("#editState").attr("disabled", "disabled");
+    });
+
     <c:if test="${entity != null}">
     setSelect(document.getElementById("type"), "${entity.type}");
+
+        <c:if test="${entity.details != null}">
+            $(".lightbox").lightbox({
+                fitToScreen: true,
+                imageClickClose: false
+            });
+        </c:if>
     </c:if>
 
     $('#date').daterangepicker({
@@ -298,6 +457,11 @@
         showProperty: 'name',
         onSelected:function(result){
             if(result!=null){
+                var detailSuppliers = document.getElementsByName("details[][supplier[id]]:number");
+                for (var i = 0; i < detailSuppliers.length; i++) {
+                    detailSuppliers[i].value = result.id;
+                }
+
                 var suppliers = document.getElementsByName("details[][product[supplier[id]]]:number");
                 for (var i = 0; i < suppliers.length; i++) {
                     suppliers[i].value = result.id;
@@ -326,7 +490,7 @@
         $(".table-sheet tbody tr td input").css("border", "1px solid #ccc");
     });
 
-    tableSheet.init("productList", 15, "<%=request.getContextPath()%>");
+    tableSheet.init("productList", 15-<%=detailsCount%>, "<%=request.getContextPath()%>");
     $('#addItem').click(function(){tableSheet.addRow("productList");});
 
     $("#send").bind("click", function(){tableSheet.addPurchase('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>', '<%=FileServerInfo.uploadFilesUrl%>', '<%=FileServerInfo.imageServerUrl%>');});

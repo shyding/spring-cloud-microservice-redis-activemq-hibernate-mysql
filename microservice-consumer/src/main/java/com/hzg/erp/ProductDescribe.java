@@ -20,21 +20,17 @@ public class ProductDescribe implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "productId")
-    private Product product;
-
     @Column(name="state",length = 1)
     private Integer state;
 
-    @Column(name="describe",length=256)
-    private String describe;
+    @Column(name="describes",length=256)
+    private String describes;
 
-    @Column(name="imageUrl",length=30)
-    private String imageUrl;
+    @Column(name="imageParentDirPath",length=30)
+    private String imageParentDirPath;
 
-    @Column(name="videoUrl",length=30)
-    private String videoUrl;
+    @Column(name="videoParentDirPath",length=30)
+    private String videoParentDirPath;
 
     @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "photographerId")
@@ -68,14 +64,6 @@ public class ProductDescribe implements Serializable {
         this.id = id;
     }
 
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
     public Integer getState() {
         return state;
     }
@@ -84,28 +72,28 @@ public class ProductDescribe implements Serializable {
         this.state = state;
     }
 
-    public String getDescribe() {
-        return describe;
+    public String getDescribes() {
+        return describes;
     }
 
-    public void setDescribe(String describe) {
-        this.describe = describe;
+    public void setDescribes(String describes) {
+        this.describes = describes;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
+    public String getImageParentDirPath() {
+        return imageParentDirPath;
     }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public void setImageParentDirPath(String imageParentDirPath) {
+        this.imageParentDirPath = imageParentDirPath;
     }
 
-    public String getVideoUrl() {
-        return videoUrl;
+    public String getVideoParentDirPath() {
+        return videoParentDirPath;
     }
 
-    public void setVideoUrl(String videoUrl) {
-        this.videoUrl = videoUrl;
+    public void setVideoParentDirPath(String videoParentDirPath) {
+        this.videoParentDirPath = videoParentDirPath;
     }
 
     public User getPhotographer() {

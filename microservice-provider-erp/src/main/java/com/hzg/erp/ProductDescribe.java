@@ -20,10 +20,6 @@ public class ProductDescribe implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "productId")
-    private Product product;
-
     @Column(name="state",length = 1)
     private Integer state;
 
@@ -66,14 +62,6 @@ public class ProductDescribe implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
     }
 
     public Integer getState() {

@@ -420,10 +420,7 @@ public class SysController {
          * 发起新流程，创建流程的第一个事宜节点
          */
         if (audit.getId() == null) {
-            Audit newAudit = getNextAudit(audit, AuditFlowConstant.flow_direct_forward);
-            if (newAudit != null) {
-                sysDao.save(newAudit);
-            }
+            sysDao.save(getFirstAudit(audit));
 
             auditResult = AuditFlowConstant.audit_do;
         }
@@ -512,6 +509,29 @@ public class SysController {
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\", \"auditResult\":\"" + auditResult + "\"}");
         logger.info("audit end");
+    }
+
+    /**
+     * 获取第一个审核节点
+     * @param audit
+     * @return
+     */
+    public Audit getFirstAudit(Audit audit) {
+        AuditFlow auditFlow = new AuditFlow();
+        auditFlow.setEntity(audit.getEntity());
+        AuditFlow dbAuditFlow = (AuditFlow) sysDao.query(auditFlow).get(0);
+
+        AuditFlowNode auditFlowNode = new AuditFlowNode();
+        auditFlowNode.setAuditFlow(dbAuditFlow);
+        AuditFlowNode dbAuditFlowNode = (AuditFlowNode) sysDao.query(auditFlowNode).get(0);
+
+        audit.setPost(dbAuditFlowNode.getPost());
+
+        /**
+         * 流程中的第一个节点为事务发起节点，不属于审核节点
+         * 流程中的第二个节点才为审核的第一个节点
+         */
+        return getNextAudit(audit, AuditFlowConstant.flow_direct_forward);
     }
 
     /**

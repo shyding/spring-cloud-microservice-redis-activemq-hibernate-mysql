@@ -7,8 +7,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.netflix.feign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
 import org.springframework.data.redis.connection.RedisClusterConfiguration;
@@ -32,19 +34,13 @@ import javax.jms.Queue;
 import javax.sql.DataSource;
 import java.util.*;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: ProviderApplication.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/3/28
- */
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableJms
 @RestController
 @EnableTransactionManagement
+@EnableFeignClients
+@EnableCircuitBreaker
 public class ErpApplication {
     @Autowired
     private DataSource dataSource;

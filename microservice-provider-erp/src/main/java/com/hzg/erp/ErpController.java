@@ -2,7 +2,6 @@ package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.sys.Audit;
-import com.hzg.sys.Dept;
 import com.hzg.sys.Post;
 import com.hzg.sys.User;
 import com.hzg.tools.AuditFlowConstant;
@@ -91,20 +90,26 @@ public class ErpController {
                     detail.setPurchase(doubleRelatePurchase);
 
                     erpDao.save(detail);
+                }
 
+                /**
+                 * 创建审核流程第一个节点，发起审核流程
+                 */
+                Audit audit = new Audit();
+                audit.setEntity(AuditFlowConstant.business_purchase);
+                audit.setEntityId(purchase.getId());
+                audit.setName(purchase.getName());
+                Post post = (Post)(((List<User>)erpDao.query(purchase.getInputer())).get(0)).getPosts().toArray()[0];
+                audit.setCompany(post.getDept().getCompany());
 
-                    /**
-                     * 创建审核流程第一个节点，发起审核流程
-                     */
-                    Audit audit = new Audit();
-                    audit.setEntity(AuditFlowConstant.business_purchase);
-                    audit.setEntityId(purchase.getId());
-                    Post post = (Post)((User)erpDao.query(purchase.getInputer())).getPosts().toArray()[0];
-                    audit.setPost(post);
-                    audit.setCompany(((Dept)erpDao.query(post.getDept())).getCompany());
+                String auditResult = sysClient.audit(writer.gson.toJson(audit));
+                logger.info("audit result:" + auditResult);
 
-                    String auditResult = sysClient.audit(writer.gson.toJson(audit));
-                    logger.info("audit result:" + auditResult);
+                /**
+                 * 发起事宜出错，则触发异常，回滚事务
+                 */
+                if (!auditResult.contains("success")) {
+                    int t = 1/0;
                 }
             }
 

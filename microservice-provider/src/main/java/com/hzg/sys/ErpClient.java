@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface ErpClient {
     org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(ErpClient.class);
 
-    @RequestMapping( method = RequestMethod.POST)
+    @RequestMapping(value = "/auditAction", method = RequestMethod.POST)
     String auditAction(@RequestBody String json);
 
     @Component

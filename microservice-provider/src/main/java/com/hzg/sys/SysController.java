@@ -1,6 +1,7 @@
 package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.tools.AuditFlowConstant;
 import com.hzg.tools.SignInUtil;
 import com.hzg.tools.Writer;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -33,6 +34,9 @@ public class SysController {
 
     @Autowired
     private SignInUtil signInUtil;
+
+    @Autowired
+    private ErpClient erpClient;
 
     /**
      * 保存实体
@@ -406,47 +410,135 @@ public class SysController {
      */
     @Transactional
     @PostMapping("/audit")
-    public void audit(HttpServletResponse response, @RequestBody String json) {
+    public void audit(HttpServletResponse response, @RequestBody String json){
         logger.info("audit start, parameter:" + json);
-        String result = "fail";
+        String result, auditResult = AuditFlowConstant.audit_deny;
 
-        Map<String, String> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
-        User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId")));
+        Audit audit = writer.gson.fromJson(json, Audit.class);
 
-        if (user == null) {
-            writer.writeStringToJson(response, "{\"result\":\"会话信息丢失，请重新登录后办理、审核事宜\"}");
-            return;
+        /**
+         * 发起新流程，创建流程的第一个事宜节点
+         */
+        if (audit.getId() == null) {
+            Audit newAudit = getNextAudit(audit, AuditFlowConstant.flow_direct_forward);
+            if (newAudit != null) {
+                sysDao.save(newAudit);
+            }
+
+            auditResult = AuditFlowConstant.audit_do;
         }
 
         /**
-         * 保存当前办理、审核的事宜
+         * 办理、审核事宜
          */
-        Audit audit = writer.gson.fromJson(json, Audit.class);
+        else {
+            Map<String, String> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+            User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId")));
 
-        Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
-        if (dbAudit.getState() == 0) {
-            writer.writeStringToJson(response, "{\"result\":\"不能重复办理已办理、审核的事宜\"}");
-            return ;
+            if (user == null) {
+                writer.writeStringToJson(response, "{\"result\":\"会话信息丢失，请重新登录后办理、审核事宜\"}");
+                return;
+            }
+
+            Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
+            if (dbAudit.getState() == AuditFlowConstant.audit_state_done) {
+                writer.writeStringToJson(response, "{\"result\":\"不能重复办理已办理、审核的事宜\"}");
+                return;
+            }
+
+            audit.setUser(user);
+            audit.setState(AuditFlowConstant.audit_state_done);
+            audit.setDealDate(new Timestamp(System.currentTimeMillis()));
+            sysDao.updateById(audit.getId(), audit);
+
+
+            /**
+             * 审核通过，处理相应的业务逻辑
+             */
+            if (audit.getResult().equals(AuditFlowConstant.audit_pass)) {
+                Audit newAudit = getNextAudit(dbAudit, AuditFlowConstant.flow_direct_forward);
+
+                String doBusinessResult = erpClient.auditAction(writer.gson.toJson(dbAudit));
+                /**
+                 * 调用相应业务动作失败，则触发异常，回滚事务
+                 */
+                if (!doBusinessResult.contains("success")) {
+                    int t = 1/0;
+                }
+
+
+                /**
+                 * 有下一个节点, 插入下一个节点
+                 */
+                if (newAudit != null) {
+                    sysDao.save(newAudit);
+
+                    auditResult = AuditFlowConstant.audit_pass;
+                }
+
+                /**
+                 * 如果没有下一个节点，则流程办理完毕，有下一个流程还需要发起新流程
+                 */
+                else {
+                    if (dbAudit.getEntity().equals(AuditFlowConstant.business_purchase)) {
+                        Audit temp = new Audit();
+                        temp.setEntity(AuditFlowConstant.business_product);
+                        temp.setCompany(dbAudit.getCompany());
+                        temp.setPost(dbAudit.getPost());
+
+                        Audit nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
+                        if (nextFlowAudit != null) {
+                            sysDao.save(nextFlowAudit);
+                        }
+                    }
+
+                    auditResult = AuditFlowConstant.audit_finish;
+                }
+            }
+
+            /**
+             * 审核未通过，插入上一个节点
+             */
+            else {
+                Audit newAudit = getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
+                if (newAudit != null) {
+                    sysDao.save(newAudit);
+                    auditResult = AuditFlowConstant.audit_deny;
+                }
+            }
         }
 
-        audit.setUser(user);
-        audit.setState(0);
-        audit.setDealDate(new Timestamp(System.currentTimeMillis()));
-        sysDao.updateById(audit.getId(), audit);
+        result = "success";
 
+        writer.writeStringToJson(response, "{\"result\":\"" + result + "\", \"auditResult\":\"" + auditResult + "\"}");
+        logger.info("audit end");
+    }
+
+    /**
+     * 获取下一个审核节点
+     * @param audit
+     * @param direct 向前或向后获取
+     * @return
+     */
+    public Audit getNextAudit(Audit audit, String direct) {
         AuditFlow auditFlow = new AuditFlow();
         auditFlow.setEntity(audit.getEntity());
-        auditFlow.setCompany(dbAudit.getCompany());
-        auditFlow.setState(0);
+        auditFlow.setCompany(audit.getCompany());
+        auditFlow.setState(AuditFlowConstant.flow_state_use);
 
-        List<AuditFlow> dbAuditFlows =  sysDao.query(auditFlow);
+        List<AuditFlow> dbAuditFlows = sysDao.query(auditFlow);
 
         if (!dbAuditFlows.isEmpty()) {
-            AuditFlow dbAuditFlow =  dbAuditFlows.get(0);
+            AuditFlow dbAuditFlow = dbAuditFlows.get(0);
 
             AuditFlowNode auditFlowNode = new AuditFlowNode();
             auditFlowNode.setAuditFlow(dbAuditFlow);
-            auditFlowNode.setPost(audit.getPost());
+
+            if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
+                auditFlowNode.setPost(audit.getPost());
+            } else if((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
+                auditFlowNode.setNextPost(audit.getPost());
+            }
 
             List<AuditFlowNode> dbAuditFlowNodes = sysDao.query(auditFlowNode);
             if (!dbAuditFlowNodes.isEmpty()) {
@@ -457,29 +549,29 @@ public class SysController {
                      * 查询到下一个工作流程节点，则设置下一个事宜、审核节点
                      */
                     Audit newAudit = new Audit();
-                    newAudit.setState(1);
+                    newAudit.setState(AuditFlowConstant.audit_state_todo);
                     newAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
 
                     newAudit.setName(dbAuditFlowNode.getName());
-                    newAudit.setPost(dbAuditFlowNode.getNextPost());
+                    newAudit.setAction(dbAuditFlowNode.getAction());
+
+                    if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
+                        newAudit.setPost(dbAuditFlowNode.getNextPost());
+                    } else if((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
+                        newAudit.setPost(dbAuditFlowNode.getPost());
+                        newAudit.setRefusePost(audit.getPost());
+                    }
 
                     newAudit.setCompany(dbAuditFlow.getCompany());
                     newAudit.setEntity(dbAuditFlow.getEntity());
-                    newAudit.setEntityId(dbAudit.getEntityId());
+                    newAudit.setEntityId(audit.getEntityId());
 
-                    sysDao.save(newAudit);
-
-                } else {
-
+                    return newAudit;
                 }
-
-                result = "success";
             }
-
         }
 
-        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
-        logger.info("audit end");
+        return null;
     }
 
     /**

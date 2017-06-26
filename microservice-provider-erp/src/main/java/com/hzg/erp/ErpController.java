@@ -1,6 +1,12 @@
 package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.sys.Audit;
+import com.hzg.sys.Dept;
+import com.hzg.sys.Post;
+import com.hzg.sys.User;
+import com.hzg.tools.AuditFlowConstant;
+import com.hzg.tools.ErpConstant;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +35,9 @@ public class ErpController {
     @Autowired
     private Writer writer;
 
+    @Autowired
+    private SysClient sysClient;
+
     /**
      * 保存实体
      * @param response
@@ -52,42 +61,50 @@ public class ErpController {
                 for (PurchaseDetail detail : purchase.getDetails()) {
                     Product product = detail.getProduct();
 
-                    if (!erpDao.isValueRepeat(Product.class, "no", product.getNo(), product.getId())) {
+                    ProductDescribe describe = product.getDescribe();
+                    erpDao.save(describe);
 
-                        ProductDescribe describe = product.getDescribe();
-                        erpDao.save(describe);
+                    product.setDescribe(describe);
+                    erpDao.save(product);
 
-                        product.setDescribe(describe);
-                        erpDao.save(product);
+                    /**
+                     * 使用 new 新建，避免直接使用已经包含 property 属性的 product， 使得 product 与 property 循环嵌套
+                     */
+                    Product doubleRelateProduct = new Product();
+                    doubleRelateProduct.setId(product.getId());
 
-                        /**
-                         * 使用 new 新建，避免直接使用已经包含 property 属性的 product， 使得 product 与 property 循环嵌套
-                         */
-                        Product doubleRelateProduct = new Product();
-                        doubleRelateProduct.setId(product.getId());
-
-                        if (product.getProperties() != null) {
-                            for (ProductOwnProperty ownProperty : product.getProperties()) {
-                                ownProperty.setProduct(doubleRelateProduct);
-                                erpDao.save(ownProperty);
-                            }
+                    if (product.getProperties() != null) {
+                        for (ProductOwnProperty ownProperty : product.getProperties()) {
+                            ownProperty.setProduct(doubleRelateProduct);
+                            erpDao.save(ownProperty);
                         }
-
-                        detail.setProduct(product);
-                        detail.setProductName(product.getName());
-                        detail.setAmount(product.getUnitPrice() * detail.getQuantity());
-                        detail.setPrice(product.getUnitPrice());
-
-                        Purchase doubleRelatePurchase = new Purchase();
-                        doubleRelatePurchase.setId(purchase.getId());
-
-                        detail.setPurchase(doubleRelatePurchase);
-
-                        erpDao.save(detail);
-
-                    } else {
-                        result += " product no:" + product.getNo() + " has exist, cann't save;";
                     }
+
+                    detail.setProduct(product);
+                    detail.setProductName(product.getName());
+                    detail.setAmount(product.getUnitPrice() * detail.getQuantity());
+                    detail.setPrice(product.getUnitPrice());
+
+                    Purchase doubleRelatePurchase = new Purchase();
+                    doubleRelatePurchase.setId(purchase.getId());
+
+                    detail.setPurchase(doubleRelatePurchase);
+
+                    erpDao.save(detail);
+
+
+                    /**
+                     * 创建审核流程第一个节点，发起审核流程
+                     */
+                    Audit audit = new Audit();
+                    audit.setEntity(AuditFlowConstant.business_purchase);
+                    audit.setEntityId(purchase.getId());
+                    Post post = (Post)((User)erpDao.query(purchase.getInputer())).getPosts().toArray()[0];
+                    audit.setPost(post);
+                    audit.setCompany(((Dept)erpDao.query(post.getDept())).getCompany());
+
+                    String auditResult = sysClient.audit(writer.gson.toJson(audit));
+                    logger.info("audit result:" + auditResult);
                 }
             }
 
@@ -128,45 +145,40 @@ public class ErpController {
                 for (PurchaseDetail detail : purchase.getDetails()) {
                     Product product = detail.getProduct();
 
-                    if (!erpDao.isValueRepeat(Product.class, "no", product.getNo(), product.getId())) {
-                        if (product.getState() == 1) {       //采购状态的才可以修改
-                            erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
+                    if (product.getState() == 1) {       //采购状态的才可以修改
+                        erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
 
-                            erpDao.updateById(product.getId(), product);
+                        erpDao.updateById(product.getId(), product);
 
 
-                            /**
-                             * 先保存新属性，再删除就属性
-                             */
-                            if (product.getProperties() != null) {
-                                Set<ProductOwnProperty> oldProperties = ((Product) (erpDao.queryById(product.getId(), Product.class))).getProperties();
+                        /**
+                         * 先保存新属性，再删除就属性
+                         */
+                        if (product.getProperties() != null) {
+                            Set<ProductOwnProperty> oldProperties = ((Product) (erpDao.queryById(product.getId(), Product.class))).getProperties();
 
-                                Product doubleRelateProduct = new Product();
-                                doubleRelateProduct.setId(product.getId());
+                            Product doubleRelateProduct = new Product();
+                            doubleRelateProduct.setId(product.getId());
 
-                                for (ProductOwnProperty ownProperty : product.getProperties()) {
-                                    ownProperty.setProduct(doubleRelateProduct);
-                                    erpDao.save(ownProperty);
-                                }
-
-                                for (ProductOwnProperty oldProperty : oldProperties) {
-                                    erpDao.delete(oldProperty);
-                                }
+                            for (ProductOwnProperty ownProperty : product.getProperties()) {
+                                ownProperty.setProduct(doubleRelateProduct);
+                                erpDao.save(ownProperty);
                             }
 
-
-                            detail.setProductName(product.getName());
-                            detail.setAmount(product.getUnitPrice() * detail.getQuantity());
-                            detail.setPrice(product.getUnitPrice());
-
-                            erpDao.updateById(detail.getId(), detail);
-
-                        } else {
-                            result += " product " + product.getNo() + " state != 1, cann't update;";
+                            for (ProductOwnProperty oldProperty : oldProperties) {
+                                erpDao.delete(oldProperty);
+                            }
                         }
 
+
+                        detail.setProductName(product.getName());
+                        detail.setAmount(product.getUnitPrice() * detail.getQuantity());
+                        detail.setPrice(product.getUnitPrice());
+
+                        erpDao.updateById(detail.getId(), detail);
+
                     } else {
-                        result += " product no:" + product.getNo() + " has exist, cann't update;";
+                        result += " product " + product.getNo() + " state != 1, cann't update;";
                     }
                 }
             }
@@ -327,4 +339,77 @@ public class ErpController {
 
         logger.info("recordsSum end");
     }
+
+
+    /**
+     * 查询条件限制下的记录数
+     * @param response
+     * @param entity
+     * @param json
+     */
+    @RequestMapping(value = "/isValueRepeat", method = {RequestMethod.GET, RequestMethod.POST})
+    public void isValueRepeat(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("isValueRepeat start, parameter:" + entity + ":" + json);
+
+        Boolean isRepeat = false;
+
+        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+
+        if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
+            isRepeat =  erpDao.isValueRepeat(Product.class, queryParameters.get("field"), queryParameters.get("value"), Integer.parseInt(queryParameters.get("id")));
+        }
+        writer.writeStringToJson(response, "{\"result\":" + isRepeat + "}");
+
+        logger.info("isValueRepeat end");
+    }
+
+    /**
+     * 流程审核动作
+     * @param response
+     * @param json
+     */
+    @Transactional
+    @RequestMapping(value = "/auditAction", method = {RequestMethod.GET, RequestMethod.POST})
+    public void auditAction(HttpServletResponse response, @RequestBody String json){
+        logger.info("auditAction start, parameter:" + json);
+        String result;
+
+        Audit audit = writer.gson.fromJson(json, Audit.class);
+
+        switch (audit.getAction()) {
+            case AuditFlowConstant.action_purchase_product_pass: productPass(audit);
+            case AuditFlowConstant.action_purchase_close: purchaseClose(audit);
+            default:;
+        }
+
+        result = "success";
+
+        writer.writeStringToJson(response, "{\"result\":" + result + "}");
+
+        logger.info("isValueRepeat end");
+    }
+
+    private void productPass(Audit audit){
+        Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
+
+        Product temp = new Product();
+        Set<PurchaseDetail> details = purchase.getDetails();
+        for (PurchaseDetail detail : details) {
+
+            temp.setId(detail.getProduct().getId());
+            temp.setState(ErpConstant.product_state_purchase_pass);
+            erpDao.updateById(temp.getId(), temp);
+        }
+    }
+
+    private void purchaseClose(Audit audit) {
+        Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
+
+        Purchase temp = new Purchase();
+        temp.setId(purchase.getId());
+        temp.setState(ErpConstant.purchase_state_close);
+
+        erpDao.updateById(temp.getId(), temp);
+    }
+
 }

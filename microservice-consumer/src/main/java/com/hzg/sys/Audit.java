@@ -40,7 +40,7 @@ public class Audit implements Serializable {
     @Column(name="inputDate")
     private Timestamp inputDate;
 
-    @Column(name="remark",length=64)
+    @Column(name="remark",length=256)
     private String remark;
 
     @Column(name="entity",length=32)
@@ -59,6 +59,9 @@ public class Audit implements Serializable {
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "companyId")
     private Company company;
+
+    @Column(name="action",length=32)
+    private String action;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -166,6 +169,14 @@ public class Audit implements Serializable {
 
     public void setCompany(Company company) {
         this.company = company;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
     }
 
     public String getStateName() {

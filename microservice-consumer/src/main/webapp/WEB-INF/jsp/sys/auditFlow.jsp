@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.sys.*" %>
+<%@ page import="com.hzg.tools.AuditFlowConstant" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -47,12 +48,12 @@
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="entity" name="entity" class="form-control col-md-7 col-xs-12" required>
                                         <option value="">请选择类别</option>
-                                        <option value="purchase">采购审核</option>
-                                        <option value="purchase_emergency">应急采购审核</option>
-                                        <option value="product">商品上架</option>
-                                        <option value="returnProduct">退货审核</option>
-                                        <option value="changeProduct">换货审核</option>
-                                        <option value="order_personal">私人订制</option>
+                                        <option value="<%=AuditFlowConstant.business_purchase%>">采购审核</option>
+                                        <option value="<%=AuditFlowConstant.business_purchaseEmergency%>">应急采购审核</option>
+                                        <option value="<%=AuditFlowConstant.business_product%>">商品上架</option>
+                                        <option value="<%=AuditFlowConstant.business_returnProduct%>">退货审核</option>
+                                        <option value="<%=AuditFlowConstant.business_changeProduct%>">换货审核</option>
+                                        <option value="<%=AuditFlowConstant.business_orderPersonal%>">私人订制</option>
                                     </select>
                                 </div>
                             </div>
@@ -121,6 +122,14 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="clearfix"></div><br>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="post">审核通过调用动作 <span class="required">*</span></label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <select id="action" name="action" class="form-control col-md-7 col-xs-12" required>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -144,8 +153,18 @@
         '{}', ['company[id]', 'dept[id]'], 0);
 
 
+    var businessActionOptions = {
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_product_pass%>'>审核通过商品</option><option value='<%=AuditFlowConstant.action_purchase_close%>'>关闭采购单</option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pass%>'>审核通过采购单</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pay%>'>审核付款</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_onSale%>'>上架商品</option>",
+        "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
+    };
 
     $('#addNode').click(function () {
+        $("#action").empty().append(businessActionOptions[$("#entity").val()]);
+
         $('#subFormDiv').dialog('open');
         return false;
     });
@@ -155,12 +174,13 @@
         title: "添加流程节点",
         autoOpen: false,
         width: 600,
-        height:330,
+        height:390,
         buttons: {
             "添加": function () {
                 var form = $("#form");
 
                 form.append("<input type='hidden' name='auditFlowNodes[][name]' value='" + $("#nodeName").val() + "'>");
+                form.append("<input type='hidden' name='auditFlowNodes[][action]' value='" + $("#action").val() + "'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][post[id]]' value='" + $("#post").val() + "'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][nextPost[id]]' value='0' data-value-type='number' data-skip-falsy='true'>");
 

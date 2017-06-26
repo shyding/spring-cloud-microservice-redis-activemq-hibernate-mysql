@@ -32,12 +32,16 @@ public class SysController extends com.hzg.base.Controller {
     @Autowired
     private CookieUtils cookieUtils;
 
+    @Autowired
+    public Integer sessionTime;
+
     public SysController(SysClient sysClient) {
         super(sysClient);
     }
 
     @GetMapping("/view/{entity}/{id}")
-    public String viewById(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("id") Integer id) {
+    public String viewById(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("id") Integer id,
+            @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
         logger.info("viewById start, entity:" + entity + ", id:" + id);
 
         List<Object> entities = null;
@@ -67,6 +71,7 @@ public class SysController extends com.hzg.base.Controller {
                 queryJson = "{\"entityId\":" + ((Audit)entities.get(0)).getEntityId() + "}";
             }
             model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<Audit>>() {}.getType()));
+            model.put("sessionId", sessionId);
 
         } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<AuditFlow>>() {}.getType());
@@ -145,7 +150,7 @@ public class SysController extends com.hzg.base.Controller {
         String sessionId = strUtil.generateRandomStr(32);
 
         cookieUtils.addCookie(response, "sessionId", sessionId);
-        dao.storeToRedis("salt_" + sessionId, salt, 7200);
+        dao.storeToRedis("salt_" + sessionId, salt, sessionTime);
 
         model.put("salt", salt);
         model.put("sessionId", sessionId);

@@ -2,7 +2,6 @@ package com.hzg.sys;
 
 import javax.persistence.*;
 import java.io.Serializable;
-import java.sql.Timestamp;
 
 @Entity(name = "hzg_sys_audit_flow_node")
 public class AuditFlowNode implements Serializable {
@@ -32,6 +31,9 @@ public class AuditFlowNode implements Serializable {
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "auditFlowId")
     private AuditFlow auditFlow;
+
+    @Column(name="action",length=32)
+    private String action;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -75,5 +77,13 @@ public class AuditFlowNode implements Serializable {
 
     public void setAuditFlow(AuditFlow auditFlow) {
         this.auditFlow = auditFlow;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
     }
 }

@@ -179,8 +179,6 @@ function renderAudit(element, url){
         url:  url,
         success: function (pageContent) {
             if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
-                setHisUrls(url);
-
                 element.empty().html(pageContent.replace("right_col", ""));
 
                 /**

@@ -179,7 +179,9 @@ function renderAudit(element, url){
         url:  url,
         success: function (pageContent) {
             if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
-                element.empty().html(pageContent);
+                setHisUrls(url);
+
+                element.empty().html(pageContent.replace("right_col", ""));
 
                 /**
                  * 蕴藏部分元素
@@ -196,6 +198,8 @@ function renderAudit(element, url){
                     }
                 }
                 $('#result').attr("readonly", false).css("border", "1px solid #ccc");
+
+                document.getElementById("submitDiv").parentNode.innerHTML = "";
             }
         }
     });
@@ -253,7 +257,7 @@ function init(editable) {
     $("#edit").unbind("click").click(function(){
         editable = true;
 
-        $('input, select').attr("readonly",false).css("border", "1px solid #ccc");
+        $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
         $('#send, #delete, #recover').attr("disabled", false);
         $("#edit").attr("disabled", "disabled");
     });
@@ -264,7 +268,7 @@ function init(editable) {
     });
 
     if (!editable) {
-        $('input, select').attr("readonly","readonly").css("border", "0");
+        $('#form :input').attr("readonly","readonly").css("border", "0");
         $('#send, #delete, #recover').attr("disabled","disabled");
     }
 

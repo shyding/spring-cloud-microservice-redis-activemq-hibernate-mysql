@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.sys.Audit" %>
+<%@ page import="com.hzg.tools.AuditFlowConstant" %>
 <!-- page content -->
 <div class="right_col" role="main">
     <div class="">
@@ -34,11 +35,18 @@
                             <h2 class="h2-margin-bottom">名称: &nbsp;&nbsp;${entity.name}</h2>
                             <h2 class="h2-margin-bottom">流转时间: &nbsp;&nbsp;${entity.inputDate}</h2>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <div id="entityDiv"></div>
-                        <div id="entityDiv1"></div>
+        <div id="entityDiv"></div>
 
-                        <div class="right_col">
+        <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="x_panel">
+                    <div class="x_content">
+                        <div>
                             <h2 class="h2-margin-bottom">节点处理情况</h2>
                             <c:forEach items="${entities}" var="entity" varStatus="status">
                                 <c:if test="${entity.state == 1}">
@@ -55,10 +63,9 @@
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="result" name="result" class="form-control col-md-7 col-xs-12" required>
                                         <option value="">请选择</option>
-                                        <option value="Y">已办</option>
-                                        <option value="Y">审核通过</option>
-                                        <option value="N">审核未通过</option>
-                                        <option value="L">锁定</option>
+                                        <option value="<%=AuditFlowConstant.audit_do%>">已办</option>
+                                        <option value="<%=AuditFlowConstant.audit_pass%>">审核通过</option>
+                                        <option value="<%=AuditFlowConstant.audit_deny%>">审核未通过</option>
                                     </select>
                                 </div>
                             </div>
@@ -77,7 +84,7 @@
                                 </div>
                             </div>
                             <input type="hidden" id="id" name="id" value="${entity.id}">
-                            <input type="hidden" name="sessionId" value="<%=session.getId()%>">
+                            <input type="hidden" name="sessionId" value="${sessionId}">
                         </form>
                     </div>
                 </div>
@@ -87,15 +94,8 @@
 </div>
 <!-- /page content -->
 <script type="text/javascript">
-    var parentEntity = "";
     var entity = "${entity.entity}";
-    var pos = entity.indexOf("_");
-    if (pos != -1) {
-        parentEntity = entity.substr(0, pos);
-    } else {
-        parentEntity = entity;
-    }
-    renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[parentEntity] + dataList.viewActions[parentEntity] + "/" + parentEntity + "/${entity.entityId}");
+    renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[entity] + dataList.viewActions[entity] + "/" + entity + "/${entity.entityId}");
 
     if (${entity.state == 1}) {
         $("#deal").click(function(){

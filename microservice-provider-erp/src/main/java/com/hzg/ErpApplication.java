@@ -18,6 +18,7 @@ import org.springframework.data.redis.connection.RedisNode;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.jms.annotation.EnableJms;
@@ -114,6 +115,21 @@ public class ErpApplication {
         JdkSerializationRedisSerializer jdkSerializationRedisSerializer = new JdkSerializationRedisSerializer();
         redisTemplate.setValueSerializer(jdkSerializationRedisSerializer);
         redisTemplate.setHashValueSerializer(jdkSerializationRedisSerializer);
+
+        return redisTemplate;
+    }
+
+    // 设置 redisTemplate
+    @Bean
+    public RedisTemplate<String, Long> redisTemplateLong() {
+        RedisTemplate<String, Long> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(connectionFactory);
+
+        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+        redisTemplate.setKeySerializer(stringRedisSerializer);
+        redisTemplate.setHashKeySerializer(stringRedisSerializer);
+        redisTemplate.setValueSerializer(new GenericToStringSerializer<>(Long.class));
+        redisTemplate.setHashValueSerializer(new GenericToStringSerializer<>(Long.class));
 
         return redisTemplate;
     }

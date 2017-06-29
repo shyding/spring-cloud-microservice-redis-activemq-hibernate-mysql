@@ -175,7 +175,7 @@ var dataList = (function($){
 
     var showTitleNames = {
         "user":{"state":{0: "使用", 1: "注销"}},
-        "audit":{"state":{0: "已办", 1: "待办"}},
+        "audit":{"state":{0: "待办", 1: "已办"}},
         "auditFlow":{"state":{0: "在用", 1: "没用"}},
         "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}},
         "supplier":{"level":{"A": "A级", "B": "B级", "C": "C级", "D": "D级"},

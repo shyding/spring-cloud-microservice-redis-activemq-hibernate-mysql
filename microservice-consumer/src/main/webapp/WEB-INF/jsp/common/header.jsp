@@ -31,18 +31,15 @@
             <div class="menu_section">
                 <h3>General</h3>
                 <ul class="nav side-menu">
-                    <li><a id="auditA" href="#/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D" onclick="render('/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%221%22%7D');"><i class="fa fa-home"></i> 待办事宜 <span class="fa fa-chevron-right"></span></a></li>
+                    <li><a id="auditA" href="#/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%220%22%7D" onclick="render('/sys/list/<%=Audit.class.getSimpleName().toLowerCase()%>/%7B%22state%22:%220%22%7D');"><i class="fa fa-home"></i> 待办事宜 <span class="fa fa-chevron-right"></span></a></li>
 
                     <c:if test="${resources != null}">
                     <c:if test="${fn:contains(resources, '/erp/save')}">
                         <li><a><i class="fa fa-edit"></i> ERP <span class="fa fa-chevron-down"></span></a>
                             <ul class="nav child_menu">
                                 <li><a href="#/erp/list/<%=Product.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>
-                                <c:if test="${fn:contains(resources, '/erp/save/product')}">
-                                    <li><a href="#/erp/view/product/-1">录入商品</a></li>
-                                </c:if>
                                 <c:if test="${fn:contains(resources, '/erp/save/purchase')}">
-                                    <li><a href="#/erp/view/purchase/-1">采购</a></li>
+                                    <li><a href="#/erp/view/purchase/-1">录入采购单</a></li>
                                 </c:if>
                                 <c:if test="${fn:contains(resources, '/erp/save/stockInOut')}">
                                     <li><a href="#/erp/view/stockInOut/-1">入库出库</a></li>

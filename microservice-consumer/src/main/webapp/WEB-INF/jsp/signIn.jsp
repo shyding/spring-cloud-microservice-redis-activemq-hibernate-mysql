@@ -70,6 +70,7 @@
                     </div>
                     <input type="hidden" id="encryptPassword" name="encryptPassword" />
                     <input type="hidden" name="sessionId" value="${sessionId}" />
+                    <input type="hidden" name="oldSessionId" value="${oldSessionId}" />
                 </form>
                 <form action="<%=request.getContextPath()%>/sys/user/signIn" id="signInForm" method="post">
                     <input type="hidden" id="json" name="json" />

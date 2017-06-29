@@ -2,6 +2,9 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.sys.Audit" %>
 <%@ page import="com.hzg.tools.AuditFlowConstant" %>
+<%@ page import="com.hzg.sys.AuditFlowNode" %>
+<%@ page import="java.util.Set" %>
+<%@ page import="java.util.List" %>
 <!-- page content -->
 <div class="right_col" role="main">
     <div class="">
@@ -33,6 +36,7 @@
                     <div class="x_content">
                         <div class="right_col">
                             <h2 class="h2-margin-bottom">名称: &nbsp;&nbsp;${entity.name}</h2>
+                            <h2 class="h2-margin-bottom">内容: &nbsp;&nbsp;${entity.content}</h2>
                             <h2 class="h2-margin-bottom">流转时间: &nbsp;&nbsp;${entity.inputDate}</h2>
                         </div>
                     </div>
@@ -65,7 +69,18 @@
                                         <option value="">请选择</option>
                                         <option value="<%=AuditFlowConstant.audit_do%>">已办</option>
                                         <option value="<%=AuditFlowConstant.audit_pass%>">审核通过</option>
+                                        <c:if test="${refusePostOptions != null}">
                                         <option value="<%=AuditFlowConstant.audit_deny%>">审核未通过</option>
+                                        </c:if>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="item form-group" id="refusePosts" style="display:none">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="result">返回节点<span class="required"></span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <select name="toRefusePost[id]" class="form-control col-md-7 col-xs-12">
+                                        ${prePostOptions}
+                                        ${refusePostOptions}
                                     </select>
                                 </div>
                             </div>
@@ -97,13 +112,22 @@
     var entity = "${entity.entity}";
     renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[entity] + dataList.viewActions[entity] + "/" + entity + "/${entity.entityId}");
 
-    if (${entity.state == 1}) {
+    if (${entity.state == 0}) {
         $("#deal").click(function(){
             $('#dealForm').submitForm('<%=request.getContextPath()%>/sys/<%=Audit.class.getSimpleName().toLowerCase()%>');
+            $("#deal").attr("disabled", "disabled");
         });
     } else {
         $("#deal").attr("disabled", "disabled");
     }
+
+    $("#result").change(function(){
+        if (this.value == "N") {
+            $("#refusePosts").show();
+        } else {
+            $("#refusePosts").hide();
+        }
+    });
 
     <c:choose><c:when test="${entity.state == 1}">document.title = "办理事宜";</c:when><c:otherwise> document.title = "查看事宜";</c:otherwise></c:choose>
 </script>

@@ -64,17 +64,102 @@ public class SysController extends com.hzg.base.Controller {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<PrivilegeResource>>() {}.getType());
 
         } else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
-            entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Audit>>() {}.getType());
+            entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Audit>>(){}.getType());
 
             String queryJson = "";
             if (!entities.isEmpty()) {
-                queryJson = "{\"entityId\":" + ((Audit)entities.get(0)).getEntityId() + "}";
+                Audit audit = (Audit)entities.get(0);
+                queryJson = "{\"entityId\":" + audit.getEntityId() + "}";
+
+                List<AuditFlow> auditFlows =  writer.gson.fromJson(client.query(AuditFlow.class.getSimpleName(),
+                        "{\"entity\":" + audit.getEntity() + ", \"company\":{\"id\":" + audit.getCompany().getId() +"}}"),
+                              new TypeToken<List<AuditFlow>>() {}.getType());
+
+                if (!auditFlows.isEmpty()) {
+                    String refusePostOptions = "";
+
+                    if (!auditFlows.get(0).getAuditFlowNodes().isEmpty()) {
+                        AuditFlowNode[] auditFlowNodes = new AuditFlowNode[auditFlows.get(0).getAuditFlowNodes().size()];
+                        auditFlows.get(0).getAuditFlowNodes().toArray(auditFlowNodes);
+
+                        Arrays.sort(auditFlowNodes, new Comparator<AuditFlowNode>() {
+                            @Override
+                            public int compare(AuditFlowNode o1, AuditFlowNode o2) {
+                                if (o1.getId().compareTo(o2.getId()) > 0) {
+                                    return 1;
+                                } else if(o1.getId().compareTo(o2.getId()) < 0) {
+                                    return -1;
+                                }
+
+                                return 0;
+                            }
+                        });
+
+                        int pos = 0;
+                        AuditFlowNode currentNode = null, preNode = null;
+                        for (int i = 0; i < auditFlowNodes.length; i++) {
+                            if (audit.getPost().getId().compareTo(auditFlowNodes[i].getPost().getId()) == 0) {
+                                currentNode = auditFlowNodes[i];
+                                pos = i;
+                                break;
+                            }
+                        }
+
+                        if (currentNode != null) {
+                            if (pos > 0) {
+                                preNode = auditFlowNodes[pos-1];
+                            }
+
+
+                            for (int i = 0; i < auditFlowNodes.length; i++) {
+                                if (auditFlowNodes[i].getId() < currentNode.getId()) {
+                                    refusePostOptions += "<option value='" + auditFlowNodes[i].getPost().getId() + "'>" + auditFlowNodes[i].getPost().getName() + "</option>";
+
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (preNode != null) {
+                            model.put("prePostOptions", "<option value='" + preNode.getPost().getId() + "'>上一节点</option>");
+                        }
+                        if (!refusePostOptions.equals("")) {
+                            model.put("refusePostOptions", refusePostOptions);
+                        }
+                    }
+                }
             }
+
             model.put("entities", writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<Audit>>() {}.getType()));
             model.put("sessionId", sessionId);
 
         } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<AuditFlow>>() {}.getType());
+
+            if (!entities.isEmpty()) {
+                AuditFlow auditFlow = (AuditFlow) entities.get(0);
+
+                if (!auditFlow.getAuditFlowNodes().isEmpty()) {
+                    AuditFlowNode[] auditFlowNodes = new AuditFlowNode[auditFlow.getAuditFlowNodes().size()];
+                    auditFlow.getAuditFlowNodes().toArray(auditFlowNodes);
+
+                    Arrays.sort(auditFlowNodes, new Comparator<AuditFlowNode>() {
+                        @Override
+                        public int compare(AuditFlowNode o1, AuditFlowNode o2) {
+                            if (o1.getId().compareTo(o2.getId()) > 0) {
+                                return 1;
+                            } else if (o1.getId().compareTo(o2.getId()) < 0) {
+                                return -1;
+                            }
+
+                            return 0;
+                        }
+                    });
+
+                    model.put("auditFlowNodes", auditFlowNodes);
+                }
+            }
         }
 
         model.put("entity", entities.isEmpty() ? null : entities.get(0));
@@ -165,11 +250,10 @@ public class SysController extends com.hzg.base.Controller {
      * @return
      */
     @GetMapping("/user/signResult")
-    public String signResult(Map<String, Object> model, String sessionId) {
+    public String signResult(HttpServletResponse response, Map<String, Object> model, String sessionId) {
         model.put("result", dao.getFromRedis("result_" + sessionId));
-        model.put("salt", dao.getFromRedis("salt_" + sessionId));
-        model.put("sessionId", sessionId);
-        return "/signIn";
+        model.put("oldSessionId", sessionId);
+        return signIn(response, model);
     }
 
     /**

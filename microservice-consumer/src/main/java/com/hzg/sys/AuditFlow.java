@@ -37,6 +37,10 @@ public class AuditFlow  implements Serializable {
     @OneToMany(mappedBy = "auditFlow", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<AuditFlowNode> auditFlowNodes;
 
+    @Column(name="action",length=32)
+    private String action;
+
+
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
@@ -95,5 +99,13 @@ public class AuditFlow  implements Serializable {
 
     public void setAuditFlowNodes(Set<AuditFlowNode> auditFlowNodes) {
         this.auditFlowNodes = auditFlowNodes;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
     }
 }

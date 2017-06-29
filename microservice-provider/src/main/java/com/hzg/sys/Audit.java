@@ -3,8 +3,6 @@ package com.hzg.sys;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity(name = "hzg_sys_audit")
 public class Audit implements Serializable {
@@ -22,6 +20,9 @@ public class Audit implements Serializable {
 
     @Column(name="name",length=64)
     private String name;
+
+    @Column(name="content",length=256)
+    private String content;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "userId")
@@ -63,6 +64,11 @@ public class Audit implements Serializable {
     @Column(name="action",length=32)
     private String action;
 
+    @Transient
+    private Post toRefusePost;
+    @Transient
+    private String toRefuseAction;
+
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
@@ -81,6 +87,14 @@ public class Audit implements Serializable {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public User getUser() {
@@ -177,6 +191,22 @@ public class Audit implements Serializable {
 
     public void setAction(String action) {
         this.action = action;
+    }
+
+    public String getToRefuseAction() {
+        return toRefuseAction;
+    }
+
+    public void setToRefuseAction(String toRefuseAction) {
+        this.toRefuseAction = toRefuseAction;
+    }
+
+    public Post getToRefusePost() {
+        return toRefusePost;
+    }
+
+    public void setToRefusePost(Post toRefusePost) {
+        this.toRefusePost = toRefusePost;
     }
 
     public String getStateName() {

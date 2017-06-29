@@ -14,12 +14,21 @@ public interface ErpClient {
     @RequestMapping(value = "/auditAction", method = RequestMethod.POST)
     String auditAction(@RequestBody String json);
 
+    @RequestMapping(value = "/query", method = RequestMethod.POST)
+    String query(@RequestParam("entity") String entity, @RequestBody String json);
+
     @Component
     class ErpClientFallback implements ErpClient {
         @Override
         public String auditAction(String json) {
             logger.info("auditAction 异常发生，进入fallback方法，接收的参数：" + json);
             return "{\"result\":\"系统异常，更新出错\"}";
+        }
+
+        @Override
+        public String query(String entity, String json) {
+            logger.info("query 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
+            return "[]";
         }
     }
 }

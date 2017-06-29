@@ -2,6 +2,8 @@ package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.sys.User;
+import com.hzg.tools.DateUtil;
+import com.hzg.tools.ErpConstant;
 import com.hzg.tools.StrUtil;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
@@ -26,7 +28,7 @@ public class ErpController extends com.hzg.base.Controller {
     private ErpClient erpClient;
 
     @Autowired
-    private StrUtil strUtil;
+    private DateUtil dateUtil;
 
     public ErpController(ErpClient erpClient) {
         super(erpClient);
@@ -43,6 +45,11 @@ public class ErpController extends com.hzg.base.Controller {
 
         if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Purchase>>() {}.getType());
+            Map<String, String> no = writer.gson.fromJson(erpClient.getNo(ErpConstant.no_purchase_perfix), new TypeToken<Map<String, String>>(){}.getType());
+
+            model.put("no", no.get("no"));
+            model.put("currentDay", dateUtil.getCurrentDayStr());
+            model.put("productTypes", writer.gson.fromJson(erpClient.complexQuery("productType", "{}", 0, -1), new TypeToken<List<ProductType>>() {}.getType()));
 
         } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Supplier>>() {}.getType());
@@ -64,9 +71,12 @@ public class ErpController extends com.hzg.base.Controller {
     }
 
     @RequestMapping(value = "/privateQuery/{entity}", method = {RequestMethod.GET, RequestMethod.POST})
-    public void privateQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
+    public void privateQuery(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
         logger.info("privateQuery start, entity:" + entity + ", json:" + json);
-        String privateCondition = "";
+
+        if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+            writer.writeObjectToJson(response, client.complexQuery(entity, json, 0, 30));
+        }
 
         logger.info("privateQuery " + entity + " end");
     }

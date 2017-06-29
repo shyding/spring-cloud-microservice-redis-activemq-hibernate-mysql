@@ -37,6 +37,9 @@ public class ErpController {
     @Autowired
     private SysClient sysClient;
 
+    @Autowired
+    private ErpService erpService;
+
     /**
      * 保存实体
      * @param response
@@ -150,7 +153,7 @@ public class ErpController {
                 for (PurchaseDetail detail : purchase.getDetails()) {
                     Product product = detail.getProduct();
 
-                    if (product.getState() == 1) {       //采购状态的才可以修改
+                    if (product.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
                         erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
 
                         erpDao.updateById(product.getId(), product);
@@ -183,7 +186,7 @@ public class ErpController {
                         erpDao.updateById(detail.getId(), detail);
 
                     } else {
-                        result += " product " + product.getNo() + " state != 1, cann't update;";
+                        result = "fail, product " + product.getNo() + " state != " + ErpConstant.product_state_purchase +", cann't update;";
                     }
                 }
             }
@@ -345,6 +348,14 @@ public class ErpController {
         logger.info("recordsSum end");
     }
 
+    @RequestMapping(value = "/getNo", method = {RequestMethod.GET, RequestMethod.POST})
+    public void getNo(HttpServletResponse response, String prefix){
+        logger.info("getNo start, parameter:" + prefix);
+
+        writer.writeStringToJson(response, "{\"no\":\"" + erpDao.getNo(prefix) + "\"}");
+
+        logger.info("getNo start, end");
+    }
 
     /**
      * 查询条件限制下的记录数
@@ -377,44 +388,18 @@ public class ErpController {
     @RequestMapping(value = "/auditAction", method = {RequestMethod.GET, RequestMethod.POST})
     public void auditAction(HttpServletResponse response, @RequestBody String json){
         logger.info("auditAction start, parameter:" + json);
-        String result;
+        String result = "fail";
 
         Audit audit = writer.gson.fromJson(json, Audit.class);
 
         switch (audit.getAction()) {
-            case AuditFlowConstant.action_purchase_product_pass: productPass(audit);
-            case AuditFlowConstant.action_purchase_close: purchaseClose(audit);
-            default:;
+            case AuditFlowConstant.action_purchase_product_pass: result = erpService.productPass(audit);break;
+            case AuditFlowConstant.action_purchase_close: result = erpService.purchaseClose(audit);break;
         }
-
-        result = "success";
 
         writer.writeStringToJson(response, "{\"result\":" + result + "}");
 
         logger.info("isValueRepeat end");
-    }
-
-    private void productPass(Audit audit){
-        Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
-
-        Product temp = new Product();
-        Set<PurchaseDetail> details = purchase.getDetails();
-        for (PurchaseDetail detail : details) {
-
-            temp.setId(detail.getProduct().getId());
-            temp.setState(ErpConstant.product_state_purchase_pass);
-            erpDao.updateById(temp.getId(), temp);
-        }
-    }
-
-    private void purchaseClose(Audit audit) {
-        Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
-
-        Purchase temp = new Purchase();
-        temp.setId(purchase.getId());
-        temp.setState(ErpConstant.purchase_state_close);
-
-        erpDao.updateById(temp.getId(), temp);
     }
 
 }

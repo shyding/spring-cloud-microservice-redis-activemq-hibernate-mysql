@@ -517,7 +517,7 @@ public class Dao {
 
         Object relateObject = null;
 
-        List dbObjects = query(objectToSql.generateSelectSqlByAnnotation(object));
+        List dbObjects = queryBySql(objectToSql.generateSelectSqlByAnnotation(object), object.getClass());
         if (dbObjects != null && dbObjects.size() > 0) {
             Object dbObject = dbObjects.get(0);
 

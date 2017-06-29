@@ -1,13 +1,3 @@
-<%--
-**
-* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
-* 文件名: purchase.jsp
-*
-* @author smjie
-* @Date  2017/5/25
-* @version 1.00
-*
---%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.erp.Purchase" %>
@@ -48,6 +38,13 @@
                     <div class="x_content">
                         <form class="form-horizontal form-label-left" novalidate id="form">
                         <span class="section"><c:choose><c:when test="${entity != null}">查看</c:when><c:otherwise>填写</c:otherwise></c:choose>采购单</span>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购单号 <span class="required">*</span>
+                            </label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <input id="no" name="no" value="<c:choose><c:when test="${entity != null}">${entity.no}</c:when><c:otherwise>${no}</c:otherwise></c:choose>" data-validate-length-range="5,30" data-validate-words="1" class="form-control col-md-7 col-xs-12" readonly required>
+                            </div>
+                        </div>
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购标题 <span class="required">*</span>
                             </label>
@@ -119,7 +116,6 @@
                         </form>
                     </div>
 
-                    <form id="form1">
                     <div class="x_content" style="overflow: auto">
                         <table id="productList" class="table-sheet" width="100%">
                             <thead><tr><c:if test="${entity.details != null}"><th>状态</th></c:if><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>制作</th>
@@ -348,7 +344,7 @@
                                         <input type="file" name="file" >
                                         <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value="">
                                         <input type="hidden" name="imageTopDirPath" value="${currentDay}">
-                                        <input type="hidden" name="details[][product[state]]:number" value="1" required>
+                                        <input type="hidden" name="details[][product[state]]:number" value="0" required>
                                         <input type="hidden" name="details[][product[supplier[id]]]:number" required>
                                         <input type="hidden" name="details[][supplier[id]]:number" required>
                                     </td>
@@ -357,7 +353,6 @@
                             </tbody>
                         </table>
                     </div>
-                    </form>
 
                     <div class="x_content">
                         <div class="form-horizontal form-label-left">
@@ -401,8 +396,8 @@
         editable = true;
 
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
-        $('#form1 tr :input').attr("readonly",false);
-        $('.state2, .state3, .state4, .state5').find(":input").attr("readonly",true);
+        $('#productList tr :input').attr("readonly",false);
+        $('.state1, .state2, .state3, .state4').find(":input").attr("readonly",true);
         $('.readonly').attr("readonly",true);
         $('#send, #delete, #recover').attr("disabled", false);
         $("#editSheet").attr("disabled", "disabled");

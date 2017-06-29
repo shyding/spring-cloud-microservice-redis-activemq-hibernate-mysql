@@ -2,7 +2,6 @@ package com.hzg.erp;
 
 import com.hzg.tools.ProductUtil;
 import com.hzg.tools.SpringUtil;
-import com.hzg.tools.Writer;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
@@ -186,11 +185,12 @@ public class Product implements Serializable {
 
     public String getStateName() {
         switch (state) {
-            case 1 : return "采购";
-            case 2 : return "入库";
-            case 3 : return "出库";
-            case 4 : return "在售";
-            case 5 : return "售完";
+            case 0 : return "采购";
+            case 1 : return "入库";
+            case 2 : return "出库";
+            case 3 : return "在售";
+            case 4 : return "售完";
+            case 10 : return "采购审核通过";
             default : return "";
         }
     }
@@ -269,6 +269,6 @@ public class Product implements Serializable {
             }
         }
 
-        return values == null ? "" : values.substring(0, values.length()-1);
+        return values.equals("") ? "" : values.substring(0, values.length()-1);
     }
 }

@@ -61,7 +61,7 @@ public interface SysClient extends Client {
 
         @Override
         public String audit(@RequestParam("sessionId") String sessionId) {
-            return "{\"result\":\"系统异常，帮里事宜出错\"}";
+            return "{\"result\":\"系统异常，办理事宜出错\"}";
         }
     }
 }

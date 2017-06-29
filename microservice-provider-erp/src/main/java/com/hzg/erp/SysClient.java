@@ -17,7 +17,7 @@ public interface SysClient {
     class SysClientFallback implements SysClient {
         @Override
         public String audit(String json) {
-            return "{\"result\":\"系统异常，帮里事宜出错\"}";
+            return "{\"result\":\"系统异常，保存事宜出错\"}";
         }
     }
 }

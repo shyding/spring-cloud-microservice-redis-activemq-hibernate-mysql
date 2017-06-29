@@ -88,7 +88,14 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
                     parUrisStr += "/" + partUris[i++];
                 }
 
-                if (resources.contains(parUrisStr.substring(0, parUrisStr.lastIndexOf("/")) + "/{")) {
+                int pos = parUrisStr.lastIndexOf("/");
+                if (pos == -1 || pos == 0) {
+                    parUrisStr += "/{";
+                } else {
+                    parUrisStr = parUrisStr.substring(0, parUrisStr.lastIndexOf("/")) + "/{";
+                }
+
+                if (resources.contains(parUrisStr)) {
                     if (macValidate(request, visitingURI, sessionId)) {
                         return pass(response, username, sessionId);
                     } else {

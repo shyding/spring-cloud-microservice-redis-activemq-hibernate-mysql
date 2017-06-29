@@ -50,6 +50,7 @@
                                         <option value="">请选择类别</option>
                                         <option value="<%=AuditFlowConstant.business_purchase%>">采购审核</option>
                                         <option value="<%=AuditFlowConstant.business_purchaseEmergency%>">应急采购审核</option>
+                                        <option value="<%=AuditFlowConstant.business_stockIn%>">商品入库</option>
                                         <option value="<%=AuditFlowConstant.business_product%>">商品上架</option>
                                         <option value="<%=AuditFlowConstant.business_returnProduct%>">退货审核</option>
                                         <option value="<%=AuditFlowConstant.business_changeProduct%>">换货审核</option>
@@ -64,6 +65,13 @@
                                     </select>
                                 </div>
                             </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="company[id]">流程结束时动作 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <select id="action" name="action" class="form-control col-md-7 col-xs-12" data-value-type="string" data-skip-falsy="true" required>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="form-group" id="addNodeDiv">
                                 <div class="col-md-6 col-md-offset-3">
                                     <button id="addNode" type="button" class="btn btn-success">添加节点</button>
@@ -71,7 +79,7 @@
                             </div>
 
                             <div id="nodesDiv" align="center">
-                                <c:forEach items="${entity.auditFlowNodes}" var="node" varStatus="status">
+                                <c:forEach items="${auditFlowNodes}" var="node" varStatus="status">
                                     <c:if test="${status.count > 1}">
                                         &nbsp;&nbsp;&nbsp;&nbsp;<i class="fa fa-long-arrow-right"></i>&nbsp;&nbsp;
                                     </c:if>
@@ -126,7 +134,7 @@
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12" for="post">审核通过调用动作 <span class="required">*</span></label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
-                                <select id="action" name="action" class="form-control col-md-7 col-xs-12" required>
+                                <select id="nodeAction" name="nodeAction" class="form-control col-md-7 col-xs-12" required>
                                 </select>
                             </div>
                         </div>
@@ -153,17 +161,29 @@
         '{}', ['company[id]', 'dept[id]'], 0);
 
 
-    var businessActionOptions = {
+    var businessFlowActionOptions = {
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase%>'>发起入库流程</option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase_emergency%>'>发起入库流程</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_StockIn%>'>发起商品上架流程</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
+    };
+
+    var businessNodeActionOptions = {
         "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_product_pass%>'>审核通过商品</option><option value='<%=AuditFlowConstant.action_purchase_close%>'>关闭采购单</option>",
         "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pass%>'>审核通过采购单</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pay%>'>审核付款</option>",
-        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_onSale%>'>上架商品</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_stockIn%>'>入库商品</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_onSale%>'>上架商品</option>",
         "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
     };
 
     $('#addNode').click(function () {
-        $("#action").empty().append(businessActionOptions[$("#entity").val()]);
+        $("#action").empty().append(businessFlowActionOptions[$("#entity").val()]);
+        $("#nodeAction").empty().append(businessNodeActionOptions[$("#entity").val()]);
 
         $('#subFormDiv').dialog('open');
         return false;
@@ -180,7 +200,7 @@
                 var form = $("#form");
 
                 form.append("<input type='hidden' name='auditFlowNodes[][name]' value='" + $("#nodeName").val() + "'>");
-                form.append("<input type='hidden' name='auditFlowNodes[][action]' value='" + $("#action").val() + "'>");
+                form.append("<input type='hidden' name='auditFlowNodes[][action]' value='" + $("#nodeAction").val() + "' data-value-type='string' data-skip-falsy='true'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][post[id]]' value='" + $("#post").val() + "'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][nextPost[id]]' value='0' data-value-type='number' data-skip-falsy='true'>");
 

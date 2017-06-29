@@ -20,6 +20,9 @@ public class Purchase implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
+    @Column(name="no",length=16)
+    private String no;
+
     @Column(name="name",length=60)
     private String name;
 
@@ -62,6 +65,14 @@ public class Purchase implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getNo() {
+        return no;
+    }
+
+    public void setNo(String no) {
+        this.no = no;
     }
 
     public String getName() {

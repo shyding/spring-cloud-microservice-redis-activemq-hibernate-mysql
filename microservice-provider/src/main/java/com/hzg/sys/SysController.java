@@ -1,5 +1,6 @@
 package com.hzg.sys;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.AuditFlowConstant;
 import com.hzg.tools.SignInUtil;
@@ -37,6 +38,10 @@ public class SysController {
 
     @Autowired
     private ErpClient erpClient;
+
+    @Autowired
+    private SysService sysService;
+
 
     /**
      * 保存实体
@@ -412,7 +417,7 @@ public class SysController {
     @PostMapping("/audit")
     public void audit(HttpServletResponse response, @RequestBody String json){
         logger.info("audit start, parameter:" + json);
-        String result, auditResult = AuditFlowConstant.audit_deny;
+        String result, auditResult;
 
         Audit audit = writer.gson.fromJson(json, Audit.class);
 
@@ -420,7 +425,7 @@ public class SysController {
          * 发起新流程，创建流程的第一个事宜节点
          */
         if (audit.getId() == null) {
-            sysDao.save(getFirstAudit(audit));
+            sysDao.save(sysService.getFirstAudit(audit));
 
             auditResult = AuditFlowConstant.audit_do;
         }
@@ -429,8 +434,8 @@ public class SysController {
          * 办理、审核事宜
          */
         else {
-            Map<String, String> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
-            User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId")));
+            Map<String, Object> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+            User user = (User)sysDao.getFromRedis((String)sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId").toString()));
 
             if (user == null) {
                 writer.writeStringToJson(response, "{\"result\":\"会话信息丢失，请重新登录后办理、审核事宜\"}");
@@ -438,7 +443,7 @@ public class SysController {
             }
 
             Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
-            if (dbAudit.getState() == AuditFlowConstant.audit_state_done) {
+            if (dbAudit.getState().compareTo(AuditFlowConstant.audit_state_done) == 0) {
                 writer.writeStringToJson(response, "{\"result\":\"不能重复办理已办理、审核的事宜\"}");
                 return;
             }
@@ -453,55 +458,62 @@ public class SysController {
              * 审核通过，处理相应的业务逻辑
              */
             if (audit.getResult().equals(AuditFlowConstant.audit_pass)) {
-                Audit newAudit = getNextAudit(dbAudit, AuditFlowConstant.flow_direct_forward);
+                Audit nextAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_forward);
 
-                String doBusinessResult = erpClient.auditAction(writer.gson.toJson(dbAudit));
                 /**
-                 * 调用相应业务动作失败，则触发异常，回滚事务
+                 * 处理相应的业务逻辑
                  */
-                if (!doBusinessResult.contains("success")) {
-                    int t = 1/0;
-                }
-
+                sysService.doAction(dbAudit,AuditFlowConstant.flow_direct_forward);
 
                 /**
                  * 有下一个节点, 插入下一个节点
                  */
-                if (newAudit != null) {
-                    sysDao.save(newAudit);
-
+                if (nextAudit != null) {
+                    sysDao.save(nextAudit);
                     auditResult = AuditFlowConstant.audit_pass;
                 }
 
                 /**
-                 * 如果没有下一个节点，则流程办理完毕，有下一个流程还需要发起新流程
+                 * 如果没有下一个节点，则流程办理完毕，调用流程结束动作
                  */
                 else {
-                    if (dbAudit.getEntity().equals(AuditFlowConstant.business_purchase)) {
-                        Audit temp = new Audit();
-                        temp.setEntity(AuditFlowConstant.business_product);
-                        temp.setCompany(dbAudit.getCompany());
-                        temp.setPost(dbAudit.getPost());
-
-                        Audit nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
-                        if (nextFlowAudit != null) {
-                            sysDao.save(nextFlowAudit);
-                        }
-                    }
-
+                    sysService.doFlowAction(dbAudit);
                     auditResult = AuditFlowConstant.audit_finish;
                 }
             }
 
             /**
-             * 审核未通过，插入上一个节点
+             * 审核未通过，插入节点
              */
             else {
-                Audit newAudit = getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
-                if (newAudit != null) {
-                    sysDao.save(newAudit);
-                    auditResult = AuditFlowConstant.audit_deny;
+                Audit refuseAudit = null;
+                if (audit.getToRefusePost() != null) {
+                    refuseAudit = new Audit();
+
+                    refuseAudit.setEntity(dbAudit.getEntity());
+                    refuseAudit.setEntityId(dbAudit.getEntityId());
+                    refuseAudit.setCompany(dbAudit.getCompany());
+
+                    Post post = new Post();
+                    post.setId(audit.getToRefusePost().getId());
+                    refuseAudit.setPost(post);
+
+                    refuseAudit = sysService.getAudit(refuseAudit);
+                    refuseAudit.setRefusePost(dbAudit.getPost());
+                    refuseAudit.setName(dbAudit.getName());
+
+                } else {
+                    refuseAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
                 }
+
+                /**
+                 * 设置拒绝节点对应动作，处理相应的业务逻辑
+                 */
+                dbAudit.setToRefuseAction(refuseAudit.getAction());
+                sysService.doAction(dbAudit, AuditFlowConstant.flow_direct_backwards);
+
+                sysDao.save(refuseAudit);
+                auditResult = AuditFlowConstant.audit_deny;
             }
         }
 
@@ -511,88 +523,7 @@ public class SysController {
         logger.info("audit end");
     }
 
-    /**
-     * 获取第一个审核节点
-     * @param audit
-     * @return
-     */
-    public Audit getFirstAudit(Audit audit) {
-        AuditFlow auditFlow = new AuditFlow();
-        auditFlow.setEntity(audit.getEntity());
-        AuditFlow dbAuditFlow = (AuditFlow) sysDao.query(auditFlow).get(0);
 
-        AuditFlowNode auditFlowNode = new AuditFlowNode();
-        auditFlowNode.setAuditFlow(dbAuditFlow);
-        AuditFlowNode dbAuditFlowNode = (AuditFlowNode) sysDao.query(auditFlowNode).get(0);
-
-        audit.setPost(dbAuditFlowNode.getPost());
-
-        /**
-         * 流程中的第一个节点为事务发起节点，不属于审核节点
-         * 流程中的第二个节点才为审核的第一个节点
-         */
-        return getNextAudit(audit, AuditFlowConstant.flow_direct_forward);
-    }
-
-    /**
-     * 获取下一个审核节点
-     * @param audit
-     * @param direct 向前或向后获取
-     * @return
-     */
-    public Audit getNextAudit(Audit audit, String direct) {
-        AuditFlow auditFlow = new AuditFlow();
-        auditFlow.setEntity(audit.getEntity());
-        auditFlow.setCompany(audit.getCompany());
-        auditFlow.setState(AuditFlowConstant.flow_state_use);
-
-        List<AuditFlow> dbAuditFlows = sysDao.query(auditFlow);
-
-        if (!dbAuditFlows.isEmpty()) {
-            AuditFlow dbAuditFlow = dbAuditFlows.get(0);
-
-            AuditFlowNode auditFlowNode = new AuditFlowNode();
-            auditFlowNode.setAuditFlow(dbAuditFlow);
-
-            if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
-                auditFlowNode.setPost(audit.getPost());
-            } else if((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
-                auditFlowNode.setNextPost(audit.getPost());
-            }
-
-            List<AuditFlowNode> dbAuditFlowNodes = sysDao.query(auditFlowNode);
-            if (!dbAuditFlowNodes.isEmpty()) {
-                AuditFlowNode dbAuditFlowNode = dbAuditFlowNodes.get(0);
-
-                if (dbAuditFlowNode.getNextPost() != null) {
-                    /**
-                     * 查询到下一个工作流程节点，则设置下一个事宜、审核节点
-                     */
-                    Audit newAudit = new Audit();
-                    newAudit.setState(AuditFlowConstant.audit_state_todo);
-                    newAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
-
-                    newAudit.setName(dbAuditFlowNode.getName());
-                    newAudit.setAction(dbAuditFlowNode.getAction());
-
-                    if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
-                        newAudit.setPost(dbAuditFlowNode.getNextPost());
-                    } else if((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
-                        newAudit.setPost(dbAuditFlowNode.getPost());
-                        newAudit.setRefusePost(audit.getPost());
-                    }
-
-                    newAudit.setCompany(dbAuditFlow.getCompany());
-                    newAudit.setEntity(dbAuditFlow.getEntity());
-                    newAudit.setEntityId(audit.getEntityId());
-
-                    return newAudit;
-                }
-            }
-        }
-
-        return null;
-    }
 
     /**
      * 用户登录
@@ -740,7 +671,8 @@ public class SysController {
         Map<String, String> dealInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         String username = dealInfo.get("username");
         String sessionId = dealInfo.get("sessionId");
-        String tempUserKey = username + "_" + sessionId;
+
+        String tempUserKey = username + "_" +  dealInfo.get("oldSessionId");
 
         if (dealInfo.get("dealType").equals("againSignIn")) {
             User user = (User) sysDao.getFromRedis(tempUserKey);

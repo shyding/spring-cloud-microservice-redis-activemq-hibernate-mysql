@@ -66,7 +66,7 @@
                                 </div>
                             </div>
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="company[id]">流程结束时动作 <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="action">流程结束时动作 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="action" name="action" class="form-control col-md-7 col-xs-12" data-value-type="string" data-skip-falsy="true" required>
                                     </select>
@@ -181,8 +181,11 @@
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
     };
 
-    $('#addNode').click(function () {
+    $("#entity").change(function(){
         $("#action").empty().append(businessFlowActionOptions[$("#entity").val()]);
+    });
+
+    $('#addNode').click(function () {
         $("#nodeAction").empty().append(businessNodeActionOptions[$("#entity").val()]);
 
         $('#subFormDiv').dialog('open');

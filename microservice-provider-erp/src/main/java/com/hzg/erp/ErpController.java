@@ -99,9 +99,11 @@ public class ErpController {
                  * 创建审核流程第一个节点，发起审核流程
                  */
                 Audit audit = new Audit();
+                audit.setNo(erpDao.getNo(AuditFlowConstant.no_prefix_audit));
                 audit.setEntity(AuditFlowConstant.business_purchase);
                 audit.setEntityId(purchase.getId());
                 audit.setName(purchase.getName());
+
                 Post post = (Post)(((List<User>)erpDao.query(purchase.getInputer())).get(0)).getPosts().toArray()[0];
                 audit.setCompany(post.getDept().getCompany());
 
@@ -186,7 +188,7 @@ public class ErpController {
                         erpDao.updateById(detail.getId(), detail);
 
                     } else {
-                        result = "fail, product " + product.getNo() + " state != " + ErpConstant.product_state_purchase +", cann't update;";
+                        result = "fail, 商品 " + product.getNo() + " 已审核通过，不能修改";
                     }
                 }
             }
@@ -391,10 +393,18 @@ public class ErpController {
         String result = "fail";
 
         Audit audit = writer.gson.fromJson(json, Audit.class);
-
         switch (audit.getAction()) {
-            case AuditFlowConstant.action_purchase_product_pass: result = erpService.productPass(audit);break;
-            case AuditFlowConstant.action_purchase_close: result = erpService.purchaseClose(audit);break;
+            case AuditFlowConstant.action_purchase_product_pass:
+                result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase_pass);break;
+
+            case AuditFlowConstant.action_product_modify:
+                result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase);break;
+
+            case AuditFlowConstant.action_purchase_close:
+                result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_close, ErpConstant.product_state_purchase_pass);break;
+
+            case AuditFlowConstant.action_purchase_modify:
+                result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_apply, ErpConstant.product_state_purchase);break;
         }
 
         writer.writeStringToJson(response, "{\"result\":" + result + "}");

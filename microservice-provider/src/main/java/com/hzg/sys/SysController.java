@@ -463,7 +463,7 @@ public class SysController {
                 /**
                  * 处理相应的业务逻辑
                  */
-                sysService.doAction(dbAudit,AuditFlowConstant.flow_direct_forward);
+                sysService.doAction(AuditFlowConstant.flow_direct_forward, dbAudit);
 
                 /**
                  * 有下一个节点, 插入下一个节点
@@ -490,17 +490,18 @@ public class SysController {
                 if (audit.getToRefusePost() != null) {
                     refuseAudit = new Audit();
 
+                    refuseAudit.setNo(dbAudit.getNo());
                     refuseAudit.setEntity(dbAudit.getEntity());
                     refuseAudit.setEntityId(dbAudit.getEntityId());
-                    refuseAudit.setCompany(dbAudit.getCompany());
 
-                    Post post = new Post();
-                    post.setId(audit.getToRefusePost().getId());
-                    refuseAudit.setPost(post);
+                    refuseAudit.setCompany(dbAudit.getCompany());
+                    refuseAudit.setPost(audit.getToRefusePost());
 
                     refuseAudit = sysService.getAudit(refuseAudit);
                     refuseAudit.setRefusePost(dbAudit.getPost());
                     refuseAudit.setName(dbAudit.getName());
+                    refuseAudit.setState(AuditFlowConstant.audit_state_todo);
+
 
                 } else {
                     refuseAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
@@ -509,8 +510,7 @@ public class SysController {
                 /**
                  * 设置拒绝节点对应动作，处理相应的业务逻辑
                  */
-                dbAudit.setToRefuseAction(refuseAudit.getAction());
-                sysService.doAction(dbAudit, AuditFlowConstant.flow_direct_backwards);
+                sysService.doAction(AuditFlowConstant.flow_direct_backwards, refuseAudit);
 
                 sysDao.save(refuseAudit);
                 auditResult = AuditFlowConstant.audit_deny;

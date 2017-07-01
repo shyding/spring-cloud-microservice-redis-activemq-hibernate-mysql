@@ -17,6 +17,9 @@ public interface ErpClient {
     @RequestMapping(value = "/query", method = RequestMethod.POST)
     String query(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/getNo", method = RequestMethod.POST)
+    String getNo(@RequestParam("prefix") String prefix);
+
     @Component
     class ErpClientFallback implements ErpClient {
         @Override
@@ -28,6 +31,12 @@ public interface ErpClient {
         @Override
         public String query(String entity, String json) {
             logger.info("query 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
+            return "[]";
+        }
+
+        @Override
+        public String getNo(String prefix) {
+            logger.info("getNo 异常发生，进入fallback方法，接收的参数：" + prefix);
             return "[]";
         }
     }

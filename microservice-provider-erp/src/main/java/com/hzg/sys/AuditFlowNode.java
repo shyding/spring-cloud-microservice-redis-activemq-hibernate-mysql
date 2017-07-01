@@ -35,6 +35,10 @@ public class AuditFlowNode implements Serializable {
     @Column(name="action",length=32)
     private String action;
 
+    @Column(name="refusedAction",length=32)
+    private String refusedAction;
+
+
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
@@ -85,5 +89,13 @@ public class AuditFlowNode implements Serializable {
 
     public void setAction(String action) {
         this.action = action;
+    }
+
+    public String getRefusedAction() {
+        return refusedAction;
+    }
+
+    public void setRefusedAction(String refusedAction) {
+        this.refusedAction = refusedAction;
     }
 }

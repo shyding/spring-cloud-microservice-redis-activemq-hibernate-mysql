@@ -18,6 +18,9 @@ public class Audit implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
+    @Column(name="no",length=16)
+    private String no;
+
     @Column(name="name",length=64)
     private String name;
 
@@ -64,10 +67,12 @@ public class Audit implements Serializable {
     @Column(name="action",length=32)
     private String action;
 
+    @Column(name="refusedAction",length=32)
+    private String refusedAction;
+
     @Transient
     private Post toRefusePost;
-    @Transient
-    private String toRefuseAction;
+
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -79,6 +84,14 @@ public class Audit implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getNo() {
+        return no;
+    }
+
+    public void setNo(String no) {
+        this.no = no;
     }
 
     public String getName() {
@@ -193,12 +206,12 @@ public class Audit implements Serializable {
         this.action = action;
     }
 
-    public String getToRefuseAction() {
-        return toRefuseAction;
+    public String getRefusedAction() {
+        return refusedAction;
     }
 
-    public void setToRefuseAction(String toRefuseAction) {
-        this.toRefuseAction = toRefuseAction;
+    public void setRefusedAction(String refusedAction) {
+        this.refusedAction = refusedAction;
     }
 
     public Post getToRefusePost() {

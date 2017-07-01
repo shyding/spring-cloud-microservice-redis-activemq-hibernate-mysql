@@ -1,7 +1,6 @@
 package com.hzg.erp;
 
 import com.hzg.sys.Audit;
-import com.hzg.tools.AuditFlowConstant;
 import com.hzg.tools.ErpConstant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,45 +12,38 @@ public class ErpService {
     @Autowired
     private ErpDao erpDao;
 
-    public String productPass(Audit audit){
+    public String purchaseStateModify(Audit audit, Integer purchaseState, Integer productState) {
         Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
 
-        Product temp = new Product();
+        Purchase temp = new Purchase();
+        temp.setId(purchase.getId());
+        temp.setState(purchaseState);
+
+        erpDao.updateById(temp.getId(), temp);
+
+
+        Product temp1 = new Product();
         Set<PurchaseDetail> details = purchase.getDetails();
         for (PurchaseDetail detail : details) {
 
-            temp.setId(detail.getProduct().getId());
-            temp.setState(ErpConstant.product_state_purchase_pass);
-            erpDao.updateById(temp.getId(), temp);
+            temp1.setId(detail.getProduct().getId());
+            temp1.setState(productState);
+            erpDao.updateById(temp1.getId(), temp1);
         }
 
         return "success";
     }
 
-    public String purchaseClose(Audit audit) {
+    public String purchaseProductsStateModify(Audit audit, Integer productState) {
         Purchase purchase = (Purchase)erpDao.queryById(audit.getEntityId(), Purchase.class);
 
-        if (audit.getToRefuseAction() == null) {
-            Purchase temp = new Purchase();
-            temp.setId(purchase.getId());
-            temp.setState(ErpConstant.purchase_state_close);
+        Product temp1 = new Product();
+        Set<PurchaseDetail> details = purchase.getDetails();
+        for (PurchaseDetail detail : details) {
 
-            erpDao.updateById(temp.getId(), temp);
-
-        } else {
-            switch (audit.getToRefuseAction()) {
-                case AuditFlowConstant.action_purchase_product_pass: {
-                    Product temp = new Product();
-                    Set<PurchaseDetail> details = purchase.getDetails();
-                    for (PurchaseDetail detail : details) {
-
-                        temp.setId(detail.getProduct().getId());
-                        temp.setState(ErpConstant.product_state_purchase);
-                        erpDao.updateById(temp.getId(), temp);
-                    }
-                }
-                break;
-            }
+            temp1.setId(detail.getProduct().getId());
+            temp1.setState(productState);
+            erpDao.updateById(temp1.getId(), temp1);
         }
 
         return "success";

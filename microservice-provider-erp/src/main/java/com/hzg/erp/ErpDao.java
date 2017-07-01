@@ -38,14 +38,14 @@ public class ErpDao extends Dao {
         if (value == null) {
             counter = new RedisAtomicLong(key, redisTemplateLong.getConnectionFactory(), count);
             counter.expireAt(dateUtil.getDay(1));
-            currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+            currentDay = dateUtil.getCurrentDayStr("yyMMdd");
 
         } else {
             if (counter == null) {
                 counter = new RedisAtomicLong(key, redisTemplate.getConnectionFactory());
                 counter.set(value);
                 counter.expireAt(dateUtil.getDay(1));
-                currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+                currentDay = dateUtil.getCurrentDayStr("yyMMdd");
             }
 
             count = counter.incrementAndGet();

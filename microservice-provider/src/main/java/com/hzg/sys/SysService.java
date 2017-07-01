@@ -3,7 +3,6 @@ package com.hzg.sys;
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.AuditFlowConstant;
 import com.hzg.tools.Writer;
-import org.omg.CORBA.Object;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ public class SysService {
     private Writer writer;
 
     /**
-     * 获取第一个审核节点
+     * 获取核节点
      * @param audit
      * @return
      */
@@ -41,6 +40,7 @@ public class SysService {
         audit.setState(AuditFlowConstant.audit_state_todo);
         audit.setInputDate(new Timestamp(System.currentTimeMillis()));
         audit.setAction(auditFlowNode.getAction());
+        audit.setRefusedAction(auditFlowNode.getRefusedAction());
 
         return audit;
 
@@ -171,11 +171,13 @@ public class SysService {
                      * 设置下一个事宜、审核节点
                      */
                     Audit nextAudit = new Audit();
+                    nextAudit.setNo(audit.getNo());
                     nextAudit.setState(AuditFlowConstant.audit_state_todo);
                     nextAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
 
                     nextAudit.setName(audit.getName());
                     nextAudit.setAction(nextAuditFlowNode.getAction());
+                    nextAudit.setRefusedAction(nextAuditFlowNode.getRefusedAction());
                     nextAudit.setPost(nextAuditFlowNode.getPost());
 
                     if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
@@ -196,22 +198,34 @@ public class SysService {
 
     /**
      * 执行节点动作
-     * @param audit
      * @param direct
+     * @param audit
      */
-    public void doAction(Audit audit, String direct) {
-        if ((direct.equals(AuditFlowConstant.flow_direct_forward) && audit.getAction() != null) ||
-                (direct.equals(AuditFlowConstant.flow_direct_backwards) && audit.getToRefuseAction() != null)) {
+    public void doAction(String direct, Audit audit) {
+        String action;
+        if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
+            action = audit.getAction();
+        } else {
+            action = audit.getRefusedAction();
+        }
+
+        if (action != null) {
+            String realAction = audit.getAction();
+            audit.setAction(action);
+
             String doBusinessResult = "fail";
 
             if (audit.getEntity().equals(AuditFlowConstant.business_purchase)) {
                 doBusinessResult = erpClient.auditAction(writer.gson.toJson(audit));
             }
 
+            audit.setAction(realAction);
+
             /**
              * 调用相应业务动作失败，则触发异常，回滚事务
              */
             if (!doBusinessResult.contains("success")) {
+                sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
                 int t = 1 / 0;
             }
         }
@@ -227,8 +241,8 @@ public class SysService {
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null) {
             switch (auditFlow.getAction()) {
-                case AuditFlowConstant.action_flow_purchase: doBusinessResult = launchStockInFlow(audit);break;
-                case AuditFlowConstant.action_flow_StockIn: doBusinessResult = launchOnSaleFlow(audit);break;
+                case AuditFlowConstant.action_flow_purchase: doBusinessResult = launchFlow(AuditFlowConstant.business_stockIn, audit);break;
+                case AuditFlowConstant.action_flow_StockIn: doBusinessResult = launchFlow(AuditFlowConstant.business_product, audit);break;
             }
         }
 
@@ -236,33 +250,46 @@ public class SysService {
          * 调用相应业务动作失败，则触发异常，回滚事务
          */
         if (!doBusinessResult.contains("success")) {
+            sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
             int t = 1 / 0;
         }
     }
 
-    public String launchStockInFlow(Audit audit) {
+    /**
+     * 发起流程
+     * @param businessEntity
+     * @param audit
+     * @return
+     */
+    public String launchFlow(String businessEntity, Audit audit) {
 
         Audit temp = new Audit();
-        temp.setEntity(AuditFlowConstant.business_stockIn);
+        temp.setEntity(businessEntity);
         temp.setCompany(audit.getCompany());
         temp.setPost(audit.getPost());
+        Map<String, String> noMap = writer.gson.fromJson(erpClient.getNo(AuditFlowConstant.no_prefix_audit), new TypeToken<Map<String, String>>(){}.getType());
+        temp.setNo(noMap.get("no"));
 
         Audit nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
-        if (nextFlowAudit != null) {
-            Map<String, Object> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
-                    new TypeToken<Map<String, java.lang.Object>>(){}.getType());
 
-            nextFlowAudit.setEntity(audit.getEntity());
-            nextFlowAudit.setName("入库采购单：" + purchaseInfo.get("no").toString() + "里的商品");
-            nextFlowAudit.setContent("采购单：" + purchaseInfo.get("no").toString() + "已审核完毕，采购的商品可以入库");
+        if (nextFlowAudit != null) {
+            List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
+                    new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
+
+            switch (businessEntity) {
+                case AuditFlowConstant.business_stockIn:
+                {
+                    nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
+                    nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
+                }break;
+
+                case AuditFlowConstant.business_product: {}break;
+            }
+
+
 
             sysDao.save(nextFlowAudit);
         }
-
-        return "success";
-    }
-
-    public String launchOnSaleFlow(Audit audit) {
 
         return "success";
     }

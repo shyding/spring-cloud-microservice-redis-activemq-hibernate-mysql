@@ -69,7 +69,7 @@ public class SysController extends com.hzg.base.Controller {
             String queryJson = "";
             if (!entities.isEmpty()) {
                 Audit audit = (Audit)entities.get(0);
-                queryJson = "{\"entityId\":" + audit.getEntityId() + "}";
+                queryJson = "{\"no\":" + audit.getNo() + "}";
 
                 List<AuditFlow> auditFlows =  writer.gson.fromJson(client.query(AuditFlow.class.getSimpleName(),
                         "{\"entity\":" + audit.getEntity() + ", \"company\":{\"id\":" + audit.getCompany().getId() +"}}"),

@@ -12,7 +12,7 @@ var dataList = (function($){
         "productType":"商品类型",
         "supplier":"供应商",
         "purchase":"采购",
-        "stock":"库存",
+        "stockInOut":"库存",
         "order":"订单",
         "audit":"事宜"
     };
@@ -28,7 +28,7 @@ var dataList = (function($){
         "productType":"录入时间",
         "supplier":"录入时间",
         "purchase":"采购时间",
-        "stock":"录入时间",
+        "stockInOut":"录入时间",
         "order":"生成时间",
         "audit":"流转时间"
     };
@@ -44,7 +44,7 @@ var dataList = (function($){
         "productType":"类别",
         "supplier":"类别",
         "purchase":"类别",
-        "stock":"类别",
+        "stockInOut":"类别",
         "order":"类别",
         "audit":"状态"
     };
@@ -60,7 +60,7 @@ var dataList = (function($){
         "productType":"添加商品类型",
         "supplier":"添加供应商",
         "purchase":"采购申请",
-        "stock":"商品入库、出库"
+        "stockInOut":"商品入库、出库"
     };
 
     var modules = {
@@ -75,7 +75,7 @@ var dataList = (function($){
         "productType":"/erp",
         "supplier":"/erp",
         "purchase":"/erp",
-        "stock":"/erp",
+        "stockInOut":"/erp",
         "order":"/sale"
     };
 
@@ -90,7 +90,7 @@ var dataList = (function($){
         "productType":"/view",
         "supplier":"/view",
         "purchase":"/view",
-        "stock":"/view"
+        "stockInOut":"/view"
     };
 
     var queryActions = {
@@ -105,7 +105,7 @@ var dataList = (function($){
         "productType":"/complexQuery",
         "supplier":"/complexQuery",
         "purchase":"/complexQuery",
-        "stock":"/complexQuery",
+        "stockInOut":"/complexQuery",
         "order":"/complexQuery"
     };
 
@@ -121,7 +121,7 @@ var dataList = (function($){
         "productType":"/view",
         "supplier":"/view",
         "purchase":"/view",
-        "stock":"/view",
+        "stockInOut":"/view",
         "order":"/view"
     };
 
@@ -137,7 +137,7 @@ var dataList = (function($){
         "productType":"<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
         "purchase":"<th>名称</th><th>状态</th>",
-        "stock":"<th>名称</th>",
+        "stockInOut":"<th>名称</th>",
         "order":"<th>名称</th>"
     };
 
@@ -153,7 +153,7 @@ var dataList = (function($){
         "productType":["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
         "purchase":["name", "state"],
-        "stock":["name"],
+        "stockInOut":["name"],
         "order":["name"]
     };
 
@@ -169,7 +169,7 @@ var dataList = (function($){
         "productType":"name",
         "supplier":"name",
         "purchase":"name",
-        "stock":"stockNo",
+        "stockInOut":"stockNo",
         "order":"orderNo"
     };
 
@@ -206,7 +206,7 @@ var dataList = (function($){
 
             } else {
                 $("#entity").css("display", "none").empty().append(visitEntitiesOptions["audit"]).
-                after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="1">待办</option><option value="0">已办</option></select>');
+                after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="0">待办</option><option value="1">已办</option></select>');
             }
 
         } else if (modules[entity] == "/erp") {
@@ -215,7 +215,7 @@ var dataList = (function($){
                 .append(visitEntitiesOptions["productType"])
                 .append(visitEntitiesOptions["supplier"])
                 .append(visitEntitiesOptions["purchase"])
-                .append(visitEntitiesOptions["stock"]);
+                .append(visitEntitiesOptions["stockInOut"]);
 
         }
 

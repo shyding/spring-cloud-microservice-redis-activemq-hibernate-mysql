@@ -174,12 +174,21 @@ function render(url){
 }
 
 function renderAudit(element, url){
+    $("#cancel, #return").unbind("click").click(function(){
+        render(getPreUrls());
+        returnPage = true;
+    });
+
     $.ajax({
         type: "get",
         url:  url,
         success: function (pageContent) {
             if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
-                element.empty().html(pageContent.replace("right_col", ""));
+
+                pageContent = pageContent.replace("right_col", "").
+                replace('<span class="section">', '<span class="section" style="color:#73879C;font-size:18px;font-weight:400;padding-bottom:10px">');
+
+                element.empty().html(pageContent);
 
                 /**
                  * 蕴藏部分元素

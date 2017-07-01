@@ -132,9 +132,17 @@
                         </div>
                         <div class="clearfix"></div><br>
                         <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="post">审核通过调用动作 <span class="required">*</span></label>
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="nodeAction">审核通过调用动作 <span class="required">*</span></label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <select id="nodeAction" name="nodeAction" class="form-control col-md-7 col-xs-12" required>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div><br>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="post">被打回时调用动作 <span class="required">*</span></label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <select id="nodeRefusedAction" name="nodeRefusedAction" class="form-control col-md-7 col-xs-12" required>
                                 </select>
                             </div>
                         </div>
@@ -146,21 +154,6 @@
     </div>
 </div>
 <script type="text/javascript">
-    init(<c:out value="${entity == null}"/>);
-
-    <c:if test="${entity != null}">
-    setSelect(document.getElementById("entity"), "${entity.entity}");
-    $("#addNodeDiv, #send").css("display", "none");
-    </c:if>
-
-    selector.setSelect(['company[id]', 'dept[id]', 'post'], ['name', 'name', 'name'], ['id', 'id', 'id'],
-        [<c:if test="${entity != null}">"${entity.company.id}"</c:if>],
-        ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
-            '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
-            '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
-        '{}', ['company[id]', 'dept[id]'], 0);
-
-
     var businessFlowActionOptions = {
         "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase%>'>发起入库流程</option>",
         "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase_emergency%>'>发起入库流程</option>",
@@ -181,13 +174,45 @@
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
     };
 
+    var businessNodeRefusedActionOptions = {
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_modify%>'>可以修改采购单</option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改采购单</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改商品</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改商品</option>",
+        "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
+    };
+
+    init(<c:out value="${entity == null}"/>);
+
+    <c:if test="${entity != null}">
+    setSelect(document.getElementById("entity"), "${entity.entity}");
+
+    $("#action").empty().append(businessFlowActionOptions["${entity.entity}"]);
+    setSelect(document.getElementById("action"), "${entity.action}");
+
+    $("#nodeAction").empty().append(businessNodeActionOptions["${entity.entity}"]);
+    $("#nodeRefusedAction").empty().append(businessNodeRefusedActionOptions["${entity.entity}"]);
+
+    $("#addNodeDiv, #send").css("display", "none");
+    </c:if>
+
+    selector.setSelect(['company[id]', 'dept[id]', 'post'], ['name', 'name', 'name'], ['id', 'id', 'id'],
+        [<c:if test="${entity != null}">"${entity.company.id}"</c:if>],
+        ['<%=request.getContextPath()%>/sys/query/<%=Company.class.getSimpleName().toLowerCase()%>',
+            '<%=request.getContextPath()%>/sys/query/<%=Dept.class.getSimpleName().toLowerCase()%>',
+            '<%=request.getContextPath()%>/sys/query/<%=Post.class.getSimpleName().toLowerCase()%>'],
+        '{}', ['company[id]', 'dept[id]'], 0);
+
+
     $("#entity").change(function(){
         $("#action").empty().append(businessFlowActionOptions[$("#entity").val()]);
+        $("#nodeAction").empty().append(businessNodeActionOptions[$("#entity").val()]);
+        $("#nodeRefusedAction").empty().append(businessNodeRefusedActionOptions[$("#entity").val()]);
     });
 
     $('#addNode').click(function () {
-        $("#nodeAction").empty().append(businessNodeActionOptions[$("#entity").val()]);
-
         $('#subFormDiv').dialog('open');
         return false;
     });
@@ -197,13 +222,14 @@
         title: "添加流程节点",
         autoOpen: false,
         width: 600,
-        height:390,
+        height:410,
         buttons: {
             "添加": function () {
                 var form = $("#form");
 
                 form.append("<input type='hidden' name='auditFlowNodes[][name]' value='" + $("#nodeName").val() + "'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][action]' value='" + $("#nodeAction").val() + "' data-value-type='string' data-skip-falsy='true'>");
+                form.append("<input type='hidden' name='auditFlowNodes[][refusedAction]' value='" + $("#nodeRefusedAction").val() + "' data-value-type='string' data-skip-falsy='true'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][post[id]]' value='" + $("#post").val() + "'>");
                 form.append("<input type='hidden' name='auditFlowNodes[][nextPost[id]]' value='0' data-value-type='number' data-skip-falsy='true'>");
 

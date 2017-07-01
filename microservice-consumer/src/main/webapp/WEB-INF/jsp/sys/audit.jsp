@@ -5,6 +5,8 @@
 <%@ page import="com.hzg.sys.AuditFlowNode" %>
 <%@ page import="java.util.Set" %>
 <%@ page import="java.util.List" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.text.DateFormat" %>
 <!-- page content -->
 <div class="right_col" role="main">
     <div class="">
@@ -49,18 +51,37 @@
         <div class="row">
             <div class="col-md-12 col-sm-12 col-xs-12">
                 <div class="x_panel">
-                    <div class="x_content">
-                        <div>
-                            <h2 class="h2-margin-bottom">节点处理情况</h2>
-                            <c:forEach items="${entities}" var="entity" varStatus="status">
-                                <c:if test="${entity.state == 1}">
-                                    <div style="margin-top: 5px">${status.count}.&nbsp;${entity.dealDate}&nbsp;&nbsp;${entity.post.name}&nbsp;&nbsp;${entity.user.name}&nbsp;&nbsp;${entity.resultName}&nbsp;&nbsp;${entity.remark}</div>
-                                </c:if>
-                            </c:forEach>
+                    <div class="x_title">
+                        <h2 class="h2-margin-bottom">节点处理情况</h2>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="x_content" style="font-family:STKaiti ;font-size:18px">
+                        <%
+                            DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+                        %>
+                        <c:forEach items="${entities}" var="entity" varStatus="status">
+                            <%
+                                Audit entity = (Audit) pageContext.getAttribute("entity");
+                                if (entity.getState().compareTo(AuditFlowConstant.audit_state_done) == 0) {
+                            %>
+                        <div style="padding-left:20px;margin-bottom:20px">
+                            <div style="float: left;width: 80%">${status.count}.&nbsp;&nbsp;&nbsp;${entity.resultName},&nbsp;&nbsp;&nbsp;&nbsp;${entity.remark}</div>
+                            <div style="float: left;">${entity.user.name}&nbsp;&nbsp;&nbsp;&nbsp;<%=sdf.format(entity.getDealDate())%></div>
+                            <div class="clearfix"></div>
                         </div>
+                            <%
+                                }
+                            %>
+                        </c:forEach>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                       <div class="ln_solid" style="margin-top: 40px; margin-bottom: 60px"></div>
-
+        <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="x_panel">
+                    <div class="x_content">
                         <form class="form-horizontal form-label-left" novalidate id="dealForm">
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="result">类型<span class="required">*</span></label>

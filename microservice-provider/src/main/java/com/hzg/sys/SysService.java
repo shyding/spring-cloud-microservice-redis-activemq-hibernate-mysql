@@ -215,7 +215,8 @@ public class SysService {
 
             String doBusinessResult = "fail";
 
-            if (audit.getEntity().equals(AuditFlowConstant.business_purchase)) {
+            if (audit.getEntity().equals(AuditFlowConstant.business_purchase) ||
+                    audit.getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
                 doBusinessResult = erpClient.auditAction(writer.gson.toJson(audit));
             }
 
@@ -266,11 +267,9 @@ public class SysService {
         Audit temp = new Audit();
         temp.setEntity(businessEntity);
         temp.setCompany(audit.getCompany());
-        temp.setPost(audit.getPost());
-        Map<String, String> noMap = writer.gson.fromJson(erpClient.getNo(AuditFlowConstant.no_prefix_audit), new TypeToken<Map<String, String>>(){}.getType());
-        temp.setNo(noMap.get("no"));
+        temp.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
 
-        Audit nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
+        Audit nextFlowAudit = getFirstAudit(temp);
 
         if (nextFlowAudit != null) {
             List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),

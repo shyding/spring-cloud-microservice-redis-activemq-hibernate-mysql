@@ -136,14 +136,14 @@ var dataList = (function($){
         "product":"<th>名称</th>",
         "productType":"<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
-        "purchase":"<th>名称</th><th>状态</th>",
+        "purchase":"<th>名称</th><th>状态</th><th>类型</th><th>采购时间</th>",
         "stockInOut":"<th>名称</th>",
         "order":"<th>名称</th>"
     };
 
     var propertiesShowSequences = {
         "user":["name", "gender", "username", "email", "posts[][name]", "inputDate", "state"],
-        "post":["name", "dept[name]", "company[name]"],
+        "post":["name", "dept[name]", "dept[company[name]]"],
         "dept":["name", "phone", "address", "company[name]", "charger[name]"],
         "company":["name", "phone", "address", "charger[name]"],
         "privilegeResource":["name", "uri"],
@@ -152,7 +152,7 @@ var dataList = (function($){
         "product":["name"],
         "productType":["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
-        "purchase":["name", "state"],
+        "purchase":["name", "state", "type", "date"],
         "stockInOut":["name"],
         "order":["name"]
     };
@@ -177,10 +177,27 @@ var dataList = (function($){
         "user":{"state":{0: "使用", 1: "注销"}},
         "audit":{"state":{0: "待办", 1: "已办"}},
         "auditFlow":{"state":{0: "在用", 1: "没用"}},
-        "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}},
+        "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}, "type":{0:"正常采购", 2:"应急采购"}},
         "supplier":{"level":{"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
         "types[]":{0: "供应商", 1: "加工商"}}
     };
+
+    var entityRelations = {
+        "user":"user",
+        "post":"post",
+        "dept":"dept",
+        "company":"company",
+        "privilegeResource":"privilegeResource",
+        "audit":"audit",
+        "auditFlow":"auditFlow",
+        "product":"product",
+        "productType":"productType",
+        "supplier":"supplier",
+        "purchase":"purchase",
+        "purchaseEmergency":"purchase",
+        "stockInOut":"stockInOut",
+        "order":"order"
+    }
 
     var totalTableData = [];
     var isLocalSearch = false, searchStr = "", recordsSum = -1, sEcho = 1, tablePageData=[];
@@ -434,17 +451,11 @@ var dataList = (function($){
                                         } else {
                                             pos = propertiesShowSequence[i].indexOf("[");
                                             /**
-                                             * dataList[key][propertiesShowSequence[i]] 是对象,propertiesShowSequence[i]值如：company[name]
+                                             * dataList[key][propertiesShowSequence[i]] 是对象,propertiesShowSequence[i]值如：dept[company[name]]
                                              */
                                             if (pos != -1) {
-                                                var parentProperty = propertiesShowSequence[i].substr(0, pos);
-                                                var childProperty = propertiesShowSequence[i].substr(pos+1);
-                                                     childProperty = childProperty.substr(0, childProperty.length-1);
-
-                                                var childValue = "";
-                                                if (dataList[key][parentProperty] != undefined) {
-                                                    childValue = dataList[key][parentProperty][childProperty];
-
+                                                var childValue = getPropertiesValue(dataList[key], propertiesShowSequence[i]);
+                                                if (childValue != null) {
                                                     if (showTitleName[propertiesShowSequence[i]] != undefined) {
                                                         tdData = showTitleName[propertiesShowSequence[i]][childValue];
                                                     } else {
@@ -542,11 +553,50 @@ var dataList = (function($){
         });
     }
 
+    function getPropertiesValue(json, propertiesStr) {
+        return getValue(json, getProperties(propertiesStr));
+    }
+
+    function getProperties(propertiesStr) {
+        var properties = new Array();
+
+        var tempProperties = propertiesStr.replace(/]/g,"").split("[");
+        var j = 0;
+        for (var i = 0; i < tempProperties.length; i++) {
+            if (tempProperties[i] != "") {
+                properties[j++] = tempProperties[i];
+            }
+        }
+
+        for (var i = 0; i < properties.length; i++) {
+            console.log(properties[i]);
+        }
+
+        return properties;
+    }
+
+    function getValue(json, properties) {
+        var newJson = null;
+
+        for (var i = 0; i < properties.length; i++) {
+            if (json[properties[i]] != undefined && json[properties[i]] != null) {
+                newJson = json[properties[i]];
+                json = newJson;
+                console.log(json);
+            }
+        }
+
+        return newJson;
+    }
+
+
+
     return {
         setQuery: setQuery,
         query: query,
         modules: modules,
-        viewActions: viewActions
+        viewActions: viewActions,
+        entityRelations: entityRelations
     }
 
 })(jQuery);

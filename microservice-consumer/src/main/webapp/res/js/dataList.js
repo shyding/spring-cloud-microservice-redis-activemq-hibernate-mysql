@@ -568,10 +568,6 @@ var dataList = (function($){
             }
         }
 
-        for (var i = 0; i < properties.length; i++) {
-            console.log(properties[i]);
-        }
-
         return properties;
     }
 
@@ -582,7 +578,6 @@ var dataList = (function($){
             if (json[properties[i]] != undefined && json[properties[i]] != null) {
                 newJson = json[properties[i]];
                 json = newJson;
-                console.log(json);
             }
         }
 

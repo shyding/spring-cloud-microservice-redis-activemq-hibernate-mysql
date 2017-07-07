@@ -1,7 +1,8 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.AuditFlowConstant;
+import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Writer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ public class SysService {
     private Writer writer;
 
     /**
-     * 获取核节点
+     * 获取审核节点
      * @param audit
      * @return
      */
@@ -132,6 +133,10 @@ public class SysService {
                         }
                     }
 
+                    if (auditFlowNode == null) {
+                        return null;
+                    }
+
                     if (direct.equals(AuditFlowConstant.flow_direct_forward) && auditFlowNode.getNextPost() == null) {
                         return null;
                     }
@@ -196,6 +201,37 @@ public class SysService {
         return null;
     }
 
+    public Post getPostByAuditUser(Audit audit) {
+        Post post = null;
+
+        User user = (User)sysDao.queryById(audit.getToRefuseUser().getId(), User.class);
+
+        if (user != null) {
+            if (user.getPosts().size() == 1) {
+                post =  (Post) user.getPosts().toArray()[0];
+
+            } else {
+                AuditFlow auditFlow = getAuditFlow(audit);
+
+                for (Post post1 : user.getPosts()) {
+                    for (AuditFlowNode auditFlowNode : auditFlow.getAuditFlowNodes()) {
+
+                        if (auditFlowNode.getPost().getId().compareTo(post1.getId()) == 0) {
+                            post = auditFlowNode.getPost();
+                            break;
+                        }
+                    }
+
+                    if (post != null) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return post;
+    }
+
     /**
      * 执行节点动作
      * @param direct
@@ -213,7 +249,7 @@ public class SysService {
             String realAction = audit.getAction();
             audit.setAction(action);
 
-            String doBusinessResult = "fail";
+            String doBusinessResult = CommonConstant.fail;
 
             if (audit.getEntity().equals(AuditFlowConstant.business_purchase) ||
                     audit.getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
@@ -225,7 +261,7 @@ public class SysService {
             /**
              * 调用相应业务动作失败，则触发异常，回滚事务
              */
-            if (!doBusinessResult.contains("success")) {
+            if (!doBusinessResult.contains(CommonConstant.success)) {
                 sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
                 int t = 1 / 0;
             }
@@ -237,7 +273,7 @@ public class SysService {
      * @param audit
      */
     public void doFlowAction(Audit audit) {
-        String doBusinessResult = "fail";
+        String doBusinessResult = CommonConstant.fail;
 
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null) {
@@ -250,7 +286,7 @@ public class SysService {
         /**
          * 调用相应业务动作失败，则触发异常，回滚事务
          */
-        if (!doBusinessResult.contains("success")) {
+        if (!doBusinessResult.contains(CommonConstant.success)) {
             sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
             int t = 1 / 0;
         }
@@ -263,13 +299,19 @@ public class SysService {
      * @return
      */
     public String launchFlow(String businessEntity, Audit audit) {
+        Audit nextFlowAudit = null;
 
         Audit temp = new Audit();
         temp.setEntity(businessEntity);
         temp.setCompany(audit.getCompany());
+        temp.setPost(audit.getPost());
         temp.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
 
-        Audit nextFlowAudit = getFirstAudit(temp);
+        nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
+
+        if (nextFlowAudit == null) {
+            nextFlowAudit = getFirstAudit(temp);
+        }
 
         if (nextFlowAudit != null) {
             List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
@@ -290,7 +332,7 @@ public class SysService {
             sysDao.save(nextFlowAudit);
         }
 
-        return "success";
+        return CommonConstant.success;
     }
 
 }

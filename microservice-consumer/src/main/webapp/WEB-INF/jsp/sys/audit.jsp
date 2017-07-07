@@ -1,10 +1,7 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.sys.Audit" %>
 <%@ page import="com.hzg.tools.AuditFlowConstant" %>
-<%@ page import="com.hzg.sys.AuditFlowNode" %>
-<%@ page import="java.util.Set" %>
-<%@ page import="java.util.List" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.text.DateFormat" %>
 <!-- page content -->
@@ -90,18 +87,17 @@
                                         <option value="">请选择</option>
                                         <option value="<%=AuditFlowConstant.audit_do%>">已办</option>
                                         <option value="<%=AuditFlowConstant.audit_pass%>">审核通过</option>
-                                        <c:if test="${refusePostOptions != null}">
+                                        <c:if test="${refuseUserOptions != null}">
                                         <option value="<%=AuditFlowConstant.audit_deny%>">审核未通过</option>
                                         </c:if>
                                     </select>
                                 </div>
                             </div>
                             <div class="item form-group" id="refusePosts" style="display:none">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="result">返回节点<span class="required"></span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="result">返回人<span class="required"></span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <select name="toRefusePost[id]" class="form-control col-md-7 col-xs-12">
-                                        ${prePostOptions}
-                                        ${refusePostOptions}
+                                    <select name="toRefuseUser[id]" class="form-control col-md-7 col-xs-12">
+                                        ${refuseUserOptions}
                                     </select>
                                 </div>
                             </div>
@@ -130,7 +126,7 @@
 </div>
 <!-- /page content -->
 <script type="text/javascript">
-    var entity = "${entity.entity}";
+    var entity = dataList.entityRelations["${entity.entity}"];
     renderAudit($("#entityDiv"), "<%=request.getContextPath()%>" + dataList.modules[entity] + dataList.viewActions[entity] + "/" + entity + "/${entity.entityId}");
 
     if (${entity.state == 0}) {

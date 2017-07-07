@@ -1,8 +1,9 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.AuditFlowConstant;
+import com.hzg.tools.CommonConstant;
 import com.hzg.tools.SignInUtil;
 import com.hzg.tools.Writer;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -54,7 +55,7 @@ public class SysController {
     public void save(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("save start, parameter:" + entity + ":" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
         Timestamp inputDate = new Timestamp(System.currentTimeMillis());
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
@@ -119,7 +120,7 @@ public class SysController {
     public void update(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("update start, parameter:" + entity + ":" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
 
         if (entity.equalsIgnoreCase(User.class.getSimpleName()) ) {
             User user = writer.gson.fromJson(json, User.class);
@@ -306,6 +307,11 @@ public class SysController {
 
         }else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
             List<Post> posts = sysDao.complexQuery(Post.class, queryParameters, position, rowNum);
+
+            for (Post post : posts) {
+                post.setDept((Dept)sysDao.queryById(post.getDept().getId(), Dept.class));
+            }
+
             writer.writeObjectToJson(response, posts);
 
         }else if (entity.equalsIgnoreCase(Dept.class.getSimpleName())) {
@@ -321,7 +327,38 @@ public class SysController {
             writer.writeObjectToJson(response, privilegeResources);
 
         }else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            Integer userId = null;
+            if (queryParameters.get("user") != null) {
+                userId = Integer.valueOf(queryParameters.get("user"));
+
+                /**
+                 * 查询对应岗位的待办事宜
+                 */
+                if (Integer.valueOf(queryParameters.get("state")).compareTo(AuditFlowConstant.audit_state_todo) == 0) {
+                    queryParameters.remove("user");
+                }
+            }
+
             List<Audit> audits = sysDao.complexQuery(Audit.class, queryParameters, position, rowNum);
+            if (userId != null) {
+                if (!audits.isEmpty()) {
+
+                    for (int i = 0; i < audits.size(); i++) {
+                        if (audits.get(i).getUser() != null) {
+
+                            /**
+                             * 去除指定办理人非本人的待办事宜
+                             */
+                            if (audits.get(i).getUser().getId().compareTo(userId) != 0 &&
+                                    audits.get(i).getState().compareTo(AuditFlowConstant.audit_state_todo) == 0) {
+                                audits.remove(i);
+                                i--;
+                            }
+                        }
+                    }
+                }
+            }
+
             writer.writeObjectToJson(response, audits);
 
         }else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
@@ -425,7 +462,9 @@ public class SysController {
          * 发起新流程，创建流程的第一个事宜节点
          */
         if (audit.getId() == null) {
-            sysDao.save(sysService.getFirstAudit(audit));
+            Audit firstAudit = sysService.getFirstAudit(audit);
+            firstAudit.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
+            sysDao.save(firstAudit);
 
             auditResult = AuditFlowConstant.audit_do;
         }
@@ -487,7 +526,7 @@ public class SysController {
              */
             else {
                 Audit refuseAudit = null;
-                if (audit.getToRefusePost() != null) {
+                if (audit.getToRefuseUser() != null) {
                     refuseAudit = new Audit();
 
                     refuseAudit.setNo(dbAudit.getNo());
@@ -495,7 +534,10 @@ public class SysController {
                     refuseAudit.setEntityId(dbAudit.getEntityId());
 
                     refuseAudit.setCompany(dbAudit.getCompany());
-                    refuseAudit.setPost(audit.getToRefusePost());
+                    refuseAudit.setUser(audit.getToRefuseUser());
+
+                    dbAudit.setToRefuseUser(audit.getToRefuseUser());
+                    refuseAudit.setPost(sysService.getPostByAuditUser(dbAudit));
 
                     refuseAudit = sysService.getAudit(refuseAudit);
                     refuseAudit.setRefusePost(dbAudit.getPost());
@@ -517,7 +559,7 @@ public class SysController {
             }
         }
 
-        result = "success";
+        result = CommonConstant.success;
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\", \"auditResult\":\"" + auditResult + "\"}");
         logger.info("audit end");
@@ -534,7 +576,7 @@ public class SysController {
     public void signIn(HttpServletResponse response, @RequestBody String json) {
         logger.info("signIn start, parameter:" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
 
         Map<String, String> signInInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         String username = signInInfo.get("username");
@@ -570,7 +612,7 @@ public class SysController {
                 }
                 dbUsers.get(0).setPosts(posts);
 
-                result = "success";
+                result = CommonConstant.success;
                 signInUtil.removeSignInFailInfo(username);
 
             } else {
@@ -596,7 +638,7 @@ public class SysController {
         /**
          * 用户已经登录
          */
-        if (signInUtil.isUserExist(username) && result.equals("success")) {
+        if (signInUtil.isUserExist(username) && result.equals(CommonConstant.success)) {
             if (signInUtil.getSessionIdByUser(username) != null) {
                 if (!signInUtil.getSessionIdByUser(username).equals(signInInfo.get("sessionId"))) {
                     sysDao.storeToRedis(username + "_" + signInInfo.get("sessionId"), dbUsers.get(0), signInUtil.sessionTime);
@@ -608,7 +650,7 @@ public class SysController {
         /**
          * 登录成功,设置用户,该用户权限资源到 redis
          */
-        if (result.equals("success")) {
+        if (result.equals(CommonConstant.success)) {
             String resources = "";
             for (Post post : dbUsers.get(0).getPosts()) {
                 for (PrivilegeResource resource : post.getPrivilegeResources()) {
@@ -638,7 +680,7 @@ public class SysController {
     public void signOut(HttpServletResponse response,  @RequestBody String json) {
         logger.info("signOut start, parameter:" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
 
         Map<String, String> signOutInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         String sessionId =  signOutInfo.get("sessionId");
@@ -652,7 +694,7 @@ public class SysController {
 
             logger.info(username + "注销");
 
-            result = "success";
+            result = CommonConstant.success;
         }
 
         writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
@@ -666,7 +708,7 @@ public class SysController {
     public void hasLoginDeal(HttpServletResponse response,  @RequestBody String json) {
         logger.info("hasLoginDeal start, parameter:" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
 
         Map<String, String> dealInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         String username = dealInfo.get("username");
@@ -687,7 +729,7 @@ public class SysController {
 
                 sysDao.deleteFromRedis(tempUserKey);
 
-                result = "success";
+                result = CommonConstant.success;
             }
 
         } else {

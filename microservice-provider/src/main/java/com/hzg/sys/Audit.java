@@ -1,4 +1,4 @@
-package com.hzg.sys;
+﻿package com.hzg.sys;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -69,6 +69,9 @@ public class Audit implements Serializable {
 
     @Column(name="refusedAction",length=32)
     private String refusedAction;
+
+    @Transient
+    private User toRefuseUser;
 
     @Transient
     private Post toRefusePost;
@@ -220,6 +223,14 @@ public class Audit implements Serializable {
 
     public void setToRefusePost(Post toRefusePost) {
         this.toRefusePost = toRefusePost;
+    }
+
+    public User getToRefuseUser() {
+        return toRefuseUser;
+    }
+
+    public void setToRefuseUser(User toRefuseUser) {
+        this.toRefuseUser = toRefuseUser;
     }
 
     public String getStateName() {

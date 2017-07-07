@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Resize function without multiple trigger
  *
  * Usage:
@@ -258,6 +258,22 @@ function setMutilSelect(src, values) {
     for (var vi in values) {
         setSelect(src, values[vi]);
     }
+}
+
+$.fn.accountInput = function(){
+    $(this).keyup(function(event){
+        if (event.keyCode != 8 || event.keyCode != 46) {  // 8: BackSpace key code, 46: delete key code
+            var value = this.value.replace(/\s*/g, "");
+            var spaceValue = "";
+            for (var i = 0; i < value.length; i++) {
+                spaceValue += value.charAt(i);
+                if ((i+1)%4 == 0) {
+                    spaceValue += " ";
+                }
+            }
+            this.value = spaceValue;
+        }
+    });
 }
 
 function init(editable) {

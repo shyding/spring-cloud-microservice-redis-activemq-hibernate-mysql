@@ -1,4 +1,4 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 public class AuditFlowConstant {
     public final static String no_prefix_audit = "AU";
@@ -20,6 +20,8 @@ public class AuditFlowConstant {
     public final static String business_purchase = "purchase";
     public final static String business_purchaseEmergency = "purchaseEmergency";
     public final static String business_stockIn = "stockInOut";
+    public final static String business_stockIn_deposit_cangchu = "stockInOutDepositCangchu";
+    public final static String business_stockIn_deposit_caiwu = "stockInOutDepositCaiwu";
     public final static String business_product = "product";
     public final static String business_returnProduct = "returnProduct";
     public final static String business_changeProduct = "changeProduct";

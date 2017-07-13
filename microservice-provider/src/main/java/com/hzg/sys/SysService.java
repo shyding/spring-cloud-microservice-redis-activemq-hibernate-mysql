@@ -237,7 +237,9 @@ public class SysService {
      * @param direct
      * @param audit
      */
-    public void doAction(String direct, Audit audit) {
+    public String doAction(String direct, Audit audit) {
+        String result = CommonConstant.fail;
+
         String action;
         if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
             action = audit.getAction();
@@ -249,47 +251,33 @@ public class SysService {
             String realAction = audit.getAction();
             audit.setAction(action);
 
-            String doBusinessResult = CommonConstant.fail;
-
             if (audit.getEntity().equals(AuditFlowConstant.business_purchase) ||
                     audit.getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
-                doBusinessResult = erpClient.auditAction(writer.gson.toJson(audit));
+                result = erpClient.auditAction(writer.gson.toJson(audit));
             }
 
             audit.setAction(realAction);
-
-            /**
-             * 调用相应业务动作失败，则触发异常，回滚事务
-             */
-            if (!doBusinessResult.contains(CommonConstant.success)) {
-                sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
-                int t = 1 / 0;
-            }
         }
+
+        return result;
     }
 
     /**
      * 执行流程结束动作
      * @param audit
      */
-    public void doFlowAction(Audit audit) {
-        String doBusinessResult = CommonConstant.fail;
+    public String doFlowAction(Audit audit) {
+        String result = CommonConstant.fail;
 
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null) {
             switch (auditFlow.getAction()) {
-                case AuditFlowConstant.action_flow_purchase: doBusinessResult = launchFlow(AuditFlowConstant.business_stockIn, audit);break;
-                case AuditFlowConstant.action_flow_StockIn: doBusinessResult = launchFlow(AuditFlowConstant.business_product, audit);break;
+                case AuditFlowConstant.action_flow_purchase: result = launchFlow(AuditFlowConstant.business_stockIn, audit);break;
+                case AuditFlowConstant.action_flow_StockIn: result = launchFlow(AuditFlowConstant.business_product, audit);break;
             }
         }
 
-        /**
-         * 调用相应业务动作失败，则触发异常，回滚事务
-         */
-        if (!doBusinessResult.contains(CommonConstant.success)) {
-            sysDao.deleteFromRedis(Audit.class.getName() + "_" + audit.getId());
-            int t = 1 / 0;
-        }
+        return result;
     }
 
     /**
@@ -299,6 +287,8 @@ public class SysService {
      * @return
      */
     public String launchFlow(String businessEntity, Audit audit) {
+        String result = CommonConstant.fail;
+
         Audit nextFlowAudit = null;
 
         Audit temp = new Audit();
@@ -314,25 +304,30 @@ public class SysService {
         }
 
         if (nextFlowAudit != null) {
-            List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
-                    new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
-
             switch (businessEntity) {
                 case AuditFlowConstant.business_stockIn:
                 {
-                    nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
-                    nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
+                    List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
+                            new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
+
+                    if (purchaseInfo.size() == 0) {
+                        result += CommonConstant.fail;
+
+                    } else {
+                        nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
+                        nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
+                    }
+
                 }break;
 
                 case AuditFlowConstant.business_product: {}break;
             }
 
 
-
-            sysDao.save(nextFlowAudit);
+            result += sysDao.save(nextFlowAudit);
         }
 
-        return CommonConstant.success;
+        return result;
     }
 
 }

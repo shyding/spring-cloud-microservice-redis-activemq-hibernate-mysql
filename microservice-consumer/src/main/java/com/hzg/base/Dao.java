@@ -1,4 +1,4 @@
-package com.hzg.base;
+﻿package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
@@ -19,14 +19,32 @@ public class Dao {
     @Autowired
     public RedisTemplate<String, Object> redisTemplate;
 
+    public final String key_delimiter = ";";
+
     /**
      * 把 对象 存储到 redis
+     *
+     * 缓存当前线程里存储到 redis 里的所有 key。当线程中的业务回滚时，
+     * 根据 threadId 取得这些 key，从 redis 里删除对应的对象
+     *
      * @param key
      * @param object
      */
     public void storeToRedis(String key, Object object) {
         if (object != null) {
             redisTemplate.opsForValue().set(key, object);
+
+            String currentThreadId = String.valueOf(Thread.currentThread().getId());
+            Object keys = getFromRedis(currentThreadId);
+
+            String keysStr = null;
+            if (keys == null) {
+                keysStr = "";
+            } else {
+                keysStr = String.valueOf(keys) + key_delimiter + key;
+            }
+
+            storeToRedis(currentThreadId, keysStr, 5);
         }
     }
 

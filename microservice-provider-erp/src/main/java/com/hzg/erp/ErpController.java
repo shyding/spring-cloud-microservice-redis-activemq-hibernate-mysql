@@ -1,12 +1,8 @@
-package com.hzg.erp;
+﻿package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.sys.Audit;
-import com.hzg.sys.Post;
-import com.hzg.sys.User;
-import com.hzg.tools.AuditFlowConstant;
-import com.hzg.tools.ErpConstant;
-import com.hzg.tools.Writer;
+import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -40,6 +36,10 @@ public class ErpController {
     @Autowired
     private ErpService erpService;
 
+    @Autowired
+    private Transcation transcation;
+
+
     /**
      * 保存实体
      * @param response
@@ -51,167 +51,406 @@ public class ErpController {
     public void save(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("save start, parameter:" + entity + ":" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
         Timestamp inputDate = new Timestamp(System.currentTimeMillis());
 
-        if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
-            Purchase purchase = writer.gson.fromJson(json, Purchase.class);
-            purchase.setInputDate(inputDate);
-            result = erpDao.save(purchase);
+        try {
+            if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
+                Purchase purchase = writer.gson.fromJson(json, Purchase.class);
+                purchase.setInputDate(inputDate);
+                result += erpDao.save(purchase);
 
-            if (purchase.getDetails() != null) {
-                for (PurchaseDetail detail : purchase.getDetails()) {
-                    Product product = detail.getProduct();
+                result += erpService.savePurchaseProducts(purchase);
 
-                    ProductDescribe describe = product.getDescribe();
-                    erpDao.save(describe);
+                /**
+                 * 发起采购流程
+                 */
+                String auditEntity = AuditFlowConstant.business_purchase;
+                switch (purchase.getType()) {
+                    case 2:
+                        auditEntity = AuditFlowConstant.business_purchaseEmergency;
+                        break;
+                }
 
-                    product.setDescribe(describe);
-                    erpDao.save(product);
+                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getName(), purchase.getInputer());
 
-                    /**
-                     * 使用 new 新建，避免直接使用已经包含 property 属性的 product， 使得 product 与 property 循环嵌套
-                     */
-                    Product doubleRelateProduct = new Product();
-                    doubleRelateProduct.setId(product.getId());
+            } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
+                Supplier supplier = writer.gson.fromJson(json, Supplier.class);
+                supplier.setInputDate(inputDate);
+                result = erpDao.save(supplier);
 
-                    if (product.getProperties() != null) {
-                        for (ProductOwnProperty ownProperty : product.getProperties()) {
-                            ownProperty.setProduct(doubleRelateProduct);
-                            erpDao.save(ownProperty);
-                        }
+            } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
+                Product product = writer.gson.fromJson(json, Product.class);
+                result = erpDao.save(product);
+
+            } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
+                ProductType productType = writer.gson.fromJson(json, ProductType.class);
+                result = erpDao.save(productType);
+
+            } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+                ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
+                result = erpDao.save(productProperty);
+
+            } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+                StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
+
+                /**
+                 * 入库
+                 */
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                        result += erpDao.save(stockInOut.getDeposit());
                     }
 
-                    detail.setProduct(product);
-                    detail.setProductName(product.getName());
-                    detail.setAmount(product.getUnitPrice() * detail.getQuantity());
-                    detail.setPrice(product.getUnitPrice());
+                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_processRepair) == 0) {
+                        result += erpDao.save(stockInOut.getProcessRepair());
+                    }
 
-                    Purchase doubleRelatePurchase = new Purchase();
-                    doubleRelatePurchase.setId(purchase.getId());
+                    result += erpDao.save(stockInOut);
 
-                    detail.setPurchase(doubleRelatePurchase);
+                    result += erpService.saveStockInProducts(stockInOut);
 
-                    erpDao.save(detail);
-                }
+                    /**
+                     * 押金入库后通知仓储预计退还货物时间，财务人员预计退还押金时间
+                     */
+                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                        result += erpService.launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_cangchu, stockInOut.getId(),
+                                "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnGoodsDate() + "退货",
+                                stockInOut.getInputer());
 
-                /**
-                 * 创建审核流程第一个节点，发起审核流程
-                 */
-                Audit audit = new Audit();
-                audit.setNo(erpDao.getNo(AuditFlowConstant.no_prefix_audit));
-                audit.setEntity(AuditFlowConstant.business_purchase);
-                audit.setEntityId(purchase.getId());
-                audit.setName(purchase.getName());
-
-                Post post = (Post)(((List<User>)erpDao.query(purchase.getInputer())).get(0)).getPosts().toArray()[0];
-                audit.setCompany(post.getDept().getCompany());
-
-                String auditResult = sysClient.audit(writer.gson.toJson(audit));
-                logger.info("audit result:" + auditResult);
-
-                /**
-                 * 发起事宜出错，则触发异常，回滚事务
-                 */
-                if (!auditResult.contains("success")) {
-                    int t = 1/0;
+                        result += erpService.launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_caiwu, stockInOut.getId(),
+                                "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnDepositDate() + "退押金",
+                                stockInOut.getInputer());
+                    }
                 }
             }
-
-        } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
-            Supplier supplier = writer.gson.fromJson(json, Supplier.class);
-            supplier.setInputDate(inputDate);
-            result = erpDao.save(supplier);
-
-        } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            Product product = writer.gson.fromJson(json, Product.class);
-            result = erpDao.save(product);
-
-        } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
-            ProductType productType = writer.gson.fromJson(json, ProductType.class);
-            result = erpDao.save(productType);
-
-        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
-            ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
-            result = erpDao.save(productProperty);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            result = transcation.dealResult(result);
         }
 
-        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("save end, result:" + result);
     }
+
+
 
     @Transactional
     @PostMapping("/update")
     public void update(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("update start, parameter:" + entity + ":" + json);
 
-        String result = "fail";
+        String result = CommonConstant.fail;
 
-        if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
-            Purchase purchase = writer.gson.fromJson(json, Purchase.class);
-            result = erpDao.updateById(purchase.getId(), purchase);
+        try {
+            if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
+                Purchase purchase = writer.gson.fromJson(json, Purchase.class);
 
-            if (purchase.getDetails() != null) {
-                for (PurchaseDetail detail : purchase.getDetails()) {
-                    Product product = detail.getProduct();
+                /**
+                 * 查询数据库里的采购单
+                 */
+                Purchase dbPurchase = (Purchase) erpDao.queryById(purchase.getId(), Purchase.class);
+                Set<PurchaseDetail> details = dbPurchase.getDetails();
+                for (PurchaseDetail detail : details) {
+                    detail.setProduct((Product) erpDao.query(detail.getProduct()).get(0));
+                }
 
-                    if (product.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
-                        erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
+                Product stateProduct = ((PurchaseDetail) dbPurchase.getDetails().toArray()[0]).getProduct();
 
-                        erpDao.updateById(product.getId(), product);
+                if (stateProduct.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
+                    result += erpDao.updateById(purchase.getId(), purchase);
+
+                    /**
+                     * 保存采购单里的新商品信息，删除旧商品信息
+                     */
+                    result += erpService.savePurchaseProducts(purchase);
+                    result += erpService.deletePurchaseProducts(dbPurchase);
 
 
-                        /**
-                         * 先保存新属性，再删除就属性
-                         */
-                        if (product.getProperties() != null) {
-                            Set<ProductOwnProperty> oldProperties = ((Product) (erpDao.queryById(product.getId(), Product.class))).getProperties();
+                    /**
+                     * 修改事宜信息
+                     */
+                    String oldEntity = AuditFlowConstant.business_purchase, newEntity = AuditFlowConstant.business_purchase;
+                    switch (dbPurchase.getType()) {
+                        case 2:
+                            oldEntity = AuditFlowConstant.business_purchaseEmergency;
+                            break;
+                    }
 
-                            Product doubleRelateProduct = new Product();
-                            doubleRelateProduct.setId(product.getId());
+                    switch (purchase.getType()) {
+                        case 2:
+                            newEntity = AuditFlowConstant.business_purchaseEmergency;
+                            break;
+                    }
 
-                            for (ProductOwnProperty ownProperty : product.getProperties()) {
-                                ownProperty.setProduct(doubleRelateProduct);
-                                erpDao.save(ownProperty);
-                            }
+                    result += erpService.updateAudit(dbPurchase.getId(), oldEntity, purchase.getName(), newEntity);
 
-                            for (ProductOwnProperty oldProperty : oldProperties) {
-                                erpDao.delete(oldProperty);
-                            }
+                } else {
+                    result = CommonConstant.fail + ", 采购单 " + purchase.getNo() + " 里的商品，已审核通过，不能修改";
+                }
+
+            } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
+                Supplier supplier = writer.gson.fromJson(json, Supplier.class);
+                result = erpDao.updateById(supplier.getId(), supplier);
+
+            } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
+                Product product = writer.gson.fromJson(json, Product.class);
+                result = erpDao.updateById(product.getId(), product);
+
+            } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
+                ProductType productType = writer.gson.fromJson(json, ProductType.class);
+                result = erpDao.updateById(productType.getId(), productType);
+
+            } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
+                ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
+                result = erpDao.updateById(productProperty.getId(), productProperty);
+
+            } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+                StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
+                StockInOut dbStockInOut = (StockInOut) erpDao.queryById(stockInOut.getId(), StockInOut.class);
+
+                /**
+                 * 入库
+                 */
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+
+                    if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_apply) == 0) {
+
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                            result += erpDao.updateById(stockInOut.getDeposit().getId(), stockInOut.getDeposit());
                         }
 
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_processRepair) == 0) {
+                            result += erpDao.updateById(stockInOut.getProcessRepair().getId(), stockInOut.getProcessRepair());
+                        }
 
-                        detail.setProductName(product.getName());
-                        detail.setAmount(product.getUnitPrice() * detail.getQuantity());
-                        detail.setPrice(product.getUnitPrice());
+                        result += erpDao.updateById(stockInOut.getId(), stockInOut);
 
-                        erpDao.updateById(detail.getId(), detail);
+                        /**
+                         * 保存入库单里的新商品信息，删除旧商品信息
+                         */
+                        result += erpService.saveStockInProducts(stockInOut);
+                        result += erpService.deleteStockInProducts(dbStockInOut);
+
+                        /**
+                         * 修改事宜信息
+                         */
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                            result += erpService.updateAudit(stockInOut.getId(), AuditFlowConstant.business_stockIn_deposit_cangchu,
+                                    AuditFlowConstant.business_stockIn_deposit_cangchu,
+                                    "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnGoodsDate() + "退货");
+
+                            result += erpService.updateAudit(stockInOut.getId(), AuditFlowConstant.business_stockIn_deposit_caiwu,
+                                    AuditFlowConstant.business_stockIn_deposit_caiwu,
+                                    "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnDepositDate() + "退押金");
+                        }
 
                     } else {
-                        result = "fail, 商品 " + product.getNo() + " 已审核通过，不能修改";
+                        result = CommonConstant.fail + ", 入库单 " + stockInOut.getNo() + " 里的商品已上架，不能再修改";
                     }
                 }
             }
-        } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
-            Supplier supplier = writer.gson.fromJson(json, Supplier.class);
-            result = erpDao.updateById(supplier.getId(), supplier);
-
-        } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            Product product = writer.gson.fromJson(json, Product.class);
-            result = erpDao.updateById(product.getId(), product);
-
-        } else if (entity.equalsIgnoreCase(ProductType.class.getSimpleName())) {
-            ProductType productType = writer.gson.fromJson(json, ProductType.class);
-            result = erpDao.updateById(productType.getId(), productType);
-
-        } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
-            ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
-            result = erpDao.updateById(productProperty.getId(), productProperty);
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            result = transcation.dealResult(result);
         }
 
-        writer.writeStringToJson(response, "{\"result\":\"" + result + "\"}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("update end, result:" + result);
     }
+
+
+
+    @Transactional
+    @PostMapping("/delete")
+    public void delete(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("delete start, parameter:" + entity + ":" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
+                Purchase purchase = writer.gson.fromJson(json, Purchase.class);
+
+                Purchase dbPurchase = (Purchase) erpDao.queryById(purchase.getId(), Purchase.class);
+                Set<PurchaseDetail> details = dbPurchase.getDetails();
+                for (PurchaseDetail detail : details) {
+                    detail.setProduct((Product) erpDao.query(detail.getProduct()).get(0));
+                }
+
+                Product stateProduct = ((PurchaseDetail) dbPurchase.getDetails().toArray()[0]).getProduct();
+
+                if (stateProduct.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
+                    result += erpDao.updateById(purchase.getId(), purchase);
+
+                    /**
+                     * 修改商品为无效状态
+                     */
+                    Product tempProduct = new Product();
+                    for (PurchaseDetail detail : details) {
+                        tempProduct.setId(detail.getProduct().getId());
+                        tempProduct.setState(ErpConstant.product_state_invalid);
+
+                        result += erpDao.updateById(tempProduct.getId(), tempProduct);
+                    }
+
+                    /**
+                     * 删除事宜信息
+                     */
+                    String auditEntity = AuditFlowConstant.business_purchase;
+                    switch (dbPurchase.getType()) {
+                        case 2:
+                            auditEntity = AuditFlowConstant.business_purchaseEmergency;
+                            break;
+                    }
+
+                    result += erpService.deleteAudit(dbPurchase.getId(), auditEntity);
+
+                } else {
+                    result = CommonConstant.fail + ", 采购单 " + dbPurchase.getNo() + " 里的商品，已审核通过，不能作废";
+                }
+
+
+            } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+                StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
+                StockInOut dbStockInOut = (StockInOut) erpDao.queryById(stockInOut.getId(), StockInOut.class);
+
+                /**
+                 * 入库
+                 */
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                    if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_apply) == 0) {
+
+                        result += erpDao.updateById(stockInOut.getId(), stockInOut);
+
+                        /**
+                         * 修改商品为采购审核通过状态，减少对应商品库存量
+                         */
+                        result += erpService.setStocks(stockInOut, CommonConstant.subtract);
+
+
+                        /**
+                         * 删除事宜信息
+                         */
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                            result += erpService.deleteAudit(dbStockInOut.getId(), AuditFlowConstant.business_stockIn_deposit_cangchu);
+                            result += erpService.deleteAudit(dbStockInOut.getId(), AuditFlowConstant.business_stockIn_deposit_caiwu);
+                        }
+
+                    } else {
+                        result = CommonConstant.fail + ", 入库单 " + dbStockInOut.getNo() + " 里的商品已上架，不能作废";
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("delete end, result:" + result);
+    }
+
+
+
+    @Transactional
+    @PostMapping("/recover")
+    public void recover(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("recover start, parameter:" + entity + ":" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
+                Purchase purchase = writer.gson.fromJson(json, Purchase.class);
+
+                Purchase dbPurchase = (Purchase) erpDao.queryById(purchase.getId(), Purchase.class);
+                Set<PurchaseDetail> details = dbPurchase.getDetails();
+                for (PurchaseDetail detail : details) {
+                    detail.setProduct((Product) erpDao.query(detail.getProduct()).get(0));
+                }
+
+                if (dbPurchase.getState().compareTo(ErpConstant.purchase_state_cancel) == 0) {       //作废状态的才可以恢复
+                    result += erpDao.updateById(purchase.getId(), purchase);
+
+                    /**
+                     * 修改商品为无效状态
+                     */
+                    Product tempProduct = new Product();
+                    for (PurchaseDetail detail : details) {
+                        tempProduct.setId(detail.getProduct().getId());
+                        tempProduct.setState(ErpConstant.product_state_purchase);
+
+                        result += erpDao.updateById(tempProduct.getId(), tempProduct);
+                    }
+
+                    /**
+                     * 发起采购流程
+                     */
+                    String auditEntity = AuditFlowConstant.business_purchase;
+                    switch (dbPurchase.getType()) {
+                        case 2:
+                            auditEntity = AuditFlowConstant.business_purchaseEmergency;
+                            break;
+                    }
+                    result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getName(), dbPurchase.getInputer());
+
+
+                } else {
+                    result = CommonConstant.fail + ", 采购单 " + dbPurchase.getNo() + " 里的商品，不为无效状态，不能恢复";
+                }
+
+
+            } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+                StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
+                StockInOut dbStockInOut = (StockInOut) erpDao.queryById(stockInOut.getId(), StockInOut.class);
+
+                /**
+                 * 入库
+                 */
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                    if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_cancel) == 0) {
+
+                        result += erpDao.updateById(stockInOut.getId(), stockInOut);
+
+                        /**
+                         * 修改商品为入库状态，设置库存为有效状态，或增加对应商品库存量
+                         */
+                        result += erpService.setStocks(stockInOut, CommonConstant.add);
+
+
+                        /**
+                         * 押金入库后通知仓储预计退还货物时间，财务人员预计退还押金时间
+                         */
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                            result += erpService.launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_cangchu, dbStockInOut.getId(),
+                                    "押金入库单 " + dbStockInOut.getNo() + ", 预计" + dbStockInOut.getDeposit().getReturnGoodsDate() + "退货",
+                                    dbStockInOut.getInputer());
+
+                            result += erpService.launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_caiwu, dbStockInOut.getId(),
+                                    "押金入库单 " + dbStockInOut.getNo() + ", 预计" + dbStockInOut.getDeposit().getReturnDepositDate() + "退押金",
+                                    dbStockInOut.getInputer());
+                        }
+
+                    } else {
+                        result = CommonConstant.fail + ", 入库单 " + dbStockInOut.getNo() + " 不是无效状态，不能恢复";
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("recover end, result:" + result);
+    }
+
+
 
     @RequestMapping(value = "/query", method = {RequestMethod.GET, RequestMethod.POST})
     public void query(HttpServletResponse response, String entity, @RequestBody String json){
@@ -221,8 +460,7 @@ public class ErpController {
             List<Purchase> purchases = erpDao.query(writer.gson.fromJson(json, Purchase.class));
 
             for (Purchase purchase : purchases) {
-                Set<PurchaseDetail> details = purchase.getDetails();
-                for (PurchaseDetail detail : details) {
+                for (PurchaseDetail detail : purchase.getDetails()) {
                     detail.setProduct((Product) erpDao.query(detail.getProduct()).get(0));
                 }
             }
@@ -240,6 +478,29 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, ProductProperty.class)));
+
+        } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+            List<StockInOut> stockInOuts = erpDao.query(writer.gson.fromJson(json, StockInOut.class));
+
+            for (StockInOut stockInOut : stockInOuts) {
+                Set<Stock> stocks = new HashSet<>();
+
+                for (StockInOutDetail detail : stockInOut.getDetails()) {
+                    Product product = (Product) erpDao.query(detail.getProduct()).get(0);
+                    Stock stock = erpService.getDbStock(product.getNo(), stockInOut.getWarehouse());
+
+                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_increment) == 0) {
+                        PurchaseDetail purchaseDetail = erpService.getPurchaseDetail(product.getId());
+                        stock.setQuantity(purchaseDetail.getQuantity());
+                    }
+
+                    stocks.add(stock);
+                }
+
+                stockInOut.setStocks(stocks);
+            }
+
+            writer.writeObjectToJson(response, stockInOuts);
         }
 
         logger.info("query end");
@@ -251,16 +512,7 @@ public class ErpController {
 
         if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
             Purchase purchase = writer.gson.fromJson(json, Purchase.class);
-            purchase.setState(0);
-
-            Field[] limitFields = new Field[1];
-            try {
-                limitFields[0] = purchase.getClass().getDeclaredField("state");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            writer.writeObjectToJson(response, erpDao.suggest(purchase, limitFields));
+            writer.writeObjectToJson(response, erpDao.suggest(purchase, null));
 
         } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
             Supplier supplier = writer.gson.fromJson(json, Supplier.class);
@@ -289,6 +541,48 @@ public class ErpController {
         }
 
         logger.info("suggest end");
+    }
+
+    @RequestMapping(value = "/entitiesSuggest", method = {RequestMethod.GET, RequestMethod.POST})
+    public void entitiesSuggest(HttpServletResponse response, String targetEntities,  String entities,  String properties, String word){
+        logger.info("entitiesSuggest start, parameter:" + targetEntities + "," + entities + "," + properties + "," + word);
+
+        String result = "[";
+
+        String[] targetEntitiesArr = targetEntities.split("#");
+        String[] entitiesArr = entities.split("#");
+        String[] propertiesArr = properties.split("#");
+
+        for (int i = 0; i < entitiesArr.length; i++) {
+            String json = "";
+
+            if (propertiesArr[i].trim().length() > 0) {
+                json += "\"" + propertiesArr[i] + "\":\"" + word + "\",";
+            }
+
+            if (!json.equals("")) {
+                json = "{" + json.substring(0, json.length() - 1) + "}";
+
+                String partResult = erpService.queryTargetEntity(targetEntitiesArr[i], entitiesArr[i], json);
+
+                if (partResult != null) {
+                    if (!partResult.equals("[]") && !partResult.trim().equals("")) {
+                        result += partResult.substring(1, partResult.length()-1) + ",";
+                    }
+                }
+            }
+        }
+
+        int pos = result.lastIndexOf(",");
+        if (pos != -1) {
+            result = result.substring(0, pos);
+        }
+
+        result += "]";
+
+        writer.writeStringToJson(response, result);
+
+        logger.info("entitiesSuggest end");
     }
 
     @RequestMapping(value = "/complexQuery", method = {RequestMethod.GET, RequestMethod.POST})
@@ -376,7 +670,7 @@ public class ErpController {
         if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
             isRepeat =  erpDao.isValueRepeat(Product.class, queryParameters.get("field"), queryParameters.get("value"), Integer.parseInt(queryParameters.get("id")));
         }
-        writer.writeStringToJson(response, "{\"result\":" + isRepeat + "}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":" + isRepeat + "}");
 
         logger.info("isValueRepeat end");
     }
@@ -390,26 +684,43 @@ public class ErpController {
     @RequestMapping(value = "/auditAction", method = {RequestMethod.GET, RequestMethod.POST})
     public void auditAction(HttpServletResponse response, @RequestBody String json){
         logger.info("auditAction start, parameter:" + json);
-        String result = "fail";
+        String result = CommonConstant.fail;
 
-        Audit audit = writer.gson.fromJson(json, Audit.class);
-        switch (audit.getAction()) {
-            case AuditFlowConstant.action_purchase_product_pass:
-                result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase_pass);break;
+        try {
+            Audit audit = writer.gson.fromJson(json, Audit.class);
+            switch (audit.getAction()) {
+                case AuditFlowConstant.action_purchase_product_pass:
+                    result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase_pass);
+                    break;
 
-            case AuditFlowConstant.action_product_modify:
-                result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase);break;
+                case AuditFlowConstant.action_product_modify:
+                    result = erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase);
+                    break;
 
-            case AuditFlowConstant.action_purchase_close:
-                result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_close, ErpConstant.product_state_purchase_pass);break;
+                case AuditFlowConstant.action_purchase_close:
+                    result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_close, ErpConstant.product_state_purchase_pass);
+                    break;
 
-            case AuditFlowConstant.action_purchase_modify:
-                result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_apply, ErpConstant.product_state_purchase);break;
+                case AuditFlowConstant.action_purchase_modify:
+                    result = erpService.purchaseStateModify(audit, ErpConstant.purchase_state_apply, ErpConstant.product_state_purchase);
+                    break;
+
+                case AuditFlowConstant.action_purchase_emergency_pass:
+                    result = erpService.purchaseEmergencyPass(audit, ErpConstant.purchase_state_close, ErpConstant.product_state_purchase_pass);
+                    break;
+
+                case AuditFlowConstant.action_purchase_emergency_pay:
+                    result = erpService.purchaseEmergencyPay(audit);
+                    break;
+            }
+        } catch (Exception e) {
+            logger.info(e.getMessage());
+        } finally {
+            result = transcation.dealResult(result);
         }
 
-        writer.writeStringToJson(response, "{\"result\":" + result + "}");
-
-        logger.info("isValueRepeat end");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":" + result + "}");
+        logger.info("auditAction end");
     }
 
 }

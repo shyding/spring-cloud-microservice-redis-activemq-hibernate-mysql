@@ -1,9 +1,10 @@
-package com.hzg.base;
+﻿package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
  */
 
+import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Des;
 import com.hzg.tools.ObjectToSql;
 import com.hzg.tools.Writer;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigInteger;
 import java.util.*;
@@ -53,7 +53,7 @@ public class Dao {
         Class clazz = object.getClass();
         storeToRedis(clazz.getName() + "_" + getId(object, clazz), object);
 
-        return "success";
+        return CommonConstant.success;
     }
 
 
@@ -70,7 +70,7 @@ public class Dao {
                 "delete from " + objectToSql.getTableName(clazz) + " where id = " + id).executeUpdate();
         deleteFromRedis(clazz.getName() + "_" + id);
 
-        return (result > 0 ? "success" : "fail") + "," + result + " item deleted";
+        return (result > 0 ? CommonConstant.success : CommonConstant.fail) + "," + result + " item deleted";
     }
 
 
@@ -92,7 +92,7 @@ public class Dao {
                 objectToSql.generateUpdateSqlByAnnotation(object, "id=" + id)).executeUpdate();
         updateObjectToRedis(object);
 
-        return (result > 0 ? "success" : "fail") + "," + result + " item updated";
+        return (result > 0 ? CommonConstant.success : CommonConstant.fail) + "," + result + " item updated";
     }
 
     /**
@@ -176,7 +176,7 @@ public class Dao {
             }
         }
 
-        return (result > 0 ? "success" : "fail") + "," + result + " item updated";
+        return (result > 0 ? CommonConstant.success : CommonConstant.fail) + "," + result + " item updated";
     }
 
     /**
@@ -517,7 +517,7 @@ public class Dao {
 
         Object relateObject = null;
 
-        List dbObjects = query(objectToSql.generateSelectSqlByAnnotation(object));
+        List dbObjects = queryBySql(objectToSql.generateSelectSqlByAnnotation(object), object.getClass());
         if (dbObjects != null && dbObjects.size() > 0) {
             Object dbObject = dbObjects.get(0);
 
@@ -698,14 +698,32 @@ public class Dao {
 
 
 
+    public final String key_delimiter = ";";
+
     /**
      * 把 对象 存储到 redis
+     *
+     * 缓存当前线程里存储到 redis 里的所有 key。当线程中的业务回滚时，
+     * 根据 threadId 取得这些 key，从 redis 里删除对应的对象
+     *
      * @param key
      * @param object
      */
     public void storeToRedis(String key, Object object) {
         if (object != null) {
             redisTemplate.opsForValue().set(key, object);
+
+            String currentThreadId = String.valueOf(Thread.currentThread().getId());
+            Object keys = getFromRedis(currentThreadId);
+
+            String keysStr = null;
+            if (keys == null) {
+                keysStr = "";
+            } else {
+                keysStr = String.valueOf(keys) + key_delimiter + key;
+            }
+
+            storeToRedis(currentThreadId, keysStr, 5);
         }
     }
 

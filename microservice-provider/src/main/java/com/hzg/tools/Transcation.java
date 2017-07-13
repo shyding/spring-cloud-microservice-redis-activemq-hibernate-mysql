@@ -39,7 +39,7 @@ public class Transcation {
         if (keys != null) {
             String[] keysArr = String.valueOf(keys).split(dao.key_delimiter);
             for (String key : keysArr) {
-                dao.delete(key);
+                dao.deleteFromRedis(key);
             }
         }
     }

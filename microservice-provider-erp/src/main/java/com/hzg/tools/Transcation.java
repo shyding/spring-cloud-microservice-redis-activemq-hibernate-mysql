@@ -17,6 +17,7 @@ public class Transcation {
     @Autowired
     public Dao dao;
 
+
     /**
      * 回滚数据库事务，及删除缓存里的对象
      *
@@ -38,7 +39,7 @@ public class Transcation {
         if (keys != null) {
             String[] keysArr = String.valueOf(keys).split(dao.key_delimiter);
             for (String key : keysArr) {
-                dao.delete(key);
+                dao.deleteFromRedis(key);
             }
         }
     }

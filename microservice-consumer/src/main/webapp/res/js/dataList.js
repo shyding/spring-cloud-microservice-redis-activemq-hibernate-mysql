@@ -1,4 +1,4 @@
-var dataList = (function($){
+﻿var dataList = (function($){
     "use strict";
 
     var titles = {
@@ -13,7 +13,10 @@ var dataList = (function($){
         "supplier":"供应商",
         "purchase":"采购",
         "stockInOut":"库存",
+        "warehouse":"仓库",
         "order":"订单",
+        "pay":"支付记录",
+        "account":"账户",
         "audit":"事宜"
     };
 
@@ -28,9 +31,31 @@ var dataList = (function($){
         "productType":"录入时间",
         "supplier":"录入时间",
         "purchase":"采购时间",
-        "stockInOut":"录入时间",
+        "stockInOut":"入库时间",
+        "warehouse":"录入时间",
         "order":"生成时间",
-        "audit":"流转时间"
+        "pay":"支付时间",
+        "account":"注册时间",
+        "audit":"办理时间"
+    };
+
+    var dateInputName = {
+        "user":"inputDate",
+        "post":"inputDate",
+        "dept":"inputDate",
+        "company":"inputDate",
+        "privilegeResource":"inputDate",
+        "auditFlow":"inputDate",
+        "product":"stockInOut[date]",
+        "productType":"inputDate",
+        "supplier":"inputDate",
+        "purchase":"date",
+        "stockInOut":"date",
+        "warehouse":"inputDate",
+        "order":"inputDate",
+        "pay":"payDate",
+        "account":"inputDate",
+        "audit":"dealDate"
     };
 
     var selectTitles = {
@@ -45,7 +70,10 @@ var dataList = (function($){
         "supplier":"类别",
         "purchase":"类别",
         "stockInOut":"类别",
+        "warehouse":"类别",
         "order":"类别",
+        "pay":"类别",
+        "account":"类别",
         "audit":"状态"
     };
 
@@ -60,6 +88,8 @@ var dataList = (function($){
         "productType":"添加商品类型",
         "supplier":"添加供应商",
         "purchase":"采购申请",
+        "warehouse":"添加仓库",
+        "account":"注册银行账户",
         "stockInOut":"商品入库、出库"
     };
 
@@ -76,7 +106,10 @@ var dataList = (function($){
         "supplier":"/erp",
         "purchase":"/erp",
         "stockInOut":"/erp",
-        "order":"/sale"
+        "warehouse":"/erp",
+        "order":"/sale",
+        "pay":"/pay",
+        "account":"/pay"
     };
 
     var addActions = {
@@ -90,7 +123,9 @@ var dataList = (function($){
         "productType":"/view",
         "supplier":"/view",
         "purchase":"/view",
-        "stockInOut":"/view"
+        "stockInOut":"/view",
+        "warehouse":"/view",
+        "account":"/view"
     };
 
     var queryActions = {
@@ -106,7 +141,10 @@ var dataList = (function($){
         "supplier":"/complexQuery",
         "purchase":"/complexQuery",
         "stockInOut":"/complexQuery",
-        "order":"/complexQuery"
+        "warehouse":"/complexQuery",
+        "order":"/complexQuery",
+        "pay":"/complexQuery",
+        "account":"/complexQuery"
     };
 
     var viewActions = {
@@ -122,7 +160,10 @@ var dataList = (function($){
         "supplier":"/view",
         "purchase":"/view",
         "stockInOut":"/view",
-        "order":"/view"
+        "warehouse":"/view",
+        "order":"/view",
+        "pay":"/view",
+        "account":"/view"
     };
 
     var tHeaders = {
@@ -138,7 +179,10 @@ var dataList = (function($){
         "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
         "purchase":"<th>名称</th><th>状态</th><th>类型</th><th>采购时间</th>",
         "stockInOut":"<th>名称</th>",
-        "order":"<th>名称</th>"
+        "warehouse":"<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
+        "order":"<th>名称</th>",
+        "pay":"<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付开户行</th><th>支付银行</th><th>收款账户</th><th>订单类型</th><th>订单编号</th>",
+        "account":"<th>账户</th><th>所属银行</th><th>开户人</th><th>开户行</th><th>账户金额</th><th>创建时间</th>"
     };
 
     var propertiesShowSequences = {
@@ -154,7 +198,10 @@ var dataList = (function($){
         "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
         "purchase":["name", "state", "type", "date"],
         "stockInOut":["name"],
-        "order":["name"]
+        "warehouse":["name", "charger[name]", "address", "company[name]"],
+        "order":["name"],
+        "pay":["no", "state", "amount", "payDate", "payType", "payAccount", "payBranch", "payBank", "receiptAccount", "entity", "entityNo"],
+        "account":["account", "bank", "owner[name]", "branch", "amount", "inputDate"]
     };
 
     var linkTitle = {
@@ -170,7 +217,10 @@ var dataList = (function($){
         "supplier":"name",
         "purchase":"name",
         "stockInOut":"stockNo",
-        "order":"orderNo"
+        "warehouse":"name",
+        "order":"orderNo",
+        "pay":"no",
+        "account":"account"
     };
 
     var showTitleNames = {
@@ -179,7 +229,8 @@ var dataList = (function($){
         "auditFlow":{"state":{0: "在用", 1: "没用"}},
         "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}, "type":{0:"正常采购", 2:"应急采购"}},
         "supplier":{"level":{"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
-        "types[]":{0: "供应商", 1: "加工商"}}
+        "types[]":{0: "供应商", 1: "加工商"}},
+        "pay":{"state":{0: "未支付", 1: "已支付", 2: "支付失败"}, "entity":{"purchase":"采购单", "order":"销售订单"}}
     };
 
     var entityRelations = {
@@ -196,7 +247,11 @@ var dataList = (function($){
         "purchase":"purchase",
         "purchaseEmergency":"purchase",
         "stockInOut":"stockInOut",
-        "order":"order"
+        "stockInOutDepositCangchu":"stockInOut",
+        "stockInOutDepositCaiwu":"stockInOut",
+        "order":"order",
+        "pay":"pay",
+        "account":"account"
     }
 
     var totalTableData = [];
@@ -234,19 +289,35 @@ var dataList = (function($){
                 .append(visitEntitiesOptions["purchase"])
                 .append(visitEntitiesOptions["stockInOut"]);
 
+        } else if (modules[entity] == "/pay") {
+            $("#entity").empty()
+                .append(visitEntitiesOptions["pay"])
+                .append(visitEntitiesOptions["account"]);
+
+            if (entity == "pay") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">支付号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入支付号" /></div></div>');
+            }
+
+            if (entity == "account") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="account">帐户号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="account" name="account" class="form-control col-md-7 col-xs-12" placeholder="输入账户号" /></div></div>');
+            }
         }
 
         $("#selectTitle").html(selectTitles[entity]);
         $("#timeLabel").empty().html(dateTitles[entity]);
+        $("#inputDate").attr("name", dateInputName[entity]);
         setSelect(document.getElementById("entity"), entity);
 
         if (typeof(addActions[entity]) == "undefined") {
-            $("#add").css("display", "none");
+            $("#add").hide();
 
         } else {
             $("#add").html(urlTitles[entity]).unbind().click(function(){
                 render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
             });
+            $("#add").show();
         }
     }
 
@@ -472,7 +543,11 @@ var dataList = (function($){
                                                 if (showTitleName[propertiesShowSequence[i]] != undefined) {
                                                     tdData = showTitleName[propertiesShowSequence[i]][value];
                                                 } else {
-                                                    tdData = value;
+                                                    if (typeof(value) == "undefined") {
+                                                        tdData = "";
+                                                    } else {
+                                                        tdData = value;
+                                                    }
                                                 }
                                             }
                                         }

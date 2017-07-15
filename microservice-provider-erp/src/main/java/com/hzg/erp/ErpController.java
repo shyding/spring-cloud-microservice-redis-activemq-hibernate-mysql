@@ -97,12 +97,12 @@ public class ErpController {
                 /**
                  * 入库
                  */
-                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
                     if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
                         result += erpDao.save(stockInOut.getDeposit());
                     }
 
-                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_processRepair) == 0) {
+                    if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_repair) == 0) {
                         result += erpDao.save(stockInOut.getProcessRepair());
                     }
 
@@ -123,9 +123,16 @@ public class ErpController {
                                 stockInOut.getInputer());
                     }
                 }
+
+            } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+                Warehouse warehouse = writer.gson.fromJson(json, Warehouse.class);
+                warehouse.setInputDate(inputDate);
+                result = erpDao.save(warehouse);
+
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -213,7 +220,7 @@ public class ErpController {
                 /**
                  * 入库
                  */
-                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
 
                     if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_apply) == 0) {
 
@@ -221,7 +228,7 @@ public class ErpController {
                             result += erpDao.updateById(stockInOut.getDeposit().getId(), stockInOut.getDeposit());
                         }
 
-                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_processRepair) == 0) {
+                        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_repair) == 0) {
                             result += erpDao.updateById(stockInOut.getProcessRepair().getId(), stockInOut.getProcessRepair());
                         }
 
@@ -250,9 +257,15 @@ public class ErpController {
                         result = CommonConstant.fail + ", 入库单 " + stockInOut.getNo() + " 里的商品已上架，不能再修改";
                     }
                 }
+
+            } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+                Warehouse warehouse = writer.gson.fromJson(json, Warehouse.class);
+                result = erpDao.updateById(warehouse.getId(), warehouse);
+
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -320,7 +333,7 @@ public class ErpController {
                 /**
                  * 入库
                  */
-                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
                     if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_apply) == 0) {
 
                         result += erpDao.updateById(stockInOut.getId(), stockInOut);
@@ -345,7 +358,8 @@ public class ErpController {
                 }
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -411,7 +425,7 @@ public class ErpController {
                 /**
                  * 入库
                  */
-                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_outWarehouse) < 0) {
+                if (dbStockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
                     if (dbStockInOut.getState().compareTo(ErpConstant.stockInOut_state_cancel) == 0) {
 
                         result += erpDao.updateById(stockInOut.getId(), stockInOut);
@@ -442,6 +456,7 @@ public class ErpController {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -489,6 +504,8 @@ public class ErpController {
                     Product product = (Product) erpDao.query(detail.getProduct()).get(0);
                     Stock stock = erpService.getDbStock(product.getNo(), stockInOut.getWarehouse());
 
+                    stock.setProduct(product);
+
                     if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_increment) == 0) {
                         PurchaseDetail purchaseDetail = erpService.getPurchaseDetail(product.getId());
                         stock.setQuantity(purchaseDetail.getQuantity());
@@ -501,6 +518,9 @@ public class ErpController {
             }
 
             writer.writeObjectToJson(response, stockInOuts);
+
+        } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+            writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Warehouse.class)));
         }
 
         logger.info("query end");
@@ -538,6 +558,14 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
             ProductProperty productProperty = writer.gson.fromJson(json, ProductProperty.class);
             writer.writeObjectToJson(response, erpDao.suggest(productProperty, null));
+
+        } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+            StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
+            writer.writeObjectToJson(response, erpDao.suggest(stockInOut, null));
+
+        } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+            Warehouse warehouse = writer.gson.fromJson(json, Warehouse.class);
+            writer.writeObjectToJson(response, erpDao.suggest(warehouse, null));
         }
 
         logger.info("suggest end");
@@ -605,6 +633,12 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(ProductProperty.class, queryParameters, position, rowNum));
+
+        } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+            writer.writeObjectToJson(response, erpDao.complexQuery(StockInOut.class, queryParameters, position, rowNum));
+
+        } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+            writer.writeObjectToJson(response, erpDao.complexQuery(Warehouse.class, queryParameters, position, rowNum));
         }
 
         logger.info("complexQuery end");
@@ -637,6 +671,12 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductProperty.class.getSimpleName())) {
             recordsSum =  erpDao.recordsSum(ProductProperty.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
+            recordsSum =  erpDao.recordsSum(StockInOut.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
+            recordsSum =  erpDao.recordsSum(Warehouse.class, queryParameters);
         }
 
         writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");
@@ -714,7 +754,8 @@ public class ErpController {
                     break;
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }

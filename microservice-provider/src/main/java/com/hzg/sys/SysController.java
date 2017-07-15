@@ -107,7 +107,8 @@ public class SysController {
                 }
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -198,7 +199,8 @@ public class SysController {
                 result = sysDao.updateById(auditFlow.getId(), auditFlow);
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -218,7 +220,8 @@ public class SysController {
                 result = sysDao.delete(writer.gson.fromJson(json, Audit.class));
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
@@ -590,7 +593,8 @@ public class SysController {
                 }
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            e.printStackTrace();
+            result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }

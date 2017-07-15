@@ -718,7 +718,7 @@ public class Dao {
 
             String keysStr = null;
             if (keys == null) {
-                keysStr = "";
+                keysStr = key;
             } else {
                 keysStr = String.valueOf(keys) + key_delimiter + key;
             }

@@ -506,14 +506,14 @@ public class SysController {
                 User user = (User) sysDao.getFromRedis((String) sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId").toString()));
 
                 if (user == null) {
-                    result = CommonConstant.fail + ",会话信息丢失，请重新登录后办理、审核事宜";
+                    result += CommonConstant.fail + ",会话信息丢失，请重新登录后办理、审核事宜";
                     writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
                     return;
                 }
 
                 Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
                 if (dbAudit.getState().compareTo(AuditFlowConstant.audit_state_done) == 0) {
-                    result = CommonConstant.fail + ",不能重复办理已办理、审核的事宜";
+                    result += CommonConstant.fail + ",不能重复办理已办理、审核的事宜";
                     writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
                     return;
                 }

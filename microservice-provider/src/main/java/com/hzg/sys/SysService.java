@@ -253,10 +253,15 @@ public class SysService {
 
             if (audit.getEntity().equals(AuditFlowConstant.business_purchase) ||
                     audit.getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
-                result = erpClient.auditAction(writer.gson.toJson(audit));
+
+                Map<String, String> result1 = writer.gson.fromJson(erpClient.auditAction(writer.gson.toJson(audit)),
+                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+                result = result1.get(CommonConstant.result);
             }
 
             audit.setAction(realAction);
+        } else {
+            result = CommonConstant.success;
         }
 
         return result;
@@ -275,6 +280,8 @@ public class SysService {
                 case AuditFlowConstant.action_flow_purchase: result = launchFlow(AuditFlowConstant.business_stockIn, audit);break;
                 case AuditFlowConstant.action_flow_StockIn: result = launchFlow(AuditFlowConstant.business_product, audit);break;
             }
+        } else {
+            result = CommonConstant.success;
         }
 
         return result;
@@ -310,13 +317,8 @@ public class SysService {
                     List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
                             new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
 
-                    if (purchaseInfo.size() == 0) {
-                        result += CommonConstant.fail;
-
-                    } else {
-                        nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
-                        nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
-                    }
+                    nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
+                    nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
 
                 }break;
 
@@ -327,7 +329,7 @@ public class SysService {
             result += sysDao.save(nextFlowAudit);
         }
 
-        return result;
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
 }

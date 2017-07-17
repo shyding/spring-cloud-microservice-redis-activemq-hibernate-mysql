@@ -12,7 +12,8 @@
         "productType":"商品类型",
         "supplier":"供应商",
         "purchase":"采购",
-        "stockInOut":"库存",
+        "stockInOut":"入库/出库",
+        "stock":"库存",
         "warehouse":"仓库",
         "order":"订单",
         "pay":"支付记录",
@@ -177,8 +178,8 @@
         "product":"<th>名称</th>",
         "productType":"<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
-        "purchase":"<th>名称</th><th>状态</th><th>类型</th><th>采购时间</th>",
-        "stockInOut":"<th>名称</th>",
+        "purchase":"<th>名称</th><th>状态</th><th>类型</th><th>采购时间</th><th>采购人</th><th>录入人</th>",
+        "stockInOut":"<th>单号</th><th>状态</th><th>类型</th><th>入/出库时间</th><th>入/出库人</th><th>仓库</th>",
         "warehouse":"<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
         "order":"<th>名称</th>",
         "pay":"<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付开户行</th><th>支付银行</th><th>收款账户</th><th>订单类型</th><th>订单编号</th>",
@@ -196,8 +197,8 @@
         "product":["name"],
         "productType":["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
-        "purchase":["name", "state", "type", "date"],
-        "stockInOut":["name"],
+        "purchase":["name", "state", "type", "date", "charger[name]", "inputer[name]"],
+        "stockInOut":["no", "state", "type", "date", "inputer[name]", "warehouse[name]"],
         "warehouse":["name", "charger[name]", "address", "company[name]"],
         "order":["name"],
         "pay":["no", "state", "amount", "payDate", "payType", "payAccount", "payBranch", "payBank", "receiptAccount", "entity", "entityNo"],
@@ -216,7 +217,7 @@
         "productType":"name",
         "supplier":"name",
         "purchase":"name",
-        "stockInOut":"stockNo",
+        "stockInOut":"no",
         "warehouse":"name",
         "order":"orderNo",
         "pay":"no",
@@ -228,6 +229,7 @@
         "audit":{"state":{0: "待办", 1: "已办"}},
         "auditFlow":{"state":{0: "在用", 1: "没用"}},
         "purchase":{"state":{0: "正常", 1: "关闭", 2: "作废"}, "type":{0:"正常采购", 2:"应急采购"}},
+        "stockInOut":{"state":{0: "正常", 1: "关闭", 2: "作废"}, "type":{0:"现金入库", 1:"代销入库",2:"增量入库",3:"加工入库",4:"押金入库",5:"修补入库",10:"虚拟出库",11:"正常出库",12:"报损出库",13:"调仓出库"}},
         "supplier":{"level":{"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
         "types[]":{0: "供应商", 1: "加工商"}},
         "pay":{"state":{0: "未支付", 1: "已支付", 2: "支付失败"}, "entity":{"purchase":"采购单", "order":"销售订单"}}
@@ -242,11 +244,13 @@
         "audit":"audit",
         "auditFlow":"auditFlow",
         "product":"product",
+        "productNotify":"stockInOut",
         "productType":"productType",
         "supplier":"supplier",
         "purchase":"purchase",
         "purchaseEmergency":"purchase",
         "stockInOut":"stockInOut",
+        "stockInOutNotify":"purchase",
         "stockInOutDepositCangchu":"stockInOut",
         "stockInOutDepositCaiwu":"stockInOut",
         "order":"order",
@@ -287,7 +291,13 @@
                 .append(visitEntitiesOptions["productType"])
                 .append(visitEntitiesOptions["supplier"])
                 .append(visitEntitiesOptions["purchase"])
-                .append(visitEntitiesOptions["stockInOut"]);
+                .append(visitEntitiesOptions["stockInOut"])
+                .append(visitEntitiesOptions["warehouse"]);
+
+            if (entity == "stockInOut") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">入/出库单号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入单号" /></div></div>');
+            }
 
         } else if (modules[entity] == "/pay") {
             $("#entity").empty()

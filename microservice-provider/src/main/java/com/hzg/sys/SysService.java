@@ -277,8 +277,8 @@ public class SysService {
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null) {
             switch (auditFlow.getAction()) {
-                case AuditFlowConstant.action_flow_purchase: result = launchFlow(AuditFlowConstant.business_stockIn, audit);break;
-                case AuditFlowConstant.action_flow_StockIn: result = launchFlow(AuditFlowConstant.business_product, audit);break;
+                case AuditFlowConstant.action_flow_purchase: result = launchNotifyFlow(AuditFlowConstant.business_stockIn_notify, audit);break;
+                case AuditFlowConstant.action_flow_StockIn: result = launchNotifyFlow(AuditFlowConstant.business_product_Notify, audit);break;
             }
         } else {
             result = CommonConstant.success;
@@ -293,13 +293,14 @@ public class SysService {
      * @param audit
      * @return
      */
-    public String launchFlow(String businessEntity, Audit audit) {
+    public String launchNotifyFlow(String businessEntity, Audit audit) {
         String result = CommonConstant.fail;
 
         Audit nextFlowAudit = null;
 
         Audit temp = new Audit();
         temp.setEntity(businessEntity);
+        temp.setEntityId(audit.getEntityId());
         temp.setCompany(audit.getCompany());
         temp.setPost(audit.getPost());
         temp.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
@@ -311,8 +312,8 @@ public class SysService {
         }
 
         if (nextFlowAudit != null) {
-            switch (businessEntity) {
-                case AuditFlowConstant.business_stockIn:
+            switch (nextFlowAudit.getEntity()) {
+                case AuditFlowConstant.business_stockIn_notify:
                 {
                     List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
                             new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());

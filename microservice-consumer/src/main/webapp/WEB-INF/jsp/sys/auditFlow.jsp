@@ -1,4 +1,4 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.sys.*" %>
 <%@ page import="com.hzg.tools.AuditFlowConstant" %>
@@ -51,7 +51,11 @@
                                         <option value="<%=AuditFlowConstant.business_purchase%>">采购审核</option>
                                         <option value="<%=AuditFlowConstant.business_purchaseEmergency%>">应急采购审核</option>
                                         <option value="<%=AuditFlowConstant.business_stockIn%>">商品入库</option>
+                                        <option value="<%=AuditFlowConstant.business_stockIn_notify%>">商品入库提醒流程</option>
+                                        <option value="<%=AuditFlowConstant.business_stockIn_deposit_cangchu%>">押金入库退还货品</option>
+                                        <option value="<%=AuditFlowConstant.business_stockIn_deposit_caiwu%>">押金入库退还押金</option>
                                         <option value="<%=AuditFlowConstant.business_product%>">商品上架</option>
+                                        <option value="<%=AuditFlowConstant.business_product_Notify%>">商品上架提醒流程</option>
                                         <option value="<%=AuditFlowConstant.business_returnProduct%>">退货审核</option>
                                         <option value="<%=AuditFlowConstant.business_changeProduct%>">换货审核</option>
                                         <option value="<%=AuditFlowConstant.business_orderPersonal%>">私人订制</option>
@@ -68,7 +72,7 @@
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="action">流程结束时动作 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <select id="action" name="action" class="form-control col-md-7 col-xs-12" data-value-type="string" data-skip-falsy="true" required>
+                                    <select id="action" name="action" class="form-control col-md-7 col-xs-12" data-value-type="string" data-skip-falsy="true">
                                     </select>
                                 </div>
                             </div>
@@ -83,7 +87,12 @@
                                     <c:if test="${status.count > 1}">
                                         &nbsp;&nbsp;&nbsp;&nbsp;<i class="fa fa-long-arrow-right"></i>&nbsp;&nbsp;
                                     </c:if>
-                                    <a class="btn btn-app">${node.name}<br/>${node.post.name}</a>
+                                    <%
+                                        AuditFlowNode node = (AuditFlowNode)pageContext.getAttribute("node");
+                                    %>
+                                    <a class="btn btn-app" style="height: 100px">${node.name}<br/>${node.post.name}<br/>
+                                        审核通过调用动作:&nbsp;<%=AuditFlowConstant.action_names.get(node.getAction())%><br/>
+                                        被打回时调用动作:&nbsp;<%=AuditFlowConstant.action_names.get(node.getRefusedAction())%></a>
                                 </c:forEach>
                             </div>
 
@@ -155,30 +164,42 @@
 </div>
 <script type="text/javascript">
     var businessFlowActionOptions = {
-        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase%>'>发起入库流程</option>",
-        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase_emergency%>'>发起入库流程</option>",
-        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_StockIn%>'>发起商品上架流程</option>",
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_flow_purchase)%></option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_purchase_emergency%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_flow_purchase_emergency)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_notify%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_flow_StockIn%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_flow_StockIn)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_cangchu%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_caiwu%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_product_Notify%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
     };
 
     var businessNodeActionOptions = {
-        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_product_pass%>'>审核通过商品</option><option value='<%=AuditFlowConstant.action_purchase_close%>'>关闭采购单</option>",
-        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pass%>'>审核通过采购单</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pay%>'>审核付款</option>",
-        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_stockIn%>'>入库商品</option>",
-        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_onSale%>'>上架商品</option>",
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_product_pass%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_product_pass)%></option><option value='<%=AuditFlowConstant.action_purchase_close%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_close)%></option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_emergency_pass%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_emergency_pass)%></option><option value='<%=AuditFlowConstant.action_purchase_emergency_pay%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_emergency_pay)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_notify%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_stockIn%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_stockIn)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_cangchu%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_caiwu%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_onSale%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_onSale)%></option>",
+        "<%=AuditFlowConstant.business_product_Notify%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"
     };
 
     var businessNodeRefusedActionOptions = {
-        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_modify%>'>可以修改采购单</option>",
-        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改采购单</option>",
-        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改商品</option>",
-        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'>可以修改商品</option>",
+        "<%=AuditFlowConstant.business_purchase%>":"<option value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_modify%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_modify)%></option>",
+        "<%=AuditFlowConstant.business_purchaseEmergency%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_purchase_modify%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_purchase_modify)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_notify%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_product_modify)%></option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_cangchu%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_stockIn_deposit_caiwu%>":"<option  value=''>无</option>",
+        "<%=AuditFlowConstant.business_product%>":"<option  value=''>无</option><option value='<%=AuditFlowConstant.action_product_modify%>'><%=AuditFlowConstant.action_names.get(AuditFlowConstant.action_product_modify)%></option>",
+        "<%=AuditFlowConstant.business_product_Notify%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_returnProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_changeProduct%>":"<option  value=''>无</option>",
         "<%=AuditFlowConstant.business_orderPersonal%>":"<option  value=''>无</option>"

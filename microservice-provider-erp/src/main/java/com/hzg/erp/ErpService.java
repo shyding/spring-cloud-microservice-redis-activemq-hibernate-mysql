@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.*;
 
-
 @Service
 public class ErpService {
 
@@ -33,6 +32,9 @@ public class ErpService {
 
     @Autowired
     private Writer writer;
+
+    @Autowired
+    public ObjectToSql objectToSql;
 
     public String launchAuditFlow(String entity, Integer entityId, String auditName, User user) {
         String result = CommonConstant.fail;
@@ -193,6 +195,7 @@ public class ErpService {
                 List<Stock> dbStocks = erpDao.query(tempStock);
 
                 if (!dbStocks.isEmpty()) {
+                    dbStocks.get(0).setDate(stock.getDate());
                     result += setStockQuantity(dbStocks.get(0), stock.getQuantity(), CommonConstant.add);
                 } else {
                     stock.setNo(erpDao.getNo(ErpConstant.no_stock_perfix));
@@ -459,15 +462,31 @@ public class ErpService {
 
             Purchase tempPurchase = new Purchase();
             PurchaseDetail tempPurchaseDetail = new PurchaseDetail();
-            for (Purchase ele : purchases) {
-                tempPurchase.setId(ele.getId());
+
+            for (int i = 0; i < purchases.size(); i++) {
+                tempPurchase.setId(purchases.get(i).getId());
                 tempPurchaseDetail.setPurchase(tempPurchase);
 
-                ele.setDetails(new HashSet(erpDao.query(tempPurchaseDetail)));
+                List<PurchaseDetail> details = erpDao.query(tempPurchaseDetail);
 
-                for (PurchaseDetail detail : ele.getDetails()) {
-                    detail.setProduct((Product) erpDao.query(detail.getProduct()).get(0));
+                for (int j = 0; j < details.size(); j++) {
+                    Product product = (Product) erpDao.queryById(details.get(j).getProduct().getId(), Product.class);
+                    if (product.getState().compareTo(ErpConstant.product_state_purchase_pass) == 0) {
+                        details.get(j).setProduct(product);
+
+                    } else {
+                        details.remove(details.get(j));
+                        j--;
+                    }
                 }
+
+                if (!details.isEmpty()) {
+                    purchases.get(i).setDetails(new HashSet<>(details));
+                } else {
+                    purchases.remove(purchases.get(i));
+                    i--;
+                }
+
             }
 
             result = writer.gson.toJson(purchases);
@@ -476,7 +495,7 @@ public class ErpService {
         } else if (targetEntity.equalsIgnoreCase(PurchaseDetail.class.getSimpleName()) &&
                 entity.equalsIgnoreCase(Product.class.getSimpleName())) {
             Product product = writer.gson.fromJson(json, Product.class);
-            product.setState(10);
+            product.setState(ErpConstant.product_state_purchase_pass);
 
             Field[] limitFields = new Field[1];
             try {
@@ -486,7 +505,7 @@ public class ErpService {
             }
 
 
-            List<Product> products = (List<Product>) erpDao.suggest(writer.gson.fromJson(json, Product.class), limitFields);
+            List<Product> products = (List<Product>) erpDao.suggest(product, limitFields);
 
             if (!products.isEmpty()) {
                 List<PurchaseDetail> details = new ArrayList<>();
@@ -510,5 +529,84 @@ public class ErpService {
         }
 
         return result;
+    }
+
+    public List privateQuery(String entity, String json, int position, int rowNum) {
+        try {
+            Map<String, Object> queryParameters = writer.gson.fromJson(json, new com.google.gson.reflect.TypeToken<Map<String, Object>>(){}.getType());
+
+            if (entity.equalsIgnoreCase(Stock.class.getSimpleName())) {
+                String stockSql = objectToSql.generateComplexSqlByAnnotation(Stock.class,
+                        writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Stock.class.getSimpleName().toLowerCase())),
+                                new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
+
+                String productSql = objectToSql.generateComplexSqlByAnnotation(Product.class,
+                        writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Product.class.getSimpleName().toLowerCase())),
+                                new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
+
+                productSql = productSql.replace(" t ", " t11 ").replace(" t.", " t11.").substring(0, productSql.indexOf(" order by "));
+
+
+                String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";
+
+                String[] stockSqlParts = stockSql.split(" from ");
+                selectSql = erpDao.getSelectColumns("t", Stock.class);
+                String[] stockSqlParts1 = stockSqlParts[1].split(" where ");
+
+                fromSql = stockSqlParts1[0];
+                if (stockSqlParts1.length == 2) {
+                    String parts[] = stockSqlParts1[1].split(" order by ");
+
+                    whereSql = parts[0];
+                    if (parts.length == 2) {
+                        sortNumSql = parts[1];
+                    }
+                }
+
+                selectSql += ", " + erpDao.getSelectColumns("t11", Product.class);
+                if (productSql.contains(" where ")) {
+                    String[] parts = productSql.split(" where ");
+
+                    fromSql += ", " + parts[0].split(" from ")[1];
+                    whereSql += " and " + parts[1];
+                } else {
+                    fromSql += ", " + objectToSql.getTableName(Product.class) + " t11 ";
+                }
+                whereSql += " and t11." + objectToSql.getColumn(Product.class.getDeclaredField("no")) +
+                        " = t." + objectToSql.getColumn(Stock.class.getDeclaredField("productNo"));
+
+
+                selectSql +=  ", " + erpDao.getSelectColumns("t22", Warehouse.class);
+                fromSql += ", " + objectToSql.getTableName(Warehouse.class) + " t22 ";
+                whereSql += " and t22." + objectToSql.getColumn(Warehouse.class.getDeclaredField("id")) +
+                        " = t." + objectToSql.getColumn(Stock.class.getDeclaredField("warehouse"));
+
+
+                if (whereSql.indexOf(" and") == 0) {
+                    whereSql = whereSql.substring(" and".length());
+                }
+
+                Class[] clazzs = {Stock.class, Product.class, Warehouse.class};
+                Map<String, List<Object>> results = erpDao.queryBySql("select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql, clazzs);
+
+                List<Object> stocks = results.get(Stock.class.getName());
+                List<Object> products = results.get(Product.class.getName());
+                List<Object> warehouses = results.get(Warehouse.class.getName());
+
+                int i = 0;
+                for (Object stock : stocks) {
+                    ((Stock)stock).setProduct((Product) products.get(i));
+                    ((Stock)stock).setWarehouse((Warehouse) warehouses.get(i));
+
+                    i++;
+                }
+
+                return stocks;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new ArrayList();
     }
 }

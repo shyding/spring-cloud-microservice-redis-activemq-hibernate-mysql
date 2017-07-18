@@ -519,6 +519,9 @@ public class ErpController {
 
             writer.writeObjectToJson(response, stockInOuts);
 
+        } else if (entity.equalsIgnoreCase(Stock.class.getSimpleName())) {
+            writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Stock.class)));
+
         } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Warehouse.class)));
         }
@@ -617,7 +620,12 @@ public class ErpController {
     public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
         logger.info("complexQuery start, parameter:" + entity + ":" + json + "," + position + "," + rowNum);
 
-        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        Map<String, String> queryParameters = null;
+        try {
+            queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>() {}.getType());
+        } catch (Exception e){
+            e.getMessage();
+        }
 
         if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(Purchase.class, queryParameters, position, rowNum));
@@ -637,6 +645,9 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(StockInOut.class, queryParameters, position, rowNum));
 
+        } else if (entity.equalsIgnoreCase(Stock.class.getSimpleName())) {
+            writer.writeObjectToJson(response, erpService.privateQuery(entity, json, position, rowNum));
+
         } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(Warehouse.class, queryParameters, position, rowNum));
         }
@@ -655,7 +666,12 @@ public class ErpController {
         logger.info("recordsSum start, parameter:" + entity + ":" + json);
         BigInteger recordsSum = new BigInteger("-1");
 
-        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        Map<String, String> queryParameters = null;
+        try {
+            queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>() {}.getType());
+        } catch (Exception e){
+            e.getMessage();
+        }
 
         if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
             recordsSum =  erpDao.recordsSum(Purchase.class, queryParameters);

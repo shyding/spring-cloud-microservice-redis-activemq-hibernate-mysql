@@ -33,6 +33,7 @@
         "supplier":"录入时间",
         "purchase":"采购时间",
         "stockInOut":"入库时间",
+        "stock":"入库时间",
         "warehouse":"录入时间",
         "order":"生成时间",
         "pay":"支付时间",
@@ -52,6 +53,7 @@
         "supplier":"inputDate",
         "purchase":"date",
         "stockInOut":"date",
+        "stock":"stock[date]",
         "warehouse":"inputDate",
         "order":"inputDate",
         "pay":"payDate",
@@ -107,6 +109,7 @@
         "supplier":"/erp",
         "purchase":"/erp",
         "stockInOut":"/erp",
+        "stock":"/erp",
         "warehouse":"/erp",
         "order":"/sale",
         "pay":"/pay",
@@ -142,6 +145,7 @@
         "supplier":"/complexQuery",
         "purchase":"/complexQuery",
         "stockInOut":"/complexQuery",
+        "stock":"/complexQuery",
         "warehouse":"/complexQuery",
         "order":"/complexQuery",
         "pay":"/complexQuery",
@@ -161,6 +165,7 @@
         "supplier":"/view",
         "purchase":"/view",
         "stockInOut":"/view",
+        "stock":"/view",
         "warehouse":"/view",
         "order":"/view",
         "pay":"/view",
@@ -180,6 +185,7 @@
         "supplier":"<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
         "purchase":"<th>名称</th><th>状态</th><th>类型</th><th>采购时间</th><th>采购人</th><th>录入人</th>",
         "stockInOut":"<th>单号</th><th>状态</th><th>类型</th><th>入/出库时间</th><th>入/出库人</th><th>仓库</th>",
+        "stock":"<th>库存编号</th><th>商品名称</th><th>商品编号</th><th>商品数量</th><th>商品单位</th><th>入库时间</th><th>仓库</th>",
         "warehouse":"<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
         "order":"<th>名称</th>",
         "pay":"<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付开户行</th><th>支付银行</th><th>收款账户</th><th>订单类型</th><th>订单编号</th>",
@@ -199,6 +205,7 @@
         "supplier":["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
         "purchase":["name", "state", "type", "date", "charger[name]", "inputer[name]"],
         "stockInOut":["no", "state", "type", "date", "inputer[name]", "warehouse[name]"],
+        "stock":["no", "product[name]", "productNo", "quantity", "unit", "date", "warehouse[name]"],
         "warehouse":["name", "charger[name]", "address", "company[name]"],
         "order":["name"],
         "pay":["no", "state", "amount", "payDate", "payType", "payAccount", "payBranch", "payBank", "receiptAccount", "entity", "entityNo"],
@@ -218,6 +225,7 @@
         "supplier":"name",
         "purchase":"name",
         "stockInOut":"no",
+        "stock":"no",
         "warehouse":"name",
         "order":"orderNo",
         "pay":"no",
@@ -253,6 +261,7 @@
         "stockInOutNotify":"purchase",
         "stockInOutDepositCangchu":"stockInOut",
         "stockInOutDepositCaiwu":"stockInOut",
+        "stock":"stock",
         "order":"order",
         "pay":"pay",
         "account":"account"
@@ -269,6 +278,9 @@
         document.title = title;
         $("#htitle").empty().html(title);
         $("#stitle").empty().html(title);
+
+        $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">名称</label>' +
+            '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" /></div></div>');
 
         if (modules[entity] == "/sys") {
             if ("audit" != entity) {
@@ -292,11 +304,17 @@
                 .append(visitEntitiesOptions["supplier"])
                 .append(visitEntitiesOptions["purchase"])
                 .append(visitEntitiesOptions["stockInOut"])
+                .append(visitEntitiesOptions["stock"])
                 .append(visitEntitiesOptions["warehouse"]);
 
             if (entity == "stockInOut") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">入/出库单号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入单号" /></div></div>');
+            }
+            if (entity == "stock") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">商品名称</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="product[name]" name="product[name]" class="form-control col-md-7 col-xs-12" placeholder="输入商品名称" /></div></div>' +
+                    '<input type="hidden" name="stock[state]" value="0">');
             }
 
         } else if (modules[entity] == "/pay") {

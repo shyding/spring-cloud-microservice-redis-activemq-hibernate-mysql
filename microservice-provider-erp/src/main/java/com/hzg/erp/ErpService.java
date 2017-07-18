@@ -540,14 +540,6 @@ public class ErpService {
                         writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Stock.class.getSimpleName().toLowerCase())),
                                 new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
 
-                String productSql = objectToSql.generateComplexSqlByAnnotation(Product.class,
-                        writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Product.class.getSimpleName().toLowerCase())),
-                                new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
-
-                productSql = productSql.substring(0, productSql.indexOf(" order by "));
-                productSql = productSql.replace(" t ", " t11 ").replace(" t.", " t11.");
-
-
                 String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";
 
                 String[] stockSqlParts = stockSql.split(" from ");
@@ -565,17 +557,29 @@ public class ErpService {
                 }
 
                 selectSql += ", " + erpDao.getSelectColumns("t11", Product.class);
-                if (productSql.contains(" where ")) {
-                    String[] parts = productSql.split(" where ");
-
-                    fromSql += ", " + parts[0].split(" from ")[1];
-                    whereSql += " and " + parts[1];
-                } else {
-                    fromSql += ", " + objectToSql.getTableName(Product.class) + " t11 ";
-                }
+                fromSql += ", " + objectToSql.getTableName(Product.class) + " t11 ";
                 whereSql += " and t11." + objectToSql.getColumn(Product.class.getDeclaredField("no")) +
                         " = t." + objectToSql.getColumn(Stock.class.getDeclaredField("productNo"));
 
+                if (queryParameters.get(Product.class.getSimpleName().toLowerCase()) != null) {
+                    String productSql = objectToSql.generateComplexSqlByAnnotation(Product.class,
+                            writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Product.class.getSimpleName().toLowerCase())),
+                                    new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
+
+                    productSql = productSql.substring(0, productSql.indexOf(" order by "));
+                    productSql = productSql.replace(" t ", " t11 ").replace(" t.", " t11.");
+
+                    if (productSql.contains(" where ")) {
+                        String[] parts = productSql.split(" where ");
+                        String[] tables = parts[0].split(" from ")[1].split(" t11 ");
+
+                        if (tables.length > 1) {
+                            fromSql += tables[1];
+                        }
+                        whereSql += " and " + parts[1];
+                    }
+
+                }
 
                 selectSql +=  ", " + erpDao.getSelectColumns("t22", Warehouse.class);
                 fromSql += ", " + objectToSql.getTableName(Warehouse.class) + " t22 ";

@@ -520,7 +520,8 @@ public class ErpController {
             writer.writeObjectToJson(response, stockInOuts);
 
         } else if (entity.equalsIgnoreCase(Stock.class.getSimpleName())) {
-            writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Stock.class)));
+            writer.writeObjectToJson(response, erpService.privateQuery(entity,
+                    "{\"" + Stock.class.getSimpleName().toLowerCase() + "\":" + json + "}", 0, -1));
 
         } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Warehouse.class)));

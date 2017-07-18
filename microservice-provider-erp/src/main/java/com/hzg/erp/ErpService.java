@@ -544,7 +544,8 @@ public class ErpService {
                         writer.gson.fromJson(writer.gson.toJson(queryParameters.get(Product.class.getSimpleName().toLowerCase())),
                                 new com.google.gson.reflect.TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
 
-                productSql = productSql.replace(" t ", " t11 ").replace(" t.", " t11.").substring(0, productSql.indexOf(" order by "));
+                productSql = productSql.substring(0, productSql.indexOf(" order by "));
+                productSql = productSql.replace(" t ", " t11 ").replace(" t.", " t11.");
 
 
                 String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";

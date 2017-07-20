@@ -185,13 +185,19 @@ public class SysService {
                     nextAudit.setRefusedAction(nextAuditFlowNode.getRefusedAction());
                     nextAudit.setPost(nextAuditFlowNode.getPost());
 
-                    if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
+                    if ((direct.equals(AuditFlowConstant.flow_direct_forward))) {
+                        if (audit.getRefusePost() != null) {
+                            nextAudit.setUser(audit.getRefuseUser());
+                        }
+                    } else if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
                         nextAudit.setRefusePost(audit.getPost());
+                        nextAudit.setRefuseUser(audit.getUser());
                     }
 
                     nextAudit.setCompany(dbAuditFlow.getCompany());
                     nextAudit.setEntity(dbAuditFlow.getEntity());
                     nextAudit.setEntityId(audit.getEntityId());
+                    nextAudit.setPreFlowAuditNo(audit.getPreFlowAuditNo());
 
                     return nextAudit;
                 }
@@ -275,7 +281,7 @@ public class SysService {
         String result = CommonConstant.fail;
 
         AuditFlow auditFlow = getAuditFlow(audit);
-        if (auditFlow != null) {
+        if (auditFlow != null && auditFlow.getAction() != null) {
             switch (auditFlow.getAction()) {
                 case AuditFlowConstant.action_flow_purchase: result = launchNotifyFlow(AuditFlowConstant.business_stockIn_notify, audit);break;
                 case AuditFlowConstant.action_flow_StockIn: result = launchNotifyFlow(AuditFlowConstant.business_product_Notify, audit);break;
@@ -304,6 +310,7 @@ public class SysService {
         temp.setCompany(audit.getCompany());
         temp.setPost(audit.getPost());
         temp.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
+        temp.setPreFlowAuditNo(audit.getNo());
 
         nextFlowAudit = getNextAudit(temp, AuditFlowConstant.flow_direct_forward);
 

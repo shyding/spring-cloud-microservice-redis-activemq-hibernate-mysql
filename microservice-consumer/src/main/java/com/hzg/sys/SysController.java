@@ -1,8 +1,6 @@
 ﻿package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
-import com.hzg.erp.ErpClient;
-import com.hzg.erp.Purchase;
 import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.util.*;
 
 @Controller
@@ -27,9 +24,6 @@ public class SysController extends com.hzg.base.Controller {
     private SysClient sysClient;
 
     @Autowired
-    private ErpClient erpClient;
-
-    @Autowired
     private StrUtil strUtil;
 
     @Autowired
@@ -37,6 +31,9 @@ public class SysController extends com.hzg.base.Controller {
 
     @Autowired
     public Integer sessionTime;
+
+    @Autowired
+    public RenderHtmlData renderHtmlData;
 
     public SysController(SysClient sysClient) {
         super(sysClient);
@@ -68,49 +65,17 @@ public class SysController extends com.hzg.base.Controller {
 
         } else if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Audit>>(){}.getType());
+
             List<Audit> audits = null;
-
-            String queryJson = "";
-            String refuseUserOptions = "";
-
             if (!entities.isEmpty()) {
-                Audit audit = (Audit)entities.get(0);
-                queryJson = "{\"no\":" + audit.getNo() + "}";
+                audits = writer.gson.fromJson(client.query(entity, "{\"no\":" + ((Audit)entities.get(0)).getNo() + "}"),
+                        new TypeToken<List<Audit>>() {}.getType());
+            }
 
-                audits = writer.gson.fromJson(client.query(entity, queryJson), new TypeToken<List<Audit>>() {}.getType());
-
-                if (!audits.isEmpty()) {
-                    for (int i = 0; i < audits.size(); i++) {
-                        if (audits.get(i).getUser() != null && !refuseUserOptions.contains("'" + audits.get(i).getUser().getId() + "'")) {
-                            refuseUserOptions += "<option value='" + audits.get(i).getUser().getId() + "'>" + audits.get(i).getUser().getName() + "</option>";
-                        }
-                    }
-
-                    /**
-                     * 添加发起人
-                     */
-                    if (audits.get(0).getEntity().equals(AuditFlowConstant.business_purchase) ||
-                            audits.get(0).getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
-
-                        List<Purchase> purchases = writer.gson.fromJson(erpClient.query(Purchase.class.getSimpleName().toLowerCase(),
-                                "{\"id\":" + audits.get(0).getEntityId() + "}"),
-                                new TypeToken<List<Purchase>>() {}.getType());
-
-                        if (!purchases.isEmpty() && !refuseUserOptions.contains("'" + purchases.get(0).getInputer().getId() + "'")) {
-                            refuseUserOptions = "<option value='" + purchases.get(0).getInputer().getId() + "'>" + purchases.get(0).getInputer().getName() + "</option>"
-                                    + refuseUserOptions;
-                        }
-                    }
-
-                    if (!audits.isEmpty() && audits.size() > 1) {
-                        for (int i = audits.size(); i > 0; i--) {
-                            if (audits.get(i-1).getUser() != null) {
-                                refuseUserOptions = "<option value='" + audits.get(i - 1).getUser().getId() + "'>上一节点</option>" + refuseUserOptions;
-                                break;
-                            }
-                        }
-                    }
-                }
+            String refuseUserOptions = "";
+            if (!audits.isEmpty()) {
+                User currentUser = (User)dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId));
+                refuseUserOptions = renderHtmlData.getRefuseUserOptions(currentUser, audits);
             }
 
             if (!refuseUserOptions.equals("")) {

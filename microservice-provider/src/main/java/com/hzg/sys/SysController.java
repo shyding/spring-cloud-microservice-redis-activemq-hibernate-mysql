@@ -526,6 +526,7 @@ public class SysController {
                 audit.setDealDate(new Timestamp(System.currentTimeMillis()));
                 result += sysDao.updateById(audit.getId(), audit);
 
+                dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
 
                 /**
                  * 审核通过，处理相应的业务逻辑
@@ -569,12 +570,14 @@ public class SysController {
 
                         refuseAudit.setCompany(dbAudit.getCompany());
                         refuseAudit.setUser(audit.getToRefuseUser());
+                        refuseAudit.setPreFlowAuditNo(dbAudit.getPreFlowAuditNo());
 
                         dbAudit.setToRefuseUser(audit.getToRefuseUser());
                         refuseAudit.setPost(sysService.getPostByAuditUser(dbAudit));
 
                         refuseAudit = sysService.getAudit(refuseAudit);
                         refuseAudit.setRefusePost(dbAudit.getPost());
+                        refuseAudit.setRefuseUser(dbAudit.getUser());
                         refuseAudit.setName(dbAudit.getName());
                         refuseAudit.setState(AuditFlowConstant.audit_state_todo);
 

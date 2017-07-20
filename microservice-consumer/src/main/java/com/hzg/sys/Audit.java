@@ -61,6 +61,10 @@ public class Audit implements Serializable {
     private Post refusePost;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name = "refuseUserId")
+    private User refuseUser;
+
+    @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "companyId")
     private Company company;
 
@@ -69,6 +73,9 @@ public class Audit implements Serializable {
 
     @Column(name="refusedAction",length=32)
     private String refusedAction;
+
+    @Column(name="preFlowAuditNo",length=32)
+    private String preFlowAuditNo;
 
     @Transient
     private User toRefuseUser;
@@ -223,6 +230,22 @@ public class Audit implements Serializable {
 
     public void setToRefusePost(Post toRefusePost) {
         this.toRefusePost = toRefusePost;
+    }
+
+    public User getRefuseUser() {
+        return refuseUser;
+    }
+
+    public void setRefuseUser(User refuseUser) {
+        this.refuseUser = refuseUser;
+    }
+
+    public String getPreFlowAuditNo() {
+        return preFlowAuditNo;
+    }
+
+    public void setPreFlowAuditNo(String preFlowAuditNo) {
+        this.preFlowAuditNo = preFlowAuditNo;
     }
 
     public User getToRefuseUser() {

@@ -1,4 +1,4 @@
-var tableSheet = (function ($) {
+﻿var tableSheet = (function ($) {
     "use strict";
 
     var contextPath = "";
@@ -47,6 +47,11 @@ var tableSheet = (function ($) {
         suggests(null, "carver", contextPath);
         suggests(null, "originPlace", contextPath);
         suggests(null, "shape", contextPath);
+
+        /*var nos = document.getElementsByName("details[][product[no]]:string");
+        for (var i = 0; i < nos.length; i++) {
+            valueRepeatJudge(contextPath + '/erp/isValueRepeat/product', nos[i], "no", "details[][product[id]]:number");
+        }*/
     }
 
     function addRow(tableId) {
@@ -63,6 +68,10 @@ var tableSheet = (function ($) {
             if (propertyName != undefined) {
                 suggests($(item), propertyName, contextPath);
             }
+
+            /*if (item.name == "details[][product[no]]:string") {
+                valueRepeatJudge(contextPath + '/erp/isValueRepeat/product', item, "no", "details[][product[id]]:number");
+            }*/
         });
     }
 
@@ -120,6 +129,10 @@ var tableSheet = (function ($) {
 
         var typeSelect = $($(inputElement).parent().parent().find("select")[0]);
 
+        if ($(inputElement).parent().parent().find("select").length == 0) {
+            typeSelect = $("#type");
+        }
+
         queryJson["types"] = "[{id:" + parseInt(typeSelect.val()) + "}]";
         var childPropertyName = getChildPropertyName(propertyName, typeSelect.find("option:selected").text());
         if (childPropertyName != null) {
@@ -134,7 +147,7 @@ var tableSheet = (function ($) {
             var input = inputElement.parent().children('input')[1];
             var value = '{"property":{"id":' + result.id + '},"name":"' + result.name + '","value":"' + result.value + '"}';
 
-            if (inputElement.data("input-type") == undefined || inputElement.data("input-type") == null) {
+            if (inputElement.data("input-type") == undefined || inputElement.data("input-type") == null || inputElement.data("input-type") == "single") {
                 if (input != undefined) {
                     input.value = value;
                 }
@@ -235,7 +248,12 @@ var tableSheet = (function ($) {
                      * 添加没有设置的值
                      */
                     for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
-                        var itemValue = '{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '","value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
+                        var typeSelect = inputElement.parent().parent().find("select");
+                        if (inputElement.parent().parent().find("select").length == 0) {
+                            typeSelect = $("#type");
+                        }
+
+                        var itemValue = '{"name":"' + getChildPropertyName(propertyName, type.find("option:selected").text()) + '","value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
 
                         var isSet = false;
                         for (var ii = 1; ii < inputs.length; ii++) {
@@ -260,7 +278,12 @@ var tableSheet = (function ($) {
                      * 不是建议框里的值，则重新复制
                      */
                     if (input.val().indexOf('"' + inputElement.val() + '"') == -1) {
-                        input.val('{"name":"' + getChildPropertyName(propertyName, inputElement.parent().parent().find("select").find("option:selected").text()) + '","value":"' + inputElement.val() + '"}');
+                        var typeSelect = inputElement.parent().parent().find("select");
+                        if (inputElement.parent().parent().find("select").length == 0) {
+                            typeSelect = $("#type");
+                        }
+
+                        input.val('{"name":"' + getChildPropertyName(propertyName, typeSelect.find("option:selected").text()) + '","value":"' + inputElement.val() + '"}');
                     }
                 });
             }
@@ -477,6 +500,43 @@ var tableSheet = (function ($) {
         } else {
             null;
         }
+    }
+
+    function valueRepeatJudge(url, item, field, idNodeName) {
+        $(item).blur(function(){
+            var jItem = $(this);
+
+            var id = -1;
+
+            var inputs = jItem.parent().parent().find(":input");
+            for (var x = 0; x < inputs.length; x++) {
+                if ($(inputs[x]).attr("name") != undefined) {
+                    if ($(inputs[x]).attr("name") == idNodeName) {
+                        id = inputs[x].value;
+                        break;
+                    }
+                }
+            }
+
+            if ($.trim(jItem.val()) != "") {
+                var json = '{"id":' + id + ',"field":"' + field + '","value":"' + jItem.val() + '"}';
+
+                $.ajax({
+                    type: "post",
+                    url: url,
+                    contentType: "application/x-www-form-urlencoded; charset=utf-8",
+                    data: {json: json},
+                    dataType: "json",
+
+                    success: function(result){
+                        if (result.result == true) {
+                            alert("商品编码：" + jItem.val() + "重复");
+                            jItem.focus();
+                        }
+                    }
+                });
+            }
+        });
     }
 
     return {

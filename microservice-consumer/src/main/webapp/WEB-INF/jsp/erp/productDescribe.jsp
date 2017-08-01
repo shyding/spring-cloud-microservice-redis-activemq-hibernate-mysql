@@ -41,26 +41,26 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="seoTitle">商品优化标题 <span class="required">*</span>
                                 </label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input id="seoTitle" type="text" name="seoTitle" value="${entity.seoTitle}" class="form-control col-md-7 col-xs-12" required>
+                                    <input id="seoTitle" type="text" name="describe[seoTitle]" value="${entity.seoTitle}" class="form-control col-md-7 col-xs-12" required>
                                 </div>
                             </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="seoKeyword">商品优化关键词 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input id="seoKeyword" type="text" name="seoKeyword" value="${entity.seoKeyword}" class="form-control col-md-7 col-xs-12" required>
+                                    <input id="seoKeyword" type="text" name="describe[seoKeyword]" value="${entity.seoKeyword}" class="form-control col-md-7 col-xs-12" required>
                                 </div>
                             </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="seoDesc">商品优化描述 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input id="seoDesc" type="text" name="seoDesc" value="${entity.seoDesc}" class="form-control col-md-7 col-xs-12" required>
+                                    <input id="seoDesc" type="text" name="describe[seoDesc]" value="${entity.seoDesc}" class="form-control col-md-7 col-xs-12" required>
                                 </div>
                             </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="describes">软文描述 <span class="required">*</span>
                                 </label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <textarea id="describes" class="form-control col-md-7 col-xs-12" rows="4"  name="describes" required>${entity.name}</textarea>
+                                    <textarea id="describes" class="form-control col-md-7 col-xs-12" rows="4"  name="describe[describes]" required>${entity.name}</textarea>
                                 </div>
                             </div>
 
@@ -73,7 +73,7 @@
 
                             <c:forEach items="${products}" var="products">
                                 <div id="div${product.describe.id}" style="display: none">
-                                    <input type='hidden' name='id:number' value='${product.describe.id}'>
+                                    <input type='hidden' name='describe[id]:number' value='${product.describe.id}'>
                                 </div>
                             </c:forEach>
                         </form>
@@ -84,7 +84,7 @@
                             <thead><tr><th>商品名称</th><th>商品编号</th><th>种类</th><th>采购价</th><th>图片</th></tr></thead>
                             <tbody id="tbody">
                             <c:forEach items="${products}" var="product">
-                                <tr id="tr${product.id}"><td>${product.name}</td><td>${product.no}</td><td>${product.type.name}</td>
+                                <tr id="tr${product.describe.id}"><td>${product.name}</td><td>${product.no}</td><td>${product.type.name}</td>
                                     <td>${product.unitPrice}</td>
                                     <td><a id="${detail.product.id}" href="<%=FileServerInfo.imageServerUrl%>/${product.describe.imageParentDirPath}/snapshoot.jpg" class="lightbox">查看图片</a></td>
                                 </tr>
@@ -156,7 +156,7 @@
     function addItem(form, tbody, item) {
         if (document.getElementById(item.describe.id) == null) {
             form.append("<div id='div" + item.describe.id +"' style='display: none'>" +
-                "<input type='hidden' name='id:number' value='" + item.describe.id + "'></div>");
+                "<input type='hidden' name='describe[id]:number' value='" + item.describe.id + "'></div>");
 
             tbody.append("<tr id='tr" + item.describe.id + "'><td>" + item.name + "</td><td>" + item.no + "</td><td>" + item.type.name + "</td><td>" + item.unitPrice + "</td><td>" +
                 "<a id='" + item.id + "' href='<%=FileServerInfo.imageServerUrl%>/" + item.describe.imageParentDirPath + "/snapshoot.jpg'>图片</a></td></tr>");

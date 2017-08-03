@@ -48,7 +48,9 @@ public class Transcation {
         result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
 
         if (result.contains(CommonConstant.fail)) {
+            result = result.replace(CommonConstant.success, "");
             rollback();
+
         } else {
             result = CommonConstant.success;
         }

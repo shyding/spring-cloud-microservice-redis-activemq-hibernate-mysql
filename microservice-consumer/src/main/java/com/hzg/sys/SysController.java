@@ -2,6 +2,7 @@
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.*;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.*;
 
 @Controller
@@ -75,7 +77,7 @@ public class SysController extends com.hzg.base.Controller {
             String refuseUserOptions = "";
             if (!audits.isEmpty()) {
                 User currentUser = (User)dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId));
-                refuseUserOptions = renderHtmlData.getRefuseUserOptions(currentUser, audits);
+                refuseUserOptions = renderHtmlData.getRefuseUserOptions(currentUser, audits, "", 0);
             }
 
             if (!refuseUserOptions.equals("")) {
@@ -165,6 +167,30 @@ public class SysController extends com.hzg.base.Controller {
         return "/sys/" + name;
     }
 
+    @PostMapping("/authorize")
+    public void authorize(HttpServletResponse response, String sessionId, String uri) {
+        logger.info("authorize start, sessionId:" + sessionId + ", uri:" + uri);
+
+        String result = "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail +"\"}";
+
+        String username = (String)dao.getFromRedis("sessionId_" + sessionId);
+
+        if (username != null) {
+            String signInedUserSessionId = (String)dao.getFromRedis("user_" + username);
+
+            if (signInedUserSessionId != null && signInedUserSessionId.equals(sessionId)) {
+
+                String resources = (String)dao.getFromRedis(username + "_resources");
+                if (resources != null && resources.contains(uri)) {
+                    result = "{\"" + CommonConstant.result + "\":\"" + CommonConstant.success +"\"}";
+                }
+            }
+        }
+
+        writer.writeObjectToJsonAccessAllow(response, result);
+        logger.info("authorize end");
+    }
+
     /**
      * 事宜办理
      * @param response
@@ -184,8 +210,14 @@ public class SysController extends com.hzg.base.Controller {
      */
     @GetMapping("/user/signIn")
     public String signIn(HttpServletResponse response, Map<String, Object> model) {
-        String salt = strUtil.generateRandomStr(256);
         String sessionId = strUtil.generateRandomStr(32);
+
+        String salt = "";
+        if (model.get("oldSessionId") == null) {
+            salt = strUtil.generateRandomStr(256);
+        } else {
+            salt = (String) dao.getFromRedis("salt_" + (String)model.get("oldSessionId"));
+        }
 
         cookieUtils.addCookie(response, "sessionId", sessionId);
         dao.storeToRedis("salt_" + sessionId, salt, sessionTime);

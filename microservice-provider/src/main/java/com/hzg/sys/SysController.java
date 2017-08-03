@@ -754,20 +754,22 @@ public class SysController {
         Map<String, String> dealInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         String username = dealInfo.get("username");
         String sessionId = dealInfo.get("sessionId");
+        String oldSessionId = dealInfo.get("oldSessionId");
 
-        String tempUserKey = username + "_" +  dealInfo.get("oldSessionId");
+        String tempUserKey = username + "_" +  oldSessionId;
 
         if (dealInfo.get("dealType").equals("againSignIn")) {
             User user = (User) sysDao.getFromRedis(tempUserKey);
 
             if (user != null) {
                 //移除之前登录的用户
-                sysDao.deleteFromRedis("salt_" + signInUtil.getSessionIdByUser(username));
+                sysDao.deleteFromRedis("salt_" + oldSessionId);
                 signInUtil.removeUser(username);
 
                 sysDao.storeToRedis(username, user, signInUtil.sessionTime);
                 signInUtil.setUser(sessionId, username);
 
+                //移除临时登录用户
                 sysDao.deleteFromRedis(tempUserKey);
 
                 result = CommonConstant.success;
@@ -779,5 +781,32 @@ public class SysController {
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("hasLoginDeal end");
+    }
+
+    /**
+     * 处理重复登录
+     */
+    @RequestMapping(value="/getPostByUri")
+    public void getPostByUri(HttpServletResponse response,  @RequestBody String json) {
+        logger.info("getPostByUri start, parameter:" + json);
+
+        Map<String, Object> postParams = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        String uri = (String) postParams.get("uri");
+        List<Post> posts =  writer.gson.fromJson(writer.gson.toJson(postParams.get("posts")), new TypeToken<List<Post>>(){}.getType());
+
+        List<Post> matchPosts = new ArrayList<>();
+
+        for (Post temp : posts) {
+            Post post = (Post)sysDao.queryById(temp.getId(), Post.class);
+
+            for (PrivilegeResource resource : post.getPrivilegeResources()) {
+                if (resource.getUri().contains(uri)) {
+                    matchPosts.add(post);
+                }
+            }
+        }
+
+        writer.writeObjectToJson(response, matchPosts);
+        logger.info("getPostByUri end");
     }
 }

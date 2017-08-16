@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 public class VisitInterceptor extends HandlerInterceptorAdapter {
 
     public List<String> noAuthUris;
+    public List<String> noAuthUrisAfterSignIn;
     public List<String> macValidateUris;
 
     @Autowired
@@ -37,25 +38,25 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
 
         String visitingURI = request.getRequestURI();
 
-        if (isNoAuthUris(visitingURI)) {
+        if (isNoAuthUris(visitingURI, noAuthUris)) {
             return true;
         }
 
         String sessionId = cookieUtils.getCookieValue(request, "sessionId");
+        if (sessionId == null) {
+            sessionId = request.getParameter("sessionId");
+        }
         String username = (String)redisTemplate.opsForValue().get("sessionId_" + sessionId);
         String resources = null;
 
         if (username != null) {
             String signInedUserSessionId = (String)redisTemplate.opsForValue().get("user_" + username);
             if (signInedUserSessionId != null && !signInedUserSessionId.equals(sessionId)) {
-                try {
-                    response.setCharacterEncoding("UTF-8");
-                    response.getWriter().print("对不起，你的账号已被注销，不能访问该页面");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                return notPass(response, "对不起，你的账号已被注销，不能访问该页面");
+            }
 
-                return false;
+            if (isNoAuthUris(visitingURI, noAuthUrisAfterSignIn)) {
+                return true;
             }
 
             resources = (String)redisTemplate.opsForValue().get(username + "_resources");
@@ -136,11 +137,11 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
     }
 
     public Boolean notPass(javax.servlet.http.HttpServletResponse response, String msg) {
-        writer.writeStringToJson(response, "{\"result\": \"" + msg + "\"}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\": \"" + msg + "\"}");
         return false;
     }
 
-    public boolean isNoAuthUris(String uri) {
+    public boolean isNoAuthUris(String uri, List<String> noAuthUris) {
         if (uri.contains(".")) { //静态资源
             return true;
         }

@@ -1,4 +1,4 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 import com.hzg.sys.User;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -42,24 +42,28 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
             return true;
         }
 
-        String sessionId = cookieUtils.getCookieValue(request, "sessionId");
+        String sessionId = cookieUtils.getCookieValue(request, CommonConstant.sessionId);
         if (sessionId == null) {
-            sessionId = request.getParameter("sessionId");
+            sessionId = request.getParameter(CommonConstant.sessionId);
         }
-        String username = (String)redisTemplate.opsForValue().get("sessionId_" + sessionId);
+        String username = (String)redisTemplate.opsForValue().get(CommonConstant.sessionId + CommonConstant.underline + sessionId);
         String resources = null;
 
         if (username != null) {
-            String signInedUserSessionId = (String)redisTemplate.opsForValue().get("user_" + username);
+            String signInedUserSessionId = (String)redisTemplate.opsForValue().get(CommonConstant.user + CommonConstant.underline + username);
             if (signInedUserSessionId != null && !signInedUserSessionId.equals(sessionId)) {
                 return notPass(response, "对不起，你的账号已被注销，不能访问该页面");
             }
 
             if (isNoAuthUris(visitingURI, noAuthUrisAfterSignIn)) {
-                return true;
+                if (macValidate(request, visitingURI, sessionId)) {
+                    return pass(response, username, sessionId);
+                } else {
+                    return notPass(response, "MAC 校验不通过");
+                }
             }
 
-            resources = (String)redisTemplate.opsForValue().get(username + "_resources");
+            resources = (String)redisTemplate.opsForValue().get(username + CommonConstant.underline + CommonConstant.resources);
         }
 
 
@@ -126,12 +130,12 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
          * 表示用户在线，重新设置 半小时 后会话过期
          */
         redisTemplate.boundValueOps(username).expire(sessionTime, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps(username + "_resources").expire(sessionTime, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("sessionId_" + sessionId).expire(sessionTime, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("user_" + username).expire(sessionTime, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps("salt_" + sessionId).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(username + CommonConstant.underline + CommonConstant.resources).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(CommonConstant.sessionId + CommonConstant.underline + sessionId).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(CommonConstant.user + CommonConstant.underline + username).expire(sessionTime, TimeUnit.SECONDS);
+        redisTemplate.boundValueOps(CommonConstant.salt + CommonConstant.underline + sessionId).expire(sessionTime, TimeUnit.SECONDS);
 
-        cookieUtils.addCookie(response, "sessionId", sessionId);
+        cookieUtils.addCookie(response, CommonConstant.sessionId, sessionId);
 
         return true;
     }
@@ -182,8 +186,8 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
             String json = request.getParameter("json");
             String mac = request.getParameter("mac");
 
-            String salt = (String)redisTemplate.opsForValue().get("salt_" + sessionId);
-            User user = (User) redisTemplate.opsForValue().get((String)redisTemplate.opsForValue().get("sessionId_" + sessionId));
+            String salt = (String)redisTemplate.opsForValue().get(CommonConstant.salt + CommonConstant.underline + sessionId);
+            User user = (User) redisTemplate.opsForValue().get((String)redisTemplate.opsForValue().get(CommonConstant.sessionId + CommonConstant.underline + sessionId));
             String pin = DigestUtils.md5Hex(salt + user.getPassword()).toUpperCase();
 
 

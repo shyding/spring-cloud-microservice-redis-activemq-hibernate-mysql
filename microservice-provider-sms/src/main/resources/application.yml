@@ -3,7 +3,7 @@
 
 spring:
   application:
-    name: microservice-provider-customer
+    name: microservice-provider-sms
   jpa:
     generate-ddl: false
     show-sql: true

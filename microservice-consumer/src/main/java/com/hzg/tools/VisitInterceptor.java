@@ -216,4 +216,12 @@ public class VisitInterceptor extends HandlerInterceptorAdapter {
     public void setMacValidateUris(List<String> macValidateUris) {
         this.macValidateUris = macValidateUris;
     }
+
+    public List<String> getNoAuthUrisAfterSignIn() {
+        return noAuthUrisAfterSignIn;
+    }
+
+    public void setNoAuthUrisAfterSignIn(List<String> noAuthUrisAfterSignIn) {
+        this.noAuthUrisAfterSignIn = noAuthUrisAfterSignIn;
+    }
 }

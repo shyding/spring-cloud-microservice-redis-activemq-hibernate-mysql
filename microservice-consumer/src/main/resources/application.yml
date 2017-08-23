@@ -27,10 +27,10 @@ spring:
       test-on-borrow: true # Validate the connection before borrowing it from the pool
 
   activemq:
-    broker-url: tcp://192.168.31.128:61616
+    broker-url: failover:(tcp://192.168.31.128:61616,tcp://192.168.31.128:61618)?initialReconnectDelay=100 #ActiveMQ use static transport for broker clusters. multicast discovery for broker clusters, JmsListener cannot auto receive messages from some ActiveMQ servers
     password: admin
     pool:
-      max-connections: 2
+      max-connections: 30
 
   http:
     encoding:

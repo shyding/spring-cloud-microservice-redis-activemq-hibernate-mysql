@@ -1,7 +1,9 @@
-package com.hzg.order;
+﻿package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.customer.*;
 import com.hzg.sys.*;
+import com.hzg.sys.User;
 import com.hzg.tools.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
@@ -115,10 +117,18 @@ public class OrderController {
 
         String result = CommonConstant.fail;
 
+        com.hzg.customer.User signUser = getSignUser(json);
+
         try {
             if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
                 Order order = writer.gson.fromJson(json, Order.class);
+                Order dbOrder = (Order) orderDao.queryById(order.getId(), order.getClass());
+
+                if (dbOrder.getUser().getId().compareTo(signUser.getId()) == 0) {
+                    result += orderDao.updateById(order.getId(), order);
+                }
             }
+
         } catch (Exception e) {
             e.printStackTrace();
             result += CommonConstant.fail;
@@ -132,17 +142,22 @@ public class OrderController {
 
     @Transactional
     @PostMapping("/cancel")
-    public void cancel(HttpServletResponse response, String no){
-        logger.info("cancel start, parameter:" + no);
+    public void cancel(HttpServletResponse response, String json){
+        logger.info("cancel start, parameter:" + json);
 
         String result = CommonConstant.fail;
 
-        try {
-            Order order = new Order();
-            order.setNo(no);
-            order.setId(((Order)orderDao.query(order).get(0)).getId());
+        com.hzg.customer.User signUser = getSignUser(json);
 
-            result += orderService.cancelOrder(order);
+        try {
+            Order order = writer.gson.fromJson(json, Order.class);
+            Order dbOrder = (Order) orderDao.query(order).get(0);
+
+            if (dbOrder.getUser().getId().compareTo(signUser.getId()) == 0) {
+                order.setState(OrderConstant.order_state_cancel);
+                result += orderService.cancelOrder(order);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             result += CommonConstant.fail;
@@ -154,6 +169,11 @@ public class OrderController {
         logger.info("cancel end, result:" + result);
     }
 
+    public com.hzg.customer.User getSignUser(String json) {
+        Map<String, Object> jsonData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        return (com.hzg.customer.User) orderDao.getFromRedis((String) orderDao.getFromRedis(CommonConstant.sessionId +
+                CommonConstant.underline + (String) jsonData.get(CommonConstant.sessionId)));
+    }
 
     @RequestMapping(value = "/query", method = {RequestMethod.GET, RequestMethod.POST})
     public void query(HttpServletResponse response, String entity, @RequestBody String json){

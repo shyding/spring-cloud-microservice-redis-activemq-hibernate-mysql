@@ -1,4 +1,4 @@
-package com.hzg.order;
+﻿package com.hzg.order;
 
 import com.hzg.customer.User;
 import com.hzg.erp.Product;
@@ -93,8 +93,11 @@ public class OrderService {
 
         result += orderDao.save(order);
 
+        Order idOrder = new Order();
+        idOrder.setId(order.getId());
+
         for (OrderDetail detail : order.getDetails()) {
-            detail.setOrder(order);
+            detail.setOrder(idOrder);
             result += orderDao.save(detail);
         }
 
@@ -111,7 +114,10 @@ public class OrderService {
         result += saveBaseOrder(order);
 
         for (OrderDetail detail : order.getDetails()) {
-            detail.getOrderPrivate().setDetail(detail);
+            OrderDetail idDetail = new OrderDetail();
+            idDetail.setId(detail.getId());
+
+            detail.getOrderPrivate().setDetail(idDetail);
             result += orderDao.save(detail.getOrderPrivate());
         }
 
@@ -128,8 +134,11 @@ public class OrderService {
         result += saveAssistProcessOrder(order);
 
         for (OrderDetail detail : order.getDetails()) {
+            OrderPrivate idOrderPrivate = new OrderPrivate();
+            idOrderPrivate.setId(detail.getOrderPrivate().getId());
+
             for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
-                acc.setOrderPrivate(detail.getOrderPrivate());
+                acc.setOrderPrivate(idOrderPrivate);
             }
         }
 
@@ -144,7 +153,11 @@ public class OrderService {
         logger.info("saveBookService start:" + result);
 
         result += saveBaseOrder(order);
-        order.getOrderBook().setOrder(order);
+
+        Order idOrder = new Order();
+        idOrder.setId(order.getId());
+
+        order.getOrderBook().setOrder(idOrder);
         result += orderDao.save(order.getOrderBook());
 
         logger.info("saveBookService end, result:" + result);

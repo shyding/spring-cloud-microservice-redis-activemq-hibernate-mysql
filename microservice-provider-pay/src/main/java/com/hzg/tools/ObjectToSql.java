@@ -1,4 +1,4 @@
-﻿package com.hzg.tools;
+package com.hzg.tools;
 
 import com.google.gson.reflect.TypeToken;
 import org.hibernate.annotations.Type;
@@ -167,14 +167,14 @@ public class ObjectToSql {
         return suggestSql;
     }
 
-    public String generateComplexSqlByAnnotation(Class clazz, Map<String, Object> queryParameters, int position, int rowNum){
+    public String generateComplexSqlByAnnotation(Class clazz, Map<String, String> queryParameters, int position, int rowNum){
         String selectSql = "select t.* ", fromPart = getTableName(clazz)+" t, ", wherePart = "";
 
         List<List<String>> columnValues = new ArrayList<>();
         List<List<Object>> manyToManyTableInfos = new ArrayList<>();
         List<List<Object>> oneToManyTableInfos = new ArrayList<>();
 
-        for (Map.Entry<String, Object> entry : queryParameters.entrySet()) {
+        for (Map.Entry<String, String> entry : queryParameters.entrySet()) {
             Field field = null;
             try {
                 field = clazz.getDeclaredField(entry.getKey());

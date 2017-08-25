@@ -1,6 +1,7 @@
-package com.hzg.base;
+﻿package com.hzg.base;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Writer;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,8 +32,8 @@ public class Controller {
 
     @GetMapping("/list/{entity}/{json}")
     public String list(Map<String, Object> model, @PathVariable("entity") String entity, @PathVariable("json") String json,
-            @CookieValue(name="sessionId", defaultValue = "")String sessionId) {
-        model.put("resources", dao.getFromRedis((String)dao.getFromRedis("sessionId_" + sessionId) + "_resources"));
+            @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
+        model.put(CommonConstant.resources, dao.getFromRedis((String)dao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + sessionId) + CommonConstant.underline + CommonConstant.resources));
         model.put("entity", entity);
         model.put("json", json);
         return "list";
@@ -46,22 +47,27 @@ public class Controller {
     }
 
     @PostMapping("/update/{entity}")
-    public void update(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
+    public void update(HttpServletResponse response, String json, @PathVariable("entity") String entity,
+                       @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
         logger.info("update start, entity:" + entity + ", json:" + json);
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
         writer.writeStringToJson(response, client.update(entity, json));
         logger.info("update end");
     }
 
     @GetMapping("/query/{entity}")
-    public void query(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
+    public void query(HttpServletResponse response, String json, @PathVariable("entity") String entity,
+                      @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
         logger.info("query start, entity:" + entity + ", json:" + json);
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
         writer.writeStringToJson(response, client.query(entity, json));
         logger.info("query end");
     }
 
     @GetMapping("/suggest/{entity}/{properties}/{word}")
     public void suggest(HttpServletResponse response, @PathVariable("entity") String entity,
-                        @PathVariable("properties") String properties, @PathVariable("word") String word) {
+                        @PathVariable("properties") String properties, @PathVariable("word") String word,
+                        @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
         logger.info("suggest start, entity:" + entity + ",properties:" + properties + ", word:" + word);
 
         String json = "";
@@ -72,6 +78,7 @@ public class Controller {
         }
         json = "{" + json.substring(0, json.length()-1) + "}";
 
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
         writer.writeStringToJson(response, client.suggest(entity, json));
         logger.info("suggest end");
     }
@@ -85,7 +92,8 @@ public class Controller {
      * @param entity
      */
     @PostMapping("/complexQuery/{entity}")
-    public void complexQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
+    public void complexQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity,
+                             @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
         logger.info("complexQuery start, entity:" + entity + ", dataTableParameters:" + dataTableParameters + ", json:" + json + ",recordsSum" + recordsSum);
 
         int sEcho = 0;// 记录操作的次数  每次加1
@@ -110,10 +118,11 @@ public class Controller {
         }
 
         sEcho += 1; //为操作次数加1
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
         String result = client.complexQuery(entity, json, iDisplayStart, iDisplayLength);
 
         if (recordsSum == -1) {
-            recordsSum = ((Map<String, Integer>)writer.gson.fromJson(client.recordsSum(entity, json), new TypeToken<Map<String, Integer>>(){}.getType())).get("recordsSum");
+            recordsSum = ((Map<String, Integer>)writer.gson.fromJson(client.recordsSum(entity, json), new TypeToken<Map<String, Integer>>(){}.getType())).get(CommonConstant.recordsSum);
         }
 
         Map<String, String> dataMap = new HashMap<>();
@@ -124,5 +133,30 @@ public class Controller {
 
         writer.writeObjectToJson(response, dataMap);
         logger.info("complexQuery end");
+    }
+
+    @PostMapping("/isValueRepeat/{entity}")
+    public void isValueRepeat(HttpServletResponse response, @PathVariable("entity") String entity, String json) {
+        logger.info("isValueRepeat start, entity:" + entity + ",json:" + json);
+        writer.writeStringToJson(response, client.isValueRepeat(entity, json));
+        logger.info("isValueRepeat end");
+    }
+
+    @PostMapping("/delete/{entity}")
+    public void delete(HttpServletResponse response, String json, @PathVariable("entity") String entity,
+                       @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
+        logger.info("delete start, entity:" + entity + ", json:" + json);
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
+        writer.writeStringToJson(response, client.delete(entity, json));
+        logger.info("delete end");
+    }
+
+    @PostMapping("/recover/{entity}")
+    public void recover(HttpServletResponse response, String json, @PathVariable("entity") String entity,
+                        @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
+        logger.info("recover start, entity:" + entity + ", json:" + json);
+        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
+        writer.writeStringToJson(response, client.recover(entity, json));
+        logger.info("recover end");
     }
 }

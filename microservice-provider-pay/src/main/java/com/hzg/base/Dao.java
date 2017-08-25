@@ -634,7 +634,7 @@ public class Dao {
      * @param rowNum
      * @return
      */
-    public List complexQuery(Class clazz, Map<String, Object> queryParameters, int position, int rowNum){
+    public List complexQuery(Class clazz, Map<String, String> queryParameters, int position, int rowNum){
         List objects = queryBySql(objectToSql.generateComplexSqlByAnnotation(clazz, queryParameters, position, rowNum), clazz);
         for (Object dbObject : objects) {
             querySetRelateObject(dbObject);
@@ -648,7 +648,7 @@ public class Dao {
      * @param queryParameters
      * @return
      */
-    public BigInteger recordsSum(Class clazz, Map<String, Object> queryParameters){
+    public BigInteger recordsSum(Class clazz, Map<String, String> queryParameters){
         String sql = objectToSql.generateComplexSqlByAnnotation(clazz, queryParameters, 0, -1);
         int pos = sql.indexOf(" order by ");
         if (pos != -1) {

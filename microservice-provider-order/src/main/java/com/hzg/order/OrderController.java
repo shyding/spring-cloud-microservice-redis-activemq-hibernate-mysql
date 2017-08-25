@@ -1,11 +1,8 @@
-﻿package com.hzg.order;
+package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
-import com.hzg.customer.*;
-import com.hzg.sys.*;
-import com.hzg.sys.User;
+import com.hzg.customer.User;
 import com.hzg.tools.*;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
@@ -17,9 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletResponse;
-import java.lang.reflect.Field;
 import java.math.BigInteger;
-import java.sql.Timestamp;
 import java.util.*;
 
 @Controller
@@ -74,9 +69,6 @@ public class OrderController {
             result = saveOrder(order);
 
             writer.writeStringToJson(response, result) ;
-            logger.info("save end, result:" + result);
-
-            return;
         }
 
         logger.info("save end, result:" + result);
@@ -111,50 +103,18 @@ public class OrderController {
     }
 
     @Transactional
-    @PostMapping("/update")
-    public void update(HttpServletResponse response, String entity, @RequestBody String json){
-        logger.info("update start, parameter:" + entity + ":" + json);
-
-        String result = CommonConstant.fail;
-
-        com.hzg.customer.User signUser = getSignUser(json);
-
-        try {
-            if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-                Order order = writer.gson.fromJson(json, Order.class);
-                Order dbOrder = (Order) orderDao.queryById(order.getId(), order.getClass());
-
-                if (dbOrder.getUser().getId().compareTo(signUser.getId()) == 0) {
-                    result += orderDao.updateById(order.getId(), order);
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            result += CommonConstant.fail;
-        } finally {
-            result = transcation.dealResult(result);
-        }
-
-        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
-        logger.info("update end, result:" + result);
-    }
-
-    @Transactional
     @PostMapping("/cancel")
     public void cancel(HttpServletResponse response, String json){
         logger.info("cancel start, parameter:" + json);
 
         String result = CommonConstant.fail;
 
-        com.hzg.customer.User signUser = getSignUser(json);
-
         try {
             Order order = writer.gson.fromJson(json, Order.class);
             Order dbOrder = (Order) orderDao.query(order).get(0);
 
-            if (dbOrder.getUser().getId().compareTo(signUser.getId()) == 0) {
-                order.setState(OrderConstant.order_state_cancel);
+            if (dbOrder.getUser().getId().compareTo(orderService.getSignUser(json).getId()) == 0) {
+                order.setId(dbOrder.getId());
                 result += orderService.cancelOrder(order);
             }
 
@@ -169,19 +129,22 @@ public class OrderController {
         logger.info("cancel end, result:" + result);
     }
 
-    public com.hzg.customer.User getSignUser(String json) {
-        Map<String, Object> jsonData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
-        return (com.hzg.customer.User) orderDao.getFromRedis((String) orderDao.getFromRedis(CommonConstant.sessionId +
-                CommonConstant.underline + (String) jsonData.get(CommonConstant.sessionId)));
-    }
-
     @RequestMapping(value = "/query", method = {RequestMethod.GET, RequestMethod.POST})
     public void query(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("query start, parameter:" + entity + ":" + json);
 
-        if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-            writer.writeObjectToJson(response, orderDao.query(writer.gson.fromJson(json, Order.class)));
+        List<Order> orders = orderDao.query(writer.gson.fromJson(json, Order.class));
+
+        List<Order> canQueryOrders = new ArrayList<>();
+
+        User signUser = orderService.getSignUser(json);
+        for (Order ele : orders) {
+            if (ele.getUser().getId().compareTo(signUser.getId()) == 0) {
+                canQueryOrders.add(ele);
+            }
         }
+
+        writer.writeObjectToJson(response, canQueryOrders);
 
         logger.info("query end");
     }
@@ -190,9 +153,9 @@ public class OrderController {
     public void suggest(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("suggest start, parameter:" + entity + ":" + json);
 
-        if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-            writer.writeObjectToJson(response, orderDao.suggest(writer.gson.fromJson(json, Order.class), null));
-        }
+        Order order = writer.gson.fromJson(json, Order.class);
+        order.setUser(orderService.getSignUser(json));
+        writer.writeObjectToJson(response, orderDao.suggest(order, null));
 
         logger.info("suggest end");
     }
@@ -201,11 +164,11 @@ public class OrderController {
     public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
         logger.info("complexQuery start, parameter:" + entity + ":" + json + "," + position + "," + rowNum);
 
-        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        User signUser = orderService.getSignUser(json);
+        queryParameters.put(signUser.getClass().getSimpleName().toLowerCase(), signUser);
 
-        if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-            writer.writeObjectToJson(response, orderDao.complexQuery(Order.class, queryParameters, position, rowNum));
-        }
+        writer.writeObjectToJson(response, orderDao.complexQuery(Order.class, queryParameters, position, rowNum));
 
         logger.info("complexQuery end");
     }
@@ -221,7 +184,7 @@ public class OrderController {
         logger.info("recordsSum start, parameter:" + entity + ":" + json);
         BigInteger recordsSum = new BigInteger("-1");
 
-        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
+        Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
 
         if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
             recordsSum = orderDao.recordsSum(Order.class, queryParameters);

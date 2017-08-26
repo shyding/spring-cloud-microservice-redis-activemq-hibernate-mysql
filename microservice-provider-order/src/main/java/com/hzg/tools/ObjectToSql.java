@@ -1,4 +1,4 @@
-﻿package com.hzg.tools;
+package com.hzg.tools;
 
 import com.google.gson.reflect.TypeToken;
 import org.hibernate.annotations.Type;
@@ -167,14 +167,14 @@ public class ObjectToSql {
         return suggestSql;
     }
 
-    public String generateComplexSqlByAnnotation(Class clazz, Map<String, Object> queryParameters, int position, int rowNum){
+    public String generateComplexSqlByAnnotation(Class clazz, Map<String, String> queryParameters, int position, int rowNum){
         String selectSql = "select t.* ", fromPart = getTableName(clazz)+" t, ", wherePart = "";
 
         List<List<String>> columnValues = new ArrayList<>();
         List<List<Object>> manyToManyTableInfos = new ArrayList<>();
         List<List<Object>> oneToManyTableInfos = new ArrayList<>();
 
-        for (Map.Entry<String, Object> entry : queryParameters.entrySet()) {
+        for (Map.Entry<String, String> entry : queryParameters.entrySet()) {
             Field field = null;
             try {
                 field = clazz.getDeclaredField(entry.getKey());
@@ -694,13 +694,36 @@ public class ObjectToSql {
                 } catch (Exception e) {
                     logger.info(e.getMessage());
 
+                    String tempValueStr = value.toString();
+
                     /**
                      * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
                      */
-                    if (Pattern.compile("in\\s*\\(").matcher(value.toString()).find()) {
-                        valueStr += value.toString();
+                    if (Pattern.compile("in\\s*\\(").matcher(tempValueStr).find()) {
+                        valueStr += tempValueStr;
+
+                    } else if (Pattern.compile("\\s*\"id\"\\s*:\\s*\\d+\\s*").matcher(tempValueStr).find()) {
+                        int fromIndex = tempValueStr.indexOf("\"id\"");
+                        int start = tempValueStr.indexOf(":", fromIndex) + 1;
+                        int end = tempValueStr.indexOf(",", fromIndex);
+                        if (end == -1) {
+                            end = tempValueStr.length() -1;
+                        }
+
+                        valueStr += tempValueStr.substring(start, end);
+
+                    } else if (Pattern.compile("\\s*\"id\"\\s*:\\s*\"\\w+\"\\s*").matcher(tempValueStr).find()) {
+                        int fromIndex = tempValueStr.indexOf("\"id\"");
+                        int start = tempValueStr.indexOf(":", fromIndex) + 1;
+                        int end = tempValueStr.indexOf(",", fromIndex);
+                        if (end == -1) {
+                            end = tempValueStr.length() -1;
+                        }
+
+                        valueStr += tempValueStr.substring(start, end).replace("\"", "'");
+
                     } else {
-                        valueStr += "'" + value.toString() + "'";
+                        valueStr += "'" + tempValueStr + "'";
                     }
                 }
             }
@@ -708,4 +731,33 @@ public class ObjectToSql {
 
         return valueStr;
     }
+
+/*    public static void main(String[] args) {
+        ObjectToSql objectToSql = new ObjectToSql();
+
+        //OneToOne ManyToOne query
+        Map<String, String> queryParameters1 = new HashMap<String, String>();
+        queryParameters1.put("user", "{\"id\":1}");
+        System.out.println(objectToSql.generateComplexSqlByAnnotation(Order.class, queryParameters1, 0, -1));
+
+        Order order = new Order();
+        order.setNo("123");
+        User user = new User();
+        user.setId(1);
+        order.setUser(user);
+
+        Field[] limitFields = new Field[1];
+        try {
+            limitFields[0] = order.getClass().getDeclaredField("user");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        System.out.println(objectToSql.generateSuggestSqlByAnnotation(order, limitFields));
+
+        //OneToMany query
+        Map<String, String> queryParameters = new HashMap<String, String>();
+        queryParameters.put("users", "[{\"id\":1},{\"id\":2}]");
+        System.out.println(objectToSql.generateComplexSqlByAnnotation(Customer.class, queryParameters, 0, -1));
+    }*/
 }

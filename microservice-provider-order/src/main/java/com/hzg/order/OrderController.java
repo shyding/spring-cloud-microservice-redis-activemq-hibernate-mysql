@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.util.*;
 
@@ -155,7 +156,15 @@ public class OrderController {
 
         Order order = writer.gson.fromJson(json, Order.class);
         order.setUser(orderService.getSignUser(json));
-        writer.writeObjectToJson(response, orderDao.suggest(order, null));
+
+        Field[] limitFields = new Field[1];
+        try {
+            limitFields[0] = order.getClass().getDeclaredField("user");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        writer.writeObjectToJson(response, orderDao.suggest(order, limitFields));
 
         logger.info("suggest end");
     }
@@ -164,9 +173,9 @@ public class OrderController {
     public void complexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
         logger.info("complexQuery start, parameter:" + entity + ":" + json + "," + position + "," + rowNum);
 
-        Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
         User signUser = orderService.getSignUser(json);
-        queryParameters.put(signUser.getClass().getSimpleName().toLowerCase(), signUser);
+        queryParameters.put("user", writer.gson.toJson(signUser));
 
         writer.writeObjectToJson(response, orderDao.complexQuery(Order.class, queryParameters, position, rowNum));
 
@@ -184,7 +193,7 @@ public class OrderController {
         logger.info("recordsSum start, parameter:" + entity + ":" + json);
         BigInteger recordsSum = new BigInteger("-1");
 
-        Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
 
         if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
             recordsSum = orderDao.recordsSum(Order.class, queryParameters);

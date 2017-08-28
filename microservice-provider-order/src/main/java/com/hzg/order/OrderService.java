@@ -1,4 +1,4 @@
-﻿package com.hzg.order;
+package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.customer.User;
@@ -102,7 +102,7 @@ public class OrderService {
 
         for (OrderDetail detail : order.getDetails()) {
             Map<String, Float> salePrice = writer.gson.fromJson(
-                    erpClient.querySalePrice("{\"" + CommonConstant.id + "\":" + detail.getProduct().getId() + "}"),
+                    erpClient.querySalePrice("{\"" + ErpConstant.product_id + "\":" + detail.getProduct().getId() + "}"),
                     new TypeToken<Map<String, Float>>(){}.getType());
 
             BigDecimal detailAmount = new BigDecimal(Float.toString(salePrice.get(ErpConstant.price))).
@@ -266,8 +266,9 @@ public class OrderService {
                 }
             }
 
-            orderDao.storeToRedis(detail.getProduct().getNo() + CommonConstant.underline + order.getNo(),
-                    detail.getAmount(), lockTime);
+            String key = detail.getProduct().getNo() + CommonConstant.underline + order.getNo();
+            orderDao.storeToRedis(key, detail.getAmount(), lockTime);
+            orderDao.putKeyToList(OrderConstant.lock_product_quantity + CommonConstant.underline + detail.getProduct().getNo(), key);
         }
 
         return CommonConstant.success;
@@ -281,7 +282,7 @@ public class OrderService {
     public Float getOnSaleQuantity(String productNo) {
         Map<String, Float> stockQuantity = writer.gson.fromJson(erpClient.getStockQuantity("{\"" + ErpConstant.product_no + "\":\"" + productNo +"\"}"),
                 new com.google.gson.reflect.TypeToken<Map<String, Float>>() {}.getType());
-        List<Object> lockQuantities = orderDao.getValues(productNo + CommonConstant.asterisk);
+        List<Object> lockQuantities = orderDao.getValuesFromList(OrderConstant.lock_product_quantity + CommonConstant.underline + productNo);
 
         Float sellableQuantity = stockQuantity.get(ErpConstant.stock_quantity);
         for (Object lockQuantity : lockQuantities) {

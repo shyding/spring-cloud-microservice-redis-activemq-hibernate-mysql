@@ -4,6 +4,7 @@ import com.hzg.base.Dao;
 import com.hzg.tools.DateUtil;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.BoundListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.support.atomic.RedisAtomicLong;
 import org.springframework.stereotype.Repository;
@@ -72,22 +73,46 @@ public class OrderDao extends Dao {
     }
 
     /**
-     * 通配符获取多个对象
-     * @param keyPattern
+     * 获取多个值
+     * @param key
      * @return
      */
-    public List<Object> getValues(String keyPattern) {
-        List<Object> values = new ArrayList();
+    public List<Object> getValuesFromList(String key) {
+        List<Object> values = new ArrayList<>();
+        List<Object> nullValueKeys = new ArrayList<>();
 
-        Set<String> keys = redisTemplate.keys(keyPattern);
+        BoundListOperations<String, Object> listOps = redisTemplate.boundListOps(key);
 
-        for (String key : keys) {
-            Object value = redisTemplate.opsForValue().get(key);
+        List keys = listOps.range(0, -1); // -1表示获取所有元素
+        for (int i = 0; i < keys.size(); i++) {
+            Object value = getFromRedis((String)keys.get(i));
+
             if (value != null) {
                 values.add(value);
+
+            } else {
+               nullValueKeys.add(keys.get(i));
+            }
+        }
+
+        if (nullValueKeys.size() == keys.size()) {
+            deleteFromRedis(key);
+
+        } else {
+            for (Object nullValueKey : nullValueKeys) {
+                listOps.remove(0, nullValueKey);  // 0表示去除所有
             }
         }
 
         return values;
+    }
+
+    /**
+     * 获取多个值
+     * @param key
+     * @return
+     */
+    public void putKeyToList(String listKey, Object key) {
+        redisTemplate.boundListOps(listKey).leftPush(key);
     }
 }

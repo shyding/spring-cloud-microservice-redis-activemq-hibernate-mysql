@@ -15,15 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: OrderService.java
- * 类的详细说明
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/8/21
- */
 @Service
 public class OrderService {
     Logger logger = Logger.getLogger(OrderService.class);
@@ -111,7 +102,8 @@ public class OrderService {
 
         for (OrderDetail detail : order.getDetails()) {
             Map<String, Float> salePrice = writer.gson.fromJson(
-                    erpClient.querySalePrice(detail.getProduct().getNo()),new TypeToken<Map<String, Float>>(){}.getType());
+                    erpClient.querySalePrice("{\"" + CommonConstant.id + "\":" + detail.getProduct().getId() + "}"),
+                    new TypeToken<Map<String, Float>>(){}.getType());
 
             BigDecimal detailAmount = new BigDecimal(Float.toString(salePrice.get(ErpConstant.price))).
                     multiply(new BigDecimal(Float.toString(detail.getQuantity())));

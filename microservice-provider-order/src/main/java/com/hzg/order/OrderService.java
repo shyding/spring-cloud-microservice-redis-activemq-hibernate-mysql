@@ -1,5 +1,6 @@
 ﻿package com.hzg.order;
 
+import com.google.gson.reflect.TypeToken;
 import com.hzg.customer.User;
 import com.hzg.erp.Product;
 import com.hzg.pay.Pay;
@@ -9,10 +10,20 @@ import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: OrderService.java
+ * 类的详细说明
+ *
+ * @author smjie
+ * @version 1.00
+ * @Date 2017/8/21
+ */
 @Service
 public class OrderService {
     Logger logger = Logger.getLogger(OrderService.class);
@@ -48,42 +59,75 @@ public class OrderService {
 
         logger.info("saveOrder start:" + result);
 
+        String isAmountRight = checkAmount(order);
+        if (!isAmountRight.equals("")) {
+            return CommonConstant.fail + isAmountRight;
+        }
+
         String canSellMsg = isCanSell(order);
         if (!canSellMsg.equals("")) {
-            result += CommonConstant.fail + canSellMsg;
+            return CommonConstant.fail + canSellMsg;
+        }
 
-        } else {
-            order.setNo(orderDao.getNo(OrderConstant.no_order_perfix));
+        order.setNo(orderDao.getNo(OrderConstant.no_order_perfix));
+        result += lockOrderProduct(order);
 
-            result += lockOrderProduct(order);
+        order.setState(OrderConstant.order_state_normal);
+        order.setDate(dateUtil.getSecondCurrentTimestamp());
 
-            order.setState(OrderConstant.order_state_normal);
-            order.setDate(dateUtil.getSecondCurrentTimestamp());
-
+        if (order.getType().compareTo(OrderConstant.order_type_selfService) == 0 ||
+                order.getType().compareTo(OrderConstant.order_type_assist) == 0) {
             order.setUser((User) orderDao.getFromRedis((String) orderDao.getFromRedis(
                     CommonConstant.sessionId + CommonConstant.underline + order.getSessionId())));
 
+            result += saveBaseOrder(order);
 
-            if (order.getType().compareTo(OrderConstant.order_type_selfService) == 0 ||
-                    order.getType().compareTo(OrderConstant.order_type_assist) == 0) {
-                result += saveBaseOrder(order);
+        } else if (order.getType().compareTo(OrderConstant.order_type_assist_process) == 0) {
+            result += saveAssistProcessOrder(order);
 
-            } else if (order.getType().compareTo(OrderConstant.order_type_assist_process) == 0) {
-                result += saveAssistProcessOrder(order);
+        } else if (order.getType().compareTo(OrderConstant.order_type_private) == 0) {
+            result += savePrivateOrder(order);
 
-            } else if (order.getType().compareTo(OrderConstant.order_type_private) == 0) {
-                result += savePrivateOrder(order);
-
-            } else if (order.getType().compareTo(OrderConstant.order_type_book) == 0) {
-                result += saveBookOrder(order);
-            }
-
-            result += saveOrderPay(order);
+        } else if (order.getType().compareTo(OrderConstant.order_type_book) == 0) {
+            result += saveBookOrder(order);
         }
 
-        logger.info("saveOrder end, result:" + result);
+        result += saveOrderPay(order);
 
+        logger.info("saveOrder end, result:" + result);
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+
+    }
+
+    /**
+     * 检查金额是否正确
+     * @param order
+     * @return
+     */
+    public String checkAmount(Order order) {
+        String result = "";
+
+        BigDecimal amount = new BigDecimal(0);
+
+        for (OrderDetail detail : order.getDetails()) {
+            Map<String, Float> salePrice = writer.gson.fromJson(
+                    erpClient.querySalePrice(detail.getProduct().getNo()),new TypeToken<Map<String, Float>>(){}.getType());
+
+            BigDecimal detailAmount = new BigDecimal(Float.toString(salePrice.get(ErpConstant.price))).
+                    multiply(new BigDecimal(Float.toString(detail.getQuantity())));
+
+            if (detailAmount.floatValue() != detail.getPayAmount()) {
+                result += "商品" + detail.getProduct().getNo() + "支付金额不对;";
+            } else {
+                amount = amount.add(detailAmount);
+            }
+        }
+
+        if (amount.floatValue() != order.getPayAmount()) {
+            result =  "订单支付金额不对";
+        }
+
+        return result;
     }
 
     public String saveBaseOrder(Order order) {
@@ -270,5 +314,16 @@ public class OrderService {
         result = orderDao.updateById(order.getId(), order);
 
         return result;
+    }
+
+    public User getSignUser(String json) {
+        Map<String, Object> jsonData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+        User user = (User) orderDao.getFromRedis((String) orderDao.getFromRedis(CommonConstant.sessionId +
+                CommonConstant.underline + (String) jsonData.get(CommonConstant.sessionId)));
+
+        User simpleUser = new User();
+        simpleUser.setId(user.getId());
+
+        return simpleUser;
     }
 }

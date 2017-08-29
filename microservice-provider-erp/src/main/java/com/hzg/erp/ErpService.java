@@ -206,6 +206,12 @@ public class ErpService {
                 stock.setNo(erpDao.getNo(ErpConstant.no_stock_perfix));
                 result += erpDao.save(stock);
             }
+
+            /**
+             * 在 redis 里，使用商品编号关联库存在 redis 里的 key，以便后期快速查询该编号商品库存
+              */
+            erpDao.putKeyToHash(ErpConstant.stock + CommonConstant.underline + stock.getProductNo(),
+                    stock.getClass().getName() + CommonConstant.underline + stock.getId());
         }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());

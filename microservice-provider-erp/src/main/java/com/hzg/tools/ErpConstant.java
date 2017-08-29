@@ -29,4 +29,11 @@ public class ErpConstant {
 
     public final static Integer stock_state_valid = 0;
     public final static Integer stock_state_invalid = 1;
+
+    public final static String no = "no";
+    public final static String stock = "stock";
+    public final static String stock_quantity = "stockQuantity";
+
+    public final static String price = "price";
+    public final static String price_change = "price_change";
 }

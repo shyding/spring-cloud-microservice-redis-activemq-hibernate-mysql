@@ -710,6 +710,56 @@ public class ErpController {
         logger.info("getNo start, end");
     }
 
+    @RequestMapping(value = "/getStockQuantity", method = {RequestMethod.GET, RequestMethod.POST})
+    public void getStockQuantity(HttpServletResponse response, @RequestBody String json){
+        logger.info("getStockQuantity start, parameter:" + json);
+        float stockQuantity = 0;
+
+        Stock stock = writer.gson.fromJson(json, Stock.class);
+
+        /**
+         * 先从 redis 里获取对应商品编号的库存，没有再从数据库获取
+         */
+        List<Object> stocks = erpDao.getValuesFromHash(ErpConstant.stock + CommonConstant.underline + stock.getProductNo());
+        if (stocks.isEmpty()) {
+            stocks = erpDao.query(stock);
+        }
+
+        for (Object temp : stocks) {
+            stockQuantity += ((Stock)temp).getQuantity();
+        }
+
+        writer.writeStringToJson(response, "{\"" + ErpConstant.stock_quantity +"\":\"" + stockQuantity + "\"}");
+
+        logger.info("getStockQuantity start, end");
+    }
+
+    @RequestMapping(value = "/querySalePrice", method = {RequestMethod.GET, RequestMethod.POST})
+    public void querySalePrice(HttpServletResponse response, @RequestBody String json){
+        logger.info("querySalePrice start, parameter:" + json);
+
+        Float salePrice;
+        ProductPriceChange priceChange = writer.gson.fromJson(json, ProductPriceChange.class);
+
+        if (priceChange.getNo() != null) {
+            ProductPriceChange cachePriceChange = (ProductPriceChange) erpDao.getFromRedis((String) erpDao.getFromRedis(
+                    ErpConstant.price_change + CommonConstant.underline + priceChange.getProduct().getId() + priceChange.getNo()));
+
+            if (cachePriceChange != null) {
+                salePrice = cachePriceChange.getPrice();
+            } else {
+                salePrice = ((List<ProductPriceChange>)erpDao.query(priceChange)).get(0).getPrice();
+            }
+
+        } else {
+            salePrice = ((Product)erpDao.queryById(priceChange.getProduct().getId(), priceChange.getProduct().getClass())).getFatePrice();
+        }
+
+        writer.writeStringToJson(response, "{\"" + ErpConstant.price +"\":\"" + salePrice + "\"}");
+
+        logger.info("querySalePrice start, end");
+    }
+
     /**
      * 查询条件限制下的记录数
      * @param response

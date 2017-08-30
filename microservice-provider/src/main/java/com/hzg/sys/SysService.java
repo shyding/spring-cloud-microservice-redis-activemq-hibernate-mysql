@@ -1,8 +1,9 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.AuditFlowConstant;
 import com.hzg.tools.CommonConstant;
+import com.hzg.tools.DateUtil;
 import com.hzg.tools.Writer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,9 @@ public class SysService {
     @Autowired
     private Writer writer;
 
+    @Autowired
+    private DateUtil dateUtil;
+
     /**
      * 获取审核节点
      * @param audit
@@ -39,7 +43,7 @@ public class SysService {
         }
 
         audit.setState(AuditFlowConstant.audit_state_todo);
-        audit.setInputDate(new Timestamp(System.currentTimeMillis()));
+        audit.setInputDate(dateUtil.getSecondCurrentTimestamp());
         audit.setAction(auditFlowNode.getAction());
         audit.setRefusedAction(auditFlowNode.getRefusedAction());
 
@@ -90,7 +94,9 @@ public class SysService {
             }
         });
 
-        audit.setPost(auditFlowNodes[0].getPost());
+        if (audit.getPost() == null) {
+            audit.setPost(auditFlowNodes[0].getPost());
+        }
 
         /**
          * 流程中的第一个节点为事务发起节点，不属于审核节点
@@ -178,7 +184,7 @@ public class SysService {
                     Audit nextAudit = new Audit();
                     nextAudit.setNo(audit.getNo());
                     nextAudit.setState(AuditFlowConstant.audit_state_todo);
-                    nextAudit.setInputDate(new Timestamp(System.currentTimeMillis()));
+                    nextAudit.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
                     nextAudit.setName(audit.getName());
                     nextAudit.setAction(nextAuditFlowNode.getAction());
@@ -257,13 +263,9 @@ public class SysService {
             String realAction = audit.getAction();
             audit.setAction(action);
 
-            if (audit.getEntity().equals(AuditFlowConstant.business_purchase) ||
-                    audit.getEntity().equals(AuditFlowConstant.business_purchaseEmergency)) {
-
-                Map<String, String> result1 = writer.gson.fromJson(erpClient.auditAction(writer.gson.toJson(audit)),
-                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-                result = result1.get(CommonConstant.result);
-            }
+            Map<String, String> result1 = writer.gson.fromJson(erpClient.auditAction(writer.gson.toJson(audit)),
+                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+            result = result1.get(CommonConstant.result);
 
             audit.setAction(realAction);
         } else {
@@ -282,10 +284,7 @@ public class SysService {
 
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null && auditFlow.getAction() != null) {
-            switch (auditFlow.getAction()) {
-                case AuditFlowConstant.action_flow_purchase: result = launchNotifyFlow(AuditFlowConstant.business_stockIn_notify, audit);break;
-                case AuditFlowConstant.action_flow_StockIn: result = launchNotifyFlow(AuditFlowConstant.business_product_Notify, audit);break;
-            }
+            result = launchNotifyFlow(AuditFlowConstant.flow_action_entity_mapping.get(auditFlow.getAction()), audit);
         } else {
             result = CommonConstant.success;
         }
@@ -321,23 +320,27 @@ public class SysService {
         if (nextFlowAudit != null) {
             switch (nextFlowAudit.getEntity()) {
                 case AuditFlowConstant.business_stockIn_notify:
-                {
-                    List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query("purchase", "{\"id\":" + audit.getEntityId() + "}"),
-                            new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
+                    setStockInAudit(nextFlowAudit, "purchase", audit.getEntityId());break;
 
-                    nextFlowAudit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
-                    nextFlowAudit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
-
-                }break;
+                case AuditFlowConstant.business_stockIn_notify_caiwu:
+                    setStockInAudit(nextFlowAudit, "purchase", audit.getEntityId());break;
 
                 case AuditFlowConstant.business_product: {}break;
             }
 
 
-            result += sysDao.save(nextFlowAudit);
+            result = sysDao.save(nextFlowAudit);
         }
 
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        return result;
+    }
+
+    public void setStockInAudit(Audit audit, String entity, Integer entityId){
+        List<Map<String, Object>> purchaseInfo = writer.gson.fromJson(erpClient.query(entity, "{\"id\":" + entityId + "}"),
+                new TypeToken<List<Map<String, java.lang.Object>>>(){}.getType());
+
+        audit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
+        audit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
     }
 
 }

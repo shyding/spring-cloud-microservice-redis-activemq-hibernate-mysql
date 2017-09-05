@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resize function without multiple trigger
  *
  * Usage:
@@ -196,14 +196,7 @@ function renderAudit(element, url){
                 element.find(".page-title").css("display", "none");
                 element.find(".clearfix").css("display", "none");
                 element.find(".x_title").css("display", "none");
-                var children = document.getElementById("form").children;
-                var index = children.length - 1;
-                for (; index >= 0; index--) {
-                    if (children[index].tagName.toLowerCase() == "div") {
-                        children[index].innerHTML = "";
-                        break;
-                    }
-                }
+
                 $('#result').attr("readonly", false).css("border", "1px solid #ccc");
 
                 document.getElementById("submitDiv").parentNode.innerHTML = "";
@@ -281,7 +274,7 @@ function init(editable) {
         editable = true;
 
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
-        $('#send, #delete, #recover').attr("disabled", false);
+        $('#send, #doBusiness, #delete, #recover').attr("disabled", false);
         $("#edit").attr("disabled", "disabled");
     });
 
@@ -292,13 +285,22 @@ function init(editable) {
 
     if (!editable) {
         $('#form :input').attr("readonly","readonly").css("border", "0");
-        $('#send, #delete, #recover').attr("disabled","disabled");
+        $('#send, #doBusiness, #delete, #recover').attr("disabled","disabled");
     }
 
     $("#cancel, #return").unbind("click").click(function(){
         render(getPreUrls());
         returnPage = true;
     });
+}
+
+/**
+  * from http://www.cnblogs.com/fumj/archive/2012/12/01/2797588.html
+  *
+  */
+Math.formatFloat = function(f, digit) {
+    var m = Math.pow(10, digit);
+    return parseInt(f * m, 10) / m;
 }
 
 $(document).ready(function() {

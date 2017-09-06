@@ -1,18 +1,27 @@
 package com.hzg.tools;
 
+import com.hzg.sys.SysDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
 public class SignInUtil {
 
+    private static final String sign_in_fail_time = "signInFailTime_";
+    private static final String sign_in_fail_count = "signInFailCount_";
+
+    private static final String sign_in_fail_time_keys = "signInFailTimeKeys";
+
     @Autowired
     public RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    public SysDao sysDao;
 
     @Autowired
     public Integer sessionTime;
@@ -27,7 +36,7 @@ public class SignInUtil {
      * @param username
      */
     public long userWait(String username) {
-        Long signInFailTime = (Long)redisTemplate.opsForValue().get("signInFailTime_" + username);
+        Long signInFailTime = (Long)redisTemplate.opsForValue().get(sign_in_fail_time + username);
         if (signInFailTime != null) {
             long timeDiff = System.currentTimeMillis() - signInFailTime;
             long waitTime = getWaitTime(username);
@@ -46,31 +55,37 @@ public class SignInUtil {
      * @param username
      */
     public void setSignInFailInfo(String username) {
-        Integer signInFailCount = (Integer) redisTemplate.opsForValue().get("signInFailCount_" + username);
+        String key = sign_in_fail_count + username;
+
+        Integer signInFailCount = (Integer) redisTemplate.opsForValue().get(key);
         if (signInFailCount == null) {
-            redisTemplate.opsForValue().set("signInFailCount_" + username, 1);
+            redisTemplate.opsForValue().set(key, 1);
 
         } else {
             signInFailCount = signInFailCount + 1;
-            redisTemplate.opsForValue().set("signInFailCount_" + username, signInFailCount);
+            redisTemplate.opsForValue().set(key, signInFailCount);
 
             if (signInFailCount >= waitToSignInCount) {
-                redisTemplate.opsForValue().set("signInFailTime_" + username, System.currentTimeMillis());
+                redisTemplate.opsForValue().set(sign_in_fail_time + username, System.currentTimeMillis());
             }
         }
+
+        sysDao.putKeyToHash(sign_in_fail_time_keys, key);
     }
 
     public void removeSignInFailInfo(String username) {
-        if (redisTemplate.opsForValue().get("signInFailCount_" + username) != null) {
-            redisTemplate.opsForValue().getOperations().delete("signInFailCount_" + username);
+        String key = sign_in_fail_count + username;
+
+        if (redisTemplate.opsForValue().get(key) != null) {
+            redisTemplate.opsForValue().getOperations().delete(key);
         }
-        if (redisTemplate.opsForValue().get("signInFailTime_" + username) != null) {
-            redisTemplate.opsForValue().getOperations().delete("signInFailTime_" + username);
+        if (redisTemplate.opsForValue().get(sign_in_fail_time + username) != null) {
+            redisTemplate.opsForValue().getOperations().delete(sign_in_fail_time + username);
         }
     }
 
     public  int getSignInFailCount(String username) {
-        Integer signInFailCount = (Integer) redisTemplate.opsForValue().get("signInFailCount_" + username);
+        Integer signInFailCount = (Integer) redisTemplate.opsForValue().get(sign_in_fail_count + username);
         return signInFailCount == null ? 0 : signInFailCount;
     }
 
@@ -106,10 +121,11 @@ public class SignInUtil {
      */
     @Scheduled(cron = "0 0 0/1 * * ?")
     public void clearMap(){
-        Set<String> keys =  redisTemplate.keys("signInFailCount_*");
-        for (String key : keys) {
+        List<Object> keys = sysDao.getValuesFromHash(sign_in_fail_time_keys);
+
+        for (Object key : keys) {
             if ((Integer)redisTemplate.opsForValue().get(key) > removedSignInFailCount) {
-                removeSignInFailInfo(key.substring(key.indexOf("_")+1));
+                removeSignInFailInfo(key.toString().substring(key.toString().indexOf(CommonConstant.underline)+1));
             }
         }
     }
@@ -124,7 +140,7 @@ public class SignInUtil {
      * @param username
      */
     public  boolean isUserExist(String username) {
-        return redisTemplate.opsForValue().get("user_" + username) != null;
+        return redisTemplate.opsForValue().get(CommonConstant.user + CommonConstant.underline + username) != null;
     }
 
     /**
@@ -134,8 +150,8 @@ public class SignInUtil {
      */
     public  void setUser(String sessionId, String username) {
         if (!isUserExist(username)) {
-            redisTemplate.boundValueOps("sessionId_" + sessionId).set(username, sessionTime, TimeUnit.SECONDS);
-            redisTemplate.boundValueOps("user_" + username).set(sessionId, sessionTime, TimeUnit.SECONDS);
+            redisTemplate.boundValueOps(CommonConstant.sessionId + CommonConstant.underline + sessionId).set(username, sessionTime, TimeUnit.SECONDS);
+            redisTemplate.boundValueOps(CommonConstant.user + CommonConstant.underline + username).set(sessionId, sessionTime, TimeUnit.SECONDS);
         }
     }
 
@@ -145,8 +161,8 @@ public class SignInUtil {
      */
     public void removeUser(String username) {
         if (isUserExist(username)) {
-            redisTemplate.opsForValue().getOperations().delete("sessionId_" + (String)redisTemplate.opsForValue().get("user_" + username));
-            redisTemplate.opsForValue().getOperations().delete("user_" + username);
+            redisTemplate.opsForValue().getOperations().delete(CommonConstant.sessionId + CommonConstant.underline + (String)redisTemplate.opsForValue().get(CommonConstant.user + CommonConstant.underline + username));
+            redisTemplate.opsForValue().getOperations().delete(CommonConstant.user + CommonConstant.underline + username);
         }
     }
 
@@ -156,7 +172,6 @@ public class SignInUtil {
      * @return
      */
     public  String getSessionIdByUser(String username) {
-        return (String)redisTemplate.opsForValue().get("user_" + username);
+        return (String)redisTemplate.opsForValue().get(CommonConstant.user + CommonConstant.underline + username);
     }
-
 }

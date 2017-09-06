@@ -4,9 +4,14 @@ import com.hzg.base.Dao;
 import com.hzg.tools.DateUtil;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.BoundHashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.support.atomic.RedisAtomicLong;
 import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 @Repository
 public class SysDao extends Dao {
@@ -65,5 +70,48 @@ public class SysDao extends Dao {
         logger.info("generate no:" + no);
 
         return no;
+    }
+
+    /**
+     * 获取多个值
+     * @param hashKey
+     * @return
+     */
+    public List<Object> getValuesFromHash(String hashKey) {
+        List<Object> values = new ArrayList<>();
+        List<Object> nullValueKeys = new ArrayList<>();
+
+        BoundHashOperations hashOps = redisTemplate.boundHashOps(hashKey);
+
+        Set keys = hashOps.keys();
+        for (Object key : keys) {
+            Object value = getFromRedis((String) key);
+
+            if (value != null) {
+                values.add(value);
+            } else {
+                nullValueKeys.add(key);
+            }
+        }
+
+        if (nullValueKeys.size() == keys.size()) {
+            deleteFromRedis(hashKey);
+
+        } else {
+            for (Object nullValueKey : nullValueKeys) {
+                hashOps.delete(nullValueKey);
+            }
+        }
+
+        return  values;
+    }
+
+    /**
+     * 存入 key 到 hash
+     * @param key
+     * @return
+     */
+    public void putKeyToHash(String hashKey, Object key) {
+        redisTemplate.boundHashOps(hashKey).put(key, null);
     }
 }

@@ -139,7 +139,7 @@ public class ObjectToSql {
                 }
 
             } else {
-                limitWhere = columnValue.get(0) + " = " + columnValue.get(1) + " and ";
+                limitWhere += columnValue.get(0) + " = " + columnValue.get(1) + " and ";
             }
         }
 

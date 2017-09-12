@@ -49,6 +49,8 @@
     var suggestText=settings.rowTextClass;
     var additionalFields = "";
 
+    var preQueryWord = null;
+
     var me=this;
     textField.keyup(
       function(e){
@@ -61,8 +63,14 @@
               }
             }
 
+            var queryWord = $.trim($(this).val());
+            if (preQueryWord != null && preQueryWord == queryWord) {
+               return false;
+            }
+            queryWord = (queryWord == "" ? " " : queryWord);
+
             $.ajax({
-              url:settings.url + encodeURI($(this).val()) + additionalFields,
+              url:settings.url + encodeURI(queryWord) + additionalFields,
               success:function(data){
                 try{
                   if (typeof data == 'string')
@@ -123,7 +131,7 @@
                         }
                       }
 
-                      holder.html(html);
+                      holder.html('<div style="position:absolute;z-index: 999;">' + html + '</div>');
 
                       for(i=1;i<=arr.length;i++){
                         var target=holder.find("#" + suggestRow + i);
@@ -181,6 +189,8 @@
                 }
               }
             });
+
+            preQueryWord = queryWord;
           }
           else{
             me.hide();

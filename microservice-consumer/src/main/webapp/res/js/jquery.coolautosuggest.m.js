@@ -1,6 +1,6 @@
 /**
- * modified from  Query Plugin coolautosuggest
- * coolautosuggest homepage:  http://stuff.w3shaman.com/jquery-plugins/coolautosuggest/
+ * modified from  Query Plugin for creating AJAX auto-suggest textfield
+ * from http://stuff.w3shaman.com/jquery-plugins/coolautosuggest/
  */
 
 (function($) {
@@ -44,6 +44,8 @@
     var suggestText=settings.rowTextClass;
     var additionalFields = "";
 
+    var preQueryStr = null;
+
     var me=this;
     textField.keyup(
       function(e){
@@ -61,11 +63,16 @@
                    queryJson = settings.getQueryData.call(this, settings.paramName);
               }
 
+              var queryStr = $.trim(JSON.stringify(queryJson));
+              if (preQueryStr != null && preQueryStr == queryStr) {
+                  return false;
+               }
+
               $.ajax({
                 type: "post",
                 url:settings.url,
                 contentType: "application/x-www-form-urlencoded; charset=utf-8",
-                data: {json: JSON.stringify(queryJson)},
+                data: {json: queryStr},
                 dataType: "json",
 
                 success:function(data){
@@ -128,7 +135,7 @@
                           }
                         }
 
-                        holder.html('<div  style="position:absolute;">' + html + '</div>');
+                        holder.html('<div  style="position:absolute;z-index:9">' + html + '</div>');
 
                         for(i=1;i<=arr.length;i++){
                           var target=holder.find("#" + suggestRow + i);
@@ -182,6 +189,8 @@
                 }
               }
             });
+
+            preQueryStr = queryStr;
           }
           else{
             me.hide();
@@ -319,7 +328,7 @@
 
     function highlightmultiple(obj, eventName) {
       obj.addClass("selected");
-      if (textField.data("input-type") == undefined || textField.data("input-type") == null) {
+      if (textField.data("input-type") == undefined || textField.data("input-type") == null || textField.data("input-type") == "single") {
           textField.val(obj.find("." + suggestText).text());
 
       } else if(textField.data("input-type") == "multiple") {

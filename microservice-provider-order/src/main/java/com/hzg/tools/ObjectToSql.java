@@ -139,7 +139,7 @@ public class ObjectToSql {
                 }
 
             } else {
-                limitWhere = columnValue.get(0) + " = " + columnValue.get(1) + " and ";
+                limitWhere += columnValue.get(0) + " = " + columnValue.get(1) + " and ";
             }
         }
 
@@ -694,36 +694,13 @@ public class ObjectToSql {
                 } catch (Exception e) {
                     logger.info(e.getMessage());
 
-                    String tempValueStr = value.toString();
-
                     /**
                      * 含有 " in (" 的值如：{"id": " in (1, 2, 3)"} 或者  {"id": " not in (1, 2, 3)"}
                      */
-                    if (Pattern.compile("in\\s*\\(").matcher(tempValueStr).find()) {
-                        valueStr += tempValueStr;
-
-                    } else if (Pattern.compile("\\s*\"id\"\\s*:\\s*\\d+\\s*").matcher(tempValueStr).find()) {
-                        int fromIndex = tempValueStr.indexOf("\"id\"");
-                        int start = tempValueStr.indexOf(":", fromIndex) + 1;
-                        int end = tempValueStr.indexOf(",", fromIndex);
-                        if (end == -1) {
-                            end = tempValueStr.length() -1;
-                        }
-
-                        valueStr += tempValueStr.substring(start, end);
-
-                    } else if (Pattern.compile("\\s*\"id\"\\s*:\\s*\"\\w+\"\\s*").matcher(tempValueStr).find()) {
-                        int fromIndex = tempValueStr.indexOf("\"id\"");
-                        int start = tempValueStr.indexOf(":", fromIndex) + 1;
-                        int end = tempValueStr.indexOf(",", fromIndex);
-                        if (end == -1) {
-                            end = tempValueStr.length() -1;
-                        }
-
-                        valueStr += tempValueStr.substring(start, end).replace("\"", "'");
-
+                    if (Pattern.compile("in\\s*\\(").matcher(value.toString()).find()) {
+                        valueStr += value.toString();
                     } else {
-                        valueStr += "'" + tempValueStr + "'";
+                        valueStr += "'" + value.toString() + "'";
                     }
                 }
             }
@@ -731,33 +708,4 @@ public class ObjectToSql {
 
         return valueStr;
     }
-
-/*    public static void main(String[] args) {
-        ObjectToSql objectToSql = new ObjectToSql();
-
-        //OneToOne ManyToOne query
-        Map<String, String> queryParameters1 = new HashMap<String, String>();
-        queryParameters1.put("user", "{\"id\":1}");
-        System.out.println(objectToSql.generateComplexSqlByAnnotation(Order.class, queryParameters1, 0, -1));
-
-        Order order = new Order();
-        order.setNo("123");
-        User user = new User();
-        user.setId(1);
-        order.setUser(user);
-
-        Field[] limitFields = new Field[1];
-        try {
-            limitFields[0] = order.getClass().getDeclaredField("user");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        System.out.println(objectToSql.generateSuggestSqlByAnnotation(order, limitFields));
-
-        //OneToMany query
-        Map<String, String> queryParameters = new HashMap<String, String>();
-        queryParameters.put("users", "[{\"id\":1},{\"id\":2}]");
-        System.out.println(objectToSql.generateComplexSqlByAnnotation(Customer.class, queryParameters, 0, -1));
-    }*/
 }

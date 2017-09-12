@@ -90,6 +90,8 @@ public class ObjectToSql {
             selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length());
         }
 
+        selectSql += " order by t.id asc ";
+
         logger.info("selectSql:" + selectSql);
 
         return selectSql;
@@ -137,7 +139,7 @@ public class ObjectToSql {
                 }
 
             } else {
-                limitWhere = columnValue.get(0) + " = " + columnValue.get(1) + " and ";
+                limitWhere += columnValue.get(0) + " = " + columnValue.get(1) + " and ";
             }
         }
 
@@ -272,9 +274,9 @@ public class ObjectToSql {
         }
 
         if (wherePart.length() > " and ".length()) {
-            selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by id desc ";
+            selectSql += " where " + wherePart.substring(0, wherePart.length()-" and ".length()) + " order by t.id desc ";
         } else {
-            selectSql += " order by id desc ";
+            selectSql += " order by t.id desc ";
         }
 
         if (rowNum != -1) {

@@ -44,8 +44,6 @@
     var suggestText=settings.rowTextClass;
     var additionalFields = "";
 
-    var preQueryStr = null;
-
     var me=this;
     textField.keyup(
       function(e){
@@ -63,16 +61,11 @@
                    queryJson = settings.getQueryData.call(this, settings.paramName);
               }
 
-              var queryStr = $.trim(JSON.stringify(queryJson));
-              if (preQueryStr != null && preQueryStr == queryStr) {
-                  return false;
-               }
-
               $.ajax({
                 type: "post",
                 url:settings.url,
                 contentType: "application/x-www-form-urlencoded; charset=utf-8",
-                data: {json: queryStr},
+                data: {json: JSON.stringify(queryJson)},
                 dataType: "json",
 
                 success:function(data){

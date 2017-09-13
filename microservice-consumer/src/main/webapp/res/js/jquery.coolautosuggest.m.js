@@ -182,8 +182,6 @@
                 }
               }
             });
-
-            preQueryStr = queryStr;
           }
           else{
             me.hide();

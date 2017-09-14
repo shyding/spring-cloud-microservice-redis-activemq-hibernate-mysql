@@ -1,19 +1,19 @@
-package com.hzg.order;
+﻿package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.customer.User;
-import com.hzg.erp.Product;
 import com.hzg.pay.Pay;
 import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 public class OrderService {
@@ -63,7 +63,7 @@ public class OrderService {
         order.setNo(orderDao.getNo(OrderConstant.no_order_perfix));
         result += lockOrderProduct(order);
 
-        order.setState(OrderConstant.order_state_normal);
+        order.setState(OrderConstant.order_state_unPay);
         order.setDate(dateUtil.getSecondCurrentTimestamp());
 
         if (order.getType().compareTo(OrderConstant.order_type_selfService) == 0 ||
@@ -101,14 +101,19 @@ public class OrderService {
         BigDecimal amount = new BigDecimal(0);
 
         for (OrderDetail detail : order.getDetails()) {
-            Map<String, Float> salePrice = writer.gson.fromJson(
-                    erpClient.querySalePrice("{\"" + ErpConstant.product_id + "\":" + detail.getProduct().getId() + "}"),
-                    new TypeToken<Map<String, Float>>(){}.getType());
+            String queryJson = "{\"" + ErpConstant.product + "\":{\"id\":" + detail.getProduct().getId() + "}";
+            if (detail.getPriceChange() != null) {
+                queryJson += ",\"" + CommonConstant.id +"\":\"" + detail.getPriceChange().getId() + "\"," +
+                        "\"" + CommonConstant.state +"\":" + ErpConstant.product_price_change_state_use + "}";
+            } else {
+                queryJson += "}";
+            }
 
+            Map<String, Float> salePrice = writer.gson.fromJson(erpClient.querySalePrice(queryJson), new TypeToken<Map<String, Float>>(){}.getType());
             BigDecimal detailAmount = new BigDecimal(Float.toString(salePrice.get(ErpConstant.price))).
                     multiply(new BigDecimal(Float.toString(detail.getQuantity())));
 
-            if (detailAmount.floatValue() != detail.getPayAmount()) {
+            if (detailAmount.floatValue() != detail.getPayAmount() || detailAmount.floatValue() == 0f) {
                 result += "商品" + detail.getProduct().getNo() + "支付金额不对;";
             } else {
                 amount = amount.add(detailAmount);
@@ -134,6 +139,14 @@ public class OrderService {
 
         for (OrderDetail detail : order.getDetails()) {
             detail.setOrder(idOrder);
+            detail.setDate(dateUtil.getSecondCurrentTimestamp());
+
+            if (order.getType().compareTo(OrderConstant.order_type_book) == 0) {
+                detail.setState(OrderConstant.order_detail_state_book);
+            } else {
+                detail.setState(OrderConstant.order_detail_state_unSale);
+            }
+
             result += orderDao.save(detail);
         }
 
@@ -175,6 +188,7 @@ public class OrderService {
 
             for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
                 acc.setOrderPrivate(idOrderPrivate);
+                result += orderDao.save(acc);
             }
         }
 
@@ -236,14 +250,14 @@ public class OrderService {
         for (OrderDetail detail : order.getDetails()) {
             Float sellableQuantity = getOnSaleQuantity(detail.getProduct().getNo());
 
-            if (sellableQuantity.compareTo(detail.getAmount()) <= 0) {
-                canSellMsg += detail.getAmount() + detail.getUnit() + "编号为:" + detail.getProduct().getNo() +
+            if (sellableQuantity.compareTo(detail.getQuantity()) < 0) {
+                canSellMsg += detail.getQuantity() + detail.getUnit() + "编号为:" + detail.getProduct().getNo() +
                         "的商品，但该商品可售数量为：" + sellableQuantity + ";";
             }
         }
 
         if (!canSellMsg.equals("")) {
-            canSellMsg += "尊敬的顾客你好，你预定了:" + canSellMsg + "预定失败。如有帮助需要，请联系我公司客服人员处理";
+            canSellMsg = "尊敬的顾客你好，你预定了:" + canSellMsg + "预定失败。如有帮助需要，请联系我公司客服人员处理";
         }
 
         return canSellMsg;
@@ -267,7 +281,7 @@ public class OrderService {
             }
 
             String key = detail.getProduct().getNo() + CommonConstant.underline + order.getNo();
-            orderDao.storeToRedis(key, detail.getAmount(), lockTime);
+            orderDao.storeToRedis(key, detail.getQuantity(), lockTime);
             orderDao.putKeyToList(OrderConstant.lock_product_quantity + CommonConstant.underline + detail.getProduct().getNo(), key);
         }
 
@@ -308,6 +322,27 @@ public class OrderService {
 
         return result;
     }
+
+/*    *//**
+     * 每隔 2 个小时，取消 2 小时还未支付的订单
+     *//*
+    @Scheduled(cron = "0 0 0/" + OrderConstant.order_session_time/CommonConstant.hour_seconds + " * * ?")
+    public void clearMap(){
+        Map<String, String> parameters = new HashMap<String, String>();
+
+        String currentDay = dateUtil.getCurrentDayStr();
+        parameters.put(OrderConstant.order_class_field_date, currentDay + " - " + currentDay);
+        parameters.put(OrderConstant.order_class_field_state, String.valueOf(OrderConstant.order_detail_state_unSale));
+
+        List<Order> orders = orderDao.complexQuery(User.class, parameters, 0, -1);
+
+        long currentTimeMillis = System.currentTimeMillis();
+        for (Order order : orders) {
+            if ((currentTimeMillis - order.getDate().getTime()) > OrderConstant.order_session_time_millisecond) {
+
+            }
+        }
+    }*/
 
     public User getSignUser(String json) {
         Map<String, Object> jsonData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());

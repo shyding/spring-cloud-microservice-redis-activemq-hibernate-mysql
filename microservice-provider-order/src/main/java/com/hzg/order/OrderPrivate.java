@@ -1,9 +1,10 @@
-package com.hzg.order;
+﻿package com.hzg.order;
 
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.sql.Timestamp;
 import java.util.Set;
 
 @Entity(name = "hzg_order_private")
@@ -26,12 +27,15 @@ public class OrderPrivate implements Serializable {
     @JoinColumn(name = "orderDetailId")
     private OrderDetail detail;
 
-    @Column(name="amount", length=32)
-    @Type(type = "com.hzg.tools.FloatDesType")
-    private Float amount;
-
     @Column(name="describes",length=255)
     private String describes;
+
+    @OneToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name = "authorizerId")
+    private OrderPrivateAuthorize authorize;
+
+    @Column(name="date")
+    private Timestamp date;
 
     @OneToMany(mappedBy = "orderPrivate", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<OrderPrivateAcc> accs;
@@ -64,14 +68,6 @@ public class OrderPrivate implements Serializable {
         this.detail = detail;
     }
 
-    public Float getAmount() {
-        return amount;
-    }
-
-    public void setAmount(Float amount) {
-        this.amount = amount;
-    }
-
     public String getDescribes() {
         return describes;
     }
@@ -80,11 +76,35 @@ public class OrderPrivate implements Serializable {
         this.describes = describes;
     }
 
+    public OrderPrivateAuthorize getAuthorize() {
+        return authorize;
+    }
+
+    public void setAuthorize(OrderPrivateAuthorize authorize) {
+        this.authorize = authorize;
+    }
+
+    public Timestamp getDate() {
+        return date;
+    }
+
+    public void setDate(Timestamp date) {
+        this.date = date;
+    }
+
     public Set<OrderPrivateAcc> getAccs() {
         return accs;
     }
 
     public void setAccs(Set<OrderPrivateAcc> accs) {
         this.accs = accs;
+    }
+
+    public String getTypeName() {
+        switch (type) {
+            case 0 : return "商品加工";
+            case 1 : return "私人订制";
+            default : return "";
+        }
     }
 }

@@ -1,8 +1,4 @@
-package com.hzg.base;
-
-/**
- * Created by Administrator on 2017/4/20.
- */
+﻿package com.hzg.base;
 
 import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Des;
@@ -585,7 +581,7 @@ public class Dao {
             fieldNickTableName = partSql;
         }
 
-        List fieldValues = queryBySql(selectSql.replace("t.*", fieldNickTableName+".*"), fieldActualClazz);
+        List fieldValues = queryBySql(selectSql.replace("t.*", " distinct " + fieldNickTableName+".*"), fieldActualClazz);
         relateObjects.clear();
         for (Object fieldValue : fieldValues) {
             relateObjects.add(fieldValue);

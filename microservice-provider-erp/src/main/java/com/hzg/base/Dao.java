@@ -1,9 +1,5 @@
 ﻿package com.hzg.base;
 
-/**
- * Created by Administrator on 2017/4/20.
- */
-
 import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Des;
 import com.hzg.tools.ObjectToSql;
@@ -51,7 +47,7 @@ public class Dao {
     public String save(Object object){
         sessionFactory.getCurrentSession().save(object);
         Class clazz = object.getClass();
-        storeToRedis(clazz.getName() + "_" + getId(object, clazz), object);
+        storeToRedis(clazz.getName() + CommonConstant.underline + getId(object, clazz), object);
 
         return CommonConstant.success;
     }
@@ -68,7 +64,7 @@ public class Dao {
 
         int result = sessionFactory.getCurrentSession().createSQLQuery(
                 "delete from " + objectToSql.getTableName(clazz) + " where id = " + id).executeUpdate();
-        deleteFromRedis(clazz.getName() + "_" + id);
+        deleteFromRedis(clazz.getName() + CommonConstant.underline + id);
 
         return (result > 0 ? CommonConstant.success : CommonConstant.fail) + "," + result + " item deleted";
     }
@@ -104,7 +100,7 @@ public class Dao {
         Integer id = getId(object, clazz);
 
         if (id != null) {
-            String key = clazz.getName() + "_" + id;
+            String key = clazz.getName() + CommonConstant.underline + id;
             Object redisObject = getFromRedis(key);
 
             if (redisObject != null) {
@@ -238,7 +234,7 @@ public class Dao {
      * @return
      */
     public Object queryById(Integer id, Class clazz){
-        Object dbObject = getFromRedis(clazz.getName() + "_" + id);
+        Object dbObject = getFromRedis(clazz.getName() + CommonConstant.underline + id);
         if (dbObject == null) {
             dbObject = queryStoreObjectById(id, clazz);
 
@@ -292,7 +288,7 @@ public class Dao {
             }
 
             querySetRelateObject(dbObject);
-            storeToRedis(clazz.getName() + "_" + id, dbObject);
+            storeToRedis(clazz.getName() + CommonConstant.underline + id, dbObject);
         }
 
         return dbObject;
@@ -453,7 +449,7 @@ public class Dao {
 
                     Object relateDbObject = null;
                     if (relateId != null) {
-                        relateDbObject = getFromRedis(field.getType().getName() + "_" +  String.valueOf(relateId));
+                        relateDbObject = getFromRedis(field.getType().getName() + CommonConstant.underline +  String.valueOf(relateId));
 
                         if (relateDbObject == null) {
                             relateDbObject = queryStoreObjectById(relateId, field.getType());
@@ -477,7 +473,7 @@ public class Dao {
                             Integer relateId = getId(relateObject, relateObject.getClass());
 
                             if (relateId != null) {
-                                Object relateDbObject = getFromRedis(relateObject.getClass().getName() + "_" +  String.valueOf(relateId));
+                                Object relateDbObject = getFromRedis(relateObject.getClass().getName() + CommonConstant.underline +  String.valueOf(relateId));
 
                                 if (relateDbObject == null) {
                                     relateDbObject = queryStoreObjectById(relateId, relateObject.getClass());
@@ -585,7 +581,7 @@ public class Dao {
             fieldNickTableName = partSql;
         }
 
-        List fieldValues = queryBySql(selectSql.replace("t.*", fieldNickTableName+".*"), fieldActualClazz);
+        List fieldValues = queryBySql(selectSql.replace("t.*", " distinct " + fieldNickTableName+".*"), fieldActualClazz);
         relateObjects.clear();
         for (Object fieldValue : fieldValues) {
             relateObjects.add(fieldValue);
@@ -713,17 +709,7 @@ public class Dao {
         if (object != null) {
             redisTemplate.opsForValue().set(key, object);
 
-            String currentThreadId = String.valueOf(Thread.currentThread().getId());
-            Object keys = getFromRedis(currentThreadId);
-
-            String keysStr = null;
-            if (keys == null) {
-                keysStr = key;
-            } else {
-                keysStr = String.valueOf(keys) + key_delimiter + key;
-            }
-
-            storeToRedis(currentThreadId, keysStr, 5);
+            storeCurrentThreadKey(key);
         }
     }
 
@@ -757,6 +743,26 @@ public class Dao {
         boundValueOperations.set(object);
         //设置过期时间
         boundValueOperations.expire(seconds, TimeUnit.SECONDS);
+
+        storeCurrentThreadKey(key);
+    }
+
+    public void storeCurrentThreadKey(String key) {
+        String currentThreadId = String.valueOf(Thread.currentThread().getId());
+        Object keys = getFromRedis(currentThreadId);
+
+        String keysStr = null;
+        if (keys == null) {
+            keysStr = key;
+        } else {
+            keysStr = String.valueOf(keys) + key_delimiter + key;
+        }
+
+        BoundValueOperations<String, Object> boundValueOperations = redisTemplate.boundValueOps(currentThreadId);
+        //设置值
+        boundValueOperations.set(keysStr);
+        //设置过期时间
+        boundValueOperations.expire(CommonConstant.current_thread_key_time, TimeUnit.SECONDS);
     }
 
     /**

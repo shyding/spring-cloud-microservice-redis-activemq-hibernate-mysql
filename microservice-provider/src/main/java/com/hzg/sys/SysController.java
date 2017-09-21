@@ -1,4 +1,4 @@
-﻿package com.hzg.sys;
+package com.hzg.sys;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.*;
@@ -18,6 +18,14 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 
+/**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: SysController.java
+ *
+ * @author smjie
+ * @version 1.00
+ * @Date 2017/3/16
+ */
 @Controller
 @RequestMapping("/sys")
 public class SysController {
@@ -39,6 +47,9 @@ public class SysController {
     @Autowired
     private Transcation transcation;
 
+    @Autowired
+    private DateUtil dateUtil;
+
     /**
      * 保存实体
      * @param response
@@ -51,13 +62,13 @@ public class SysController {
         logger.info("save start, parameter:" + entity + ":" + json);
 
         String result = CommonConstant.fail;
-        Timestamp inputDate = new Timestamp(System.currentTimeMillis());
+        Timestamp inputDate = dateUtil.getSecondCurrentTimestamp();
 
         try {
             if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
                 User user = writer.gson.fromJson(json, User.class);
 
-                if (!sysDao.isValueRepeat(User.class, "username", user.getUsername(), user.getId())) {
+                if (!sysDao.isValueRepeat(User.class, CommonConstant.username, user.getUsername(), user.getId())) {
                     user.setInputDate(inputDate);
 
                     if (user.getPassword().length() < 32) {
@@ -127,7 +138,7 @@ public class SysController {
         try {
             if (entity.equalsIgnoreCase(User.class.getSimpleName())) {
                 User user = writer.gson.fromJson(json, User.class);
-                if (!sysDao.isValueRepeat(User.class, "username", user.getUsername(), user.getId()) || user.getUsername() == null) {
+                if (!sysDao.isValueRepeat(User.class, CommonConstant.username, user.getUsername(), user.getId()) || user.getUsername() == null) {
 
                     if (user.getPosts() != null) {
                         List<Integer> relateIds = new ArrayList<>();
@@ -274,6 +285,47 @@ public class SysController {
         }
 
         logger.info("query end");
+    }
+
+
+    @RequestMapping(value = "/privateQuery", method = {RequestMethod.GET, RequestMethod.POST})
+    public void privateQuery(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("privateQuery start, parameter:" + entity + ":" + json);
+
+        if (entity.equalsIgnoreCase(Audit.class.getSimpleName())) {
+            Map<String, Object> jsonData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
+            User user = (User)sysDao.getFromRedis((String) sysDao.getFromRedis(CommonConstant.sessionId +
+                    CommonConstant.underline + (String) jsonData.get(CommonConstant.sessionId)));
+
+            Audit audit = writer.gson.fromJson(json, Audit.class);
+            List<Audit> audits =  sysDao.query(audit);
+
+            String canQueryAuditNos = "";
+
+            for (Audit ele : audits) {
+                if (!canQueryAuditNos.contains(ele.getNo())) {
+                    for (Post post : user.getPosts()) {
+
+                        if (ele.getPost().getId().compareTo(post.getId()) == 0) {
+                            canQueryAuditNos = ele.getNo() + ",";
+                            break;
+                        }
+                    }
+                }
+            }
+
+            List<Audit> canQueryAudits = new ArrayList<>();
+            for (Audit ele : audits) {
+                if (canQueryAuditNos.contains(ele.getNo())) {
+                    canQueryAudits.add(ele);
+                }
+            }
+
+            writer.writeObjectToJson(response, canQueryAudits);
+
+        }
+
+        logger.info("privateQuery end");
     }
 
     @RequestMapping(value = "/suggest", method = {RequestMethod.GET, RequestMethod.POST})
@@ -432,7 +484,7 @@ public class SysController {
             recordsSum =  sysDao.recordsSum(AuditFlow.class, queryParameters);
         }
 
-        writer.writeStringToJson(response, "{\"recordsSum\":" + recordsSum + "}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
 
         logger.info("recordsSum end");
     }
@@ -476,6 +528,40 @@ public class SysController {
     }
 
     /**
+     * 发起事宜
+     * @param response
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/launchAuditFlow")
+    public void launchAuditFlow(HttpServletResponse response, @RequestBody String json){
+        logger.info("audit start, parameter:" + json);
+        String result = CommonConstant.fail, auditResult = CommonConstant.fail;
+
+        Audit audit = writer.gson.fromJson(json, Audit.class);
+
+        try {
+            /**
+             * 发起新流程，创建流程的第一个事宜节点
+             */
+            Audit firstAudit = sysService.getFirstAudit(audit);
+            firstAudit.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
+            result += sysDao.save(firstAudit);
+
+            auditResult = AuditFlowConstant.audit_do;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"auditResult\":\"" + auditResult + "\"}");
+        logger.info("audit end");
+    }
+
+    /**
      * 办理、审核事宜
      * @param response
      * @param json
@@ -489,111 +575,109 @@ public class SysController {
         Audit audit = writer.gson.fromJson(json, Audit.class);
 
         try {
-            /**
-             * 发起新流程，创建流程的第一个事宜节点
-             */
-            if (audit.getId() == null) {
-                Audit firstAudit = sysService.getFirstAudit(audit);
-                firstAudit.setNo(sysDao.getNo(AuditFlowConstant.no_prefix_audit));
-                result += sysDao.save(firstAudit);
+            Map<String, Object> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+            User user = (User) sysDao.getFromRedis((String) sysDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + auditInfo.get(CommonConstant.sessionId).toString()));
 
-                auditResult = AuditFlowConstant.audit_do;
+            if (user == null) {
+                result += CommonConstant.fail + ",会话信息丢失，请重新登录后办理、审核事宜";
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+                return;
+            }
+
+            Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
+
+            boolean isCanAudit = false;
+            for (Post post : user.getPosts()) {
+                if (dbAudit.getPost().getId().compareTo(post.getId()) == 0) {
+                    isCanAudit = true;
+                    break;
+                }
+            }
+
+            if (!isCanAudit) {
+                result += CommonConstant.fail + ",没有权限办理、审核的事宜";
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+                return;
+            }
+
+            if (dbAudit.getState().compareTo(AuditFlowConstant.audit_state_done) == 0) {
+                result += CommonConstant.fail + ",不能重复办理已办理、审核的事宜";
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+                return;
+            }
+
+            audit.setUser(user);
+            audit.setState(AuditFlowConstant.audit_state_done);
+            audit.setDealDate(dateUtil.getSecondCurrentTimestamp());
+            result += sysDao.updateById(audit.getId(), audit);
+
+            dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
+
+            /**
+             * 审核通过，处理相应的业务逻辑
+             */
+            if (audit.getResult().equals(AuditFlowConstant.audit_pass)) {
+                Audit nextAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_forward);
+
+                /**
+                 * 处理相应的业务逻辑
+                 */
+                result += sysService.doAction(AuditFlowConstant.flow_direct_forward, dbAudit);
+
+                /**
+                 * 有下一个节点, 插入下一个节点
+                 */
+                if (nextAudit != null) {
+                    result += sysDao.save(nextAudit);
+                    auditResult = AuditFlowConstant.audit_pass;
+                }
+
+                /**
+                 * 如果没有下一个节点，则流程办理完毕，调用流程结束动作
+                 */
+                else {
+                    result += sysService.doFlowAction(dbAudit);
+                    auditResult = AuditFlowConstant.audit_finish;
+                }
             }
 
             /**
-             * 办理、审核事宜
+             * 审核未通过，插入节点
              */
             else {
-                Map<String, Object> auditInfo = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {
-                }.getType());
-                User user = (User) sysDao.getFromRedis((String) sysDao.getFromRedis("sessionId_" + auditInfo.get("sessionId").toString()));
+                Audit refuseAudit = null;
+                if (audit.getToRefuseUser() != null) {
+                    refuseAudit = new Audit();
 
-                if (user == null) {
-                    result += CommonConstant.fail + ",会话信息丢失，请重新登录后办理、审核事宜";
-                    writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
-                    return;
-                }
+                    refuseAudit.setNo(dbAudit.getNo());
+                    refuseAudit.setEntity(dbAudit.getEntity());
+                    refuseAudit.setEntityId(dbAudit.getEntityId());
 
-                Audit dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
-                if (dbAudit.getState().compareTo(AuditFlowConstant.audit_state_done) == 0) {
-                    result += CommonConstant.fail + ",不能重复办理已办理、审核的事宜";
-                    writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
-                    return;
-                }
+                    refuseAudit.setCompany(dbAudit.getCompany());
+                    refuseAudit.setUser(audit.getToRefuseUser());
+                    refuseAudit.setPreFlowAuditNo(dbAudit.getPreFlowAuditNo());
 
-                audit.setUser(user);
-                audit.setState(AuditFlowConstant.audit_state_done);
-                audit.setDealDate(new Timestamp(System.currentTimeMillis()));
-                result += sysDao.updateById(audit.getId(), audit);
+                    dbAudit.setToRefuseUser(audit.getToRefuseUser());
+                    refuseAudit.setPost(sysService.getPostByAuditUser(dbAudit));
 
-                dbAudit = (Audit) sysDao.queryById(audit.getId(), Audit.class);
+                    refuseAudit = sysService.getAudit(refuseAudit);
+                    refuseAudit.setRefusePost(dbAudit.getPost());
+                    refuseAudit.setRefuseUser(dbAudit.getUser());
+                    refuseAudit.setName(dbAudit.getName());
+                    refuseAudit.setState(AuditFlowConstant.audit_state_todo);
 
-                /**
-                 * 审核通过，处理相应的业务逻辑
-                 */
-                if (audit.getResult().equals(AuditFlowConstant.audit_pass)) {
-                    Audit nextAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_forward);
 
-                    /**
-                     * 处理相应的业务逻辑
-                     */
-                    result += sysService.doAction(AuditFlowConstant.flow_direct_forward, dbAudit);
-
-                    /**
-                     * 有下一个节点, 插入下一个节点
-                     */
-                    if (nextAudit != null) {
-                        result += sysDao.save(nextAudit);
-                        auditResult = AuditFlowConstant.audit_pass;
-                    }
-
-                    /**
-                     * 如果没有下一个节点，则流程办理完毕，调用流程结束动作
-                     */
-                    else {
-                        result += sysService.doFlowAction(dbAudit);
-                        auditResult = AuditFlowConstant.audit_finish;
-                    }
+                } else {
+                    refuseAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
                 }
 
                 /**
-                 * 审核未通过，插入节点
+                 * 设置拒绝节点对应动作，处理相应的业务逻辑
                  */
-                else {
-                    Audit refuseAudit = null;
-                    if (audit.getToRefuseUser() != null) {
-                        refuseAudit = new Audit();
+                result += sysService.doAction(AuditFlowConstant.flow_direct_backwards, refuseAudit);
 
-                        refuseAudit.setNo(dbAudit.getNo());
-                        refuseAudit.setEntity(dbAudit.getEntity());
-                        refuseAudit.setEntityId(dbAudit.getEntityId());
-
-                        refuseAudit.setCompany(dbAudit.getCompany());
-                        refuseAudit.setUser(audit.getToRefuseUser());
-                        refuseAudit.setPreFlowAuditNo(dbAudit.getPreFlowAuditNo());
-
-                        dbAudit.setToRefuseUser(audit.getToRefuseUser());
-                        refuseAudit.setPost(sysService.getPostByAuditUser(dbAudit));
-
-                        refuseAudit = sysService.getAudit(refuseAudit);
-                        refuseAudit.setRefusePost(dbAudit.getPost());
-                        refuseAudit.setRefuseUser(dbAudit.getUser());
-                        refuseAudit.setName(dbAudit.getName());
-                        refuseAudit.setState(AuditFlowConstant.audit_state_todo);
-
-
-                    } else {
-                        refuseAudit = sysService.getNextAudit(dbAudit, AuditFlowConstant.flow_direct_backwards);
-                    }
-
-                    /**
-                     * 设置拒绝节点对应动作，处理相应的业务逻辑
-                     */
-                    result += sysService.doAction(AuditFlowConstant.flow_direct_backwards, refuseAudit);
-
-                    result += sysDao.save(refuseAudit);
-                    auditResult = AuditFlowConstant.audit_deny;
-                }
+                result += sysDao.save(refuseAudit);
+                auditResult = AuditFlowConstant.audit_deny;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -613,14 +697,14 @@ public class SysController {
      * @param response
      * @param json
      */
-    @RequestMapping(value = "/signIn", method = {RequestMethod.GET, RequestMethod.POST})
+    @RequestMapping(value = "/user/signIn", method = {RequestMethod.GET, RequestMethod.POST})
     public void signIn(HttpServletResponse response, @RequestBody String json) {
         logger.info("signIn start, parameter:" + json);
 
         String result = CommonConstant.fail;
 
         Map<String, String> signInInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
-        String username = signInInfo.get("username");
+        String username = signInInfo.get(CommonConstant.username);
 
         long waitTime = signInUtil.userWait(username);
         if (waitTime > 0) {
@@ -629,7 +713,7 @@ public class SysController {
             return ;
         }
 
-        String salt = (String)sysDao.getFromRedis("salt_" + signInInfo.get("sessionId"));
+        String salt = (String)sysDao.getFromRedis(CommonConstant.salt + CommonConstant.underline + signInInfo.get(CommonConstant.sessionId));
         if (salt == null) {
             result = "加密信息丢失，请刷新后再次登录";
             writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
@@ -681,8 +765,8 @@ public class SysController {
          */
         if (signInUtil.isUserExist(username) && result.equals(CommonConstant.success)) {
             if (signInUtil.getSessionIdByUser(username) != null) {
-                if (!signInUtil.getSessionIdByUser(username).equals(signInInfo.get("sessionId"))) {
-                    sysDao.storeToRedis(username + "_" + signInInfo.get("sessionId"), dbUsers.get(0), signInUtil.sessionTime);
+                if (!signInUtil.getSessionIdByUser(username).equals(signInInfo.get(CommonConstant.sessionId))) {
+                    sysDao.storeToRedis(username + CommonConstant.underline + signInInfo.get(CommonConstant.sessionId), dbUsers.get(0), signInUtil.sessionTime);
                     result = username + "已经登录";
                 }
             }
@@ -705,8 +789,8 @@ public class SysController {
             }
 
             sysDao.storeToRedis(username, dbUsers.get(0), signInUtil.sessionTime);
-            sysDao.storeToRedis(username + "_resources", resources, signInUtil.sessionTime);
-            signInUtil.setUser(signInInfo.get("sessionId"), username);
+            sysDao.storeToRedis(username + CommonConstant.underline + CommonConstant.resources, resources, signInUtil.sessionTime);
+            signInUtil.setUser(signInInfo.get(CommonConstant.sessionId), username);
         }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
@@ -717,20 +801,20 @@ public class SysController {
     /**
      * 用户注销
      */
-    @RequestMapping(value="/signOut")
+    @RequestMapping(value="/user/signOut")
     public void signOut(HttpServletResponse response,  @RequestBody String json) {
         logger.info("signOut start, parameter:" + json);
 
         String result = CommonConstant.fail;
 
         Map<String, String> signOutInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
-        String sessionId =  signOutInfo.get("sessionId");
+        String sessionId =  signOutInfo.get(CommonConstant.sessionId);
 
-        String username = (String)sysDao.getFromRedis("sessionId_" + sessionId);
+        String username = (String)sysDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + sessionId);
         if (username != null) {
             sysDao.deleteFromRedis(username);
-            sysDao.deleteFromRedis(username + "_resources");
-            sysDao.deleteFromRedis("salt_" + sessionId);
+            sysDao.deleteFromRedis(username + CommonConstant.underline + CommonConstant.resources);
+            sysDao.deleteFromRedis(CommonConstant.salt + CommonConstant.underline + sessionId);
             signInUtil.removeUser(username);
 
             logger.info(username + "注销");
@@ -745,29 +829,52 @@ public class SysController {
     /**
      * 处理重复登录
      */
-    @RequestMapping(value="/hasLoginDeal")
+    @RequestMapping(value="/user/hasLoginDeal")
     public void hasLoginDeal(HttpServletResponse response,  @RequestBody String json) {
         logger.info("hasLoginDeal start, parameter:" + json);
 
         String result = CommonConstant.fail;
 
         Map<String, String> dealInfo = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
-        String username = dealInfo.get("username");
-        String sessionId = dealInfo.get("sessionId");
-        String oldSessionId = dealInfo.get("oldSessionId");
+        String username = dealInfo.get(CommonConstant.username);
+        String sessionId = dealInfo.get(CommonConstant.sessionId);
+        String oldSessionId = dealInfo.get(CommonConstant.oldSessionId);
 
-        String tempUserKey = username + "_" +  oldSessionId;
+        String tempUserKey = username + CommonConstant.underline +  oldSessionId;
 
         if (dealInfo.get("dealType").equals("againSignIn")) {
             User user = (User) sysDao.getFromRedis(tempUserKey);
 
             if (user != null) {
                 //移除之前登录的用户
-                sysDao.deleteFromRedis("salt_" + oldSessionId);
+                sysDao.deleteFromRedis(CommonConstant.salt + CommonConstant.underline + oldSessionId);
+                sysDao.deleteFromRedis(username + CommonConstant.underline + CommonConstant.resources);
                 signInUtil.removeUser(username);
 
-                sysDao.storeToRedis(username, user, signInUtil.sessionTime);
+                //重新设置登录信息
+                User dbUser = (User) sysDao.queryById(user.getId(), user.getClass());
+                Set<Post> posts = new HashSet<>();
+                for (Post post : dbUser.getPosts()) {
+                    posts.add((Post)sysDao.queryById(post.getId(), Post.class));
+                }
+                dbUser.setPosts(posts);
+
+                String resources = "";
+                for (Post post : dbUser.getPosts()) {
+                    for (PrivilegeResource resource : post.getPrivilegeResources()) {
+                        resources += resource.getUri() + ",";
+                    }
+
+                    /**
+                     * 由于已经获得了权限，移除对象里的权限
+                     */
+                    post.setPrivilegeResources(null);
+                }
+
+                sysDao.storeToRedis(username, dbUser, signInUtil.sessionTime);
+                sysDao.storeToRedis(username + CommonConstant.underline + CommonConstant.resources, resources, signInUtil.sessionTime);
                 signInUtil.setUser(sessionId, username);
+
 
                 //移除临时登录用户
                 sysDao.deleteFromRedis(tempUserKey);
@@ -784,7 +891,7 @@ public class SysController {
     }
 
     /**
-     * 处理重复登录
+     * 根据 uri 获取用户 post
      */
     @RequestMapping(value="/getPostByUri")
     public void getPostByUri(HttpServletResponse response,  @RequestBody String json) {

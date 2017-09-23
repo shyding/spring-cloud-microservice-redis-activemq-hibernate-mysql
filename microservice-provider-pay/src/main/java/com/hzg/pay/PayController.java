@@ -340,20 +340,18 @@ public class PayController {
     /**
      * 获取一码付二维码图像
      * 二维码支付
-     * @param orderNo 订单号
-     * @param amount  款金额
+     * @param payNo 支付订单号
      * @return 二维码图像
      */
     @RequestMapping(value = "/alipay/payQrcode.jpg", produces = "image/jpeg;charset=UTF-8", method = RequestMethod.POST)
-    public byte[] payQrcode(String orderNo, BigDecimal amount, HttpServletRequest request) throws IOException {
+    public byte[] payQrcode(String payNo, HttpServletRequest request) throws IOException {
         //获取对应的支付账户操作工具（可根据账户id）
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         //这里为需要生成二维码的地址
         StringBuffer url = request.getRequestURL();
         url = new StringBuffer(url.substring(0, url.lastIndexOf(request.getRequestURI())));
         url .append("/alipay/toAlipay?");
-        url.append("orderNo=").append(orderNo).append("&");
-        url.append("amount=").append(amount);
+        url.append("payNo=").append(payNo);
 
         ImageIO.write(MatrixToImageWriter.writeInfoToJpgBuff(url.toString()), "JPEG", baos);
         return baos.toByteArray();
@@ -362,23 +360,26 @@ public class PayController {
     /**
      *
      * 支付宝转跳
-     * @param orderNo 订单号
-     * @param amount 付款金额
+     * @param payNo 支付订单号
      * @return 支付宝与微信平台的判断
      */
     @RequestMapping(value = "/alipay/toAlipay", produces = "text/html;charset=UTF-8")
-    public String toAlipay(String orderNo, BigDecimal amount, HttpServletRequest request) throws IOException {
+    public String toAlipay(String payNo, HttpServletRequest request) throws IOException {
         StringBuilder html = new StringBuilder();
 
         //这里为WAP支付的地址，根据需求自行修改
         StringBuffer url = request.getRequestURL();
         url = new StringBuffer(url.substring(0, url.lastIndexOf(request.getRequestURI())));
 
+        Pay pay = new Pay();
+        pay.setNo(payNo);
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
         html.append("<html><head></head><form name='alipayForm' action='/pay/alipay/pay' method='post'>" +
-                "<input type='text' name='WIDout_trade_no' value='" + orderNo + "'>" +
-                "<input type='text' name='WIDsubject' value='" + orderNo + "'s products'>" +
-                "<input type='text' name='WIDtotal_fee' value='" + amount + "'>" +
-                "<input type='text' name='WIDbody' value=''>" +
+                "<input type='text' name='WIDout_trade_no' value='" + dbPay.getNo() + "'>" +
+                "<input type='text' name='WIDsubject' value='" + dbPay.getEntity() + "_" + dbPay.getEntityNo() + "'>" +
+                "<input type='text' name='WIDtotal_fee' value='" + dbPay.getAmount() + "'>" +
+                "<input type='text' name='WIDbody' value='alipay qrcode pay'>" +
                 "</form><body><script type=\"text/javascript\">\n");
 
         html.append("if(isAliPay()){\n");

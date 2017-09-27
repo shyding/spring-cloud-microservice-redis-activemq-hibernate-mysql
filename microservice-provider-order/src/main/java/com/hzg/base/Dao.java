@@ -581,7 +581,9 @@ public class Dao {
             fieldNickTableName = partSql;
         }
 
-        List fieldValues = queryBySql(selectSql.replace("t.*", " distinct " + fieldNickTableName+".*"), fieldActualClazz);
+        selectSql = selectSql.replace("t.*", " distinct " + fieldNickTableName+".*").split(" order by ")[0] + " order by " + fieldNickTableName + ".id asc";
+
+        List fieldValues = queryBySql(selectSql, fieldActualClazz);
         relateObjects.clear();
         for (Object fieldValue : fieldValues) {
             relateObjects.add(fieldValue);

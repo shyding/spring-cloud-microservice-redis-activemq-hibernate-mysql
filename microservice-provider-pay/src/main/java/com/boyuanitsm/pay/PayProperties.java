@@ -64,6 +64,7 @@ public class PayProperties {
         private String alipayPublicKey;
         private String notifyUrl;
         private String returnUrl;
+        private String refundNotifyUrl;
         private String signType;
         private String logPath;
         private String inputCharset;
@@ -116,6 +117,14 @@ public class PayProperties {
 
         public void setReturnUrl(String returnUrl) {
             this.returnUrl = returnUrl;
+        }
+
+        public String getRefundNotifyUrl() {
+            return refundNotifyUrl;
+        }
+
+        public void setRefundNotifyUrl(String refundNotifyUrl) {
+            this.refundNotifyUrl = refundNotifyUrl;
         }
 
         public String getSignType() {
@@ -173,6 +182,7 @@ public class PayProperties {
         private String useThreadToDoReport;
         private String ip;
         private String notifyUrl;
+        private String refundNotifyUrl;
 
         public String getNotifyUrl() {
             return notifyUrl;
@@ -244,6 +254,14 @@ public class PayProperties {
 
         public void setIp(String ip) {
             this.ip = ip;
+        }
+
+        public String getRefundNotifyUrl() {
+            return refundNotifyUrl;
+        }
+
+        public void setRefundNotifyUrl(String refundNotifyUrl) {
+            this.refundNotifyUrl = refundNotifyUrl;
         }
     }
 

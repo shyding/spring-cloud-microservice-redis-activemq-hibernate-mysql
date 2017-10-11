@@ -1,12 +1,14 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
+import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
 import com.boyuanitsm.pay.alipay.bean.SyncReturn;
 import com.boyuanitsm.pay.alipay.util.AlipayMobilePaymentSign;
 import com.boyuanitsm.pay.alipay.util.AlipayNotify;
 import com.boyuanitsm.pay.alipay.util.AlipaySubmit;
 import com.boyuanitsm.pay.unionpay.Acp;
 import com.boyuanitsm.pay.unionpay.b2c.FrontConsume;
+import com.boyuanitsm.pay.unionpay.b2c.PayNotify;
 import com.boyuanitsm.pay.unionpay.common.AcpService;
 import com.boyuanitsm.pay.unionpay.common.ConsumeStatusQuery;
 import com.boyuanitsm.pay.unionpay.error.SignValidateFailException;
@@ -18,13 +20,13 @@ import com.boyuanitsm.pay.wxpay.bean.SimpleOrder;
 import com.boyuanitsm.pay.wxpay.business.UnifiedOrderBusiness;
 import com.boyuanitsm.pay.wxpay.common.Signature;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
+import com.boyuanitsm.pay.wxpay.protocol.RefundResultCallback;
+import com.boyuanitsm.pay.wxpay.protocol.ResultCallback;
 import com.boyuanitsm.pay.wxpay.protocol.downloadbill_protocol.DownloadBillReqData;
 import com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol.OrderQueryReqData;
-import com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol.OrderQueryResData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundResData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryReqData;
-import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryResData;
 import com.boyuanitsm.pay.wxpay.protocol.unified_order_protocol.UnifiedOrderReqData;
 import com.boyuanitsm.pay.wxpay.protocol.unified_order_protocol.UnifiedOrderResData;
 import com.boyuanitsm.pay.wxpay.service.DownloadBillService;
@@ -35,7 +37,6 @@ import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.*;
 import net.glxn.qrgen.javase.QRCode;
 import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +50,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
@@ -200,11 +200,15 @@ public class PayController {
 
         Map<String, String> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType());
 
+        if (entity.equalsIgnoreCase(Pay.class.getSimpleName())) {
+            recordsSum =  payDao.recordsSum(Pay.class, queryParameters);
+        }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
 
         logger.info("recordsSum end");
     }
+
 
 
 
@@ -219,176 +223,258 @@ public class PayController {
     /**
      * 支付宝即时到账交易接口快速通道
      *
-     * @param WIDout_trade_no 商户订单号
-     * @param WIDsubject 商品名称
-     * @param WIDtotal_fee 付款金额
-     * @param WIDbody 商品描述
+     * @param no 支付号
+     * @param payType
      * @param response
      * @throws IOException
      */
-    @RequestMapping(value = "/alipay/pay", method = RequestMethod.POST)
-    public void pay(String WIDout_trade_no, String WIDsubject, String WIDtotal_fee, String WIDbody, HttpServletResponse response) throws IOException {
-        String sHtmlText = AlipaySubmit.buildRequest(WIDout_trade_no, WIDsubject, WIDtotal_fee, WIDbody);
-        response.setHeader("Content-Type", "text/html;charset=UTF-8");
-        response.getWriter().println(sHtmlText);
+    @RequestMapping(value = "/alipay/pay", produces = "text/html;charset=UTF-8", method = RequestMethod.POST)
+    public void alipay(String no, String payType, HttpServletResponse response) {
+        logger.info("alipay, no:" + no + ",payType:" + payType);
+
+        String payHtml = null;
+
+        Pay pay = new Pay();
+        pay.setNo(no);
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+        if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            payHtml = AlipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), payType);
+        } else {
+            payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
+        }
+
+        writer.write(response, payHtml);
     }
 
     /**
      * 支付宝即时到账批量退款有密接口快速通道
      *
-     * @param WIDbatch_no 退款批次号
-     * @param WIDbatch_num 退款笔数
-     * @param WIDdetail_data 退款详细数据
+     * @param no 退款编号
      * @param response
      * @throws IOException
      */
-    @RequestMapping(value = "/alipay/refund", method = RequestMethod.POST)
-    public void refund(String WIDbatch_no, String WIDbatch_num, String WIDdetail_data, HttpServletResponse response) throws IOException {
-        String sHtmlText = AlipaySubmit.buildRequest(WIDbatch_no, WIDbatch_num, WIDdetail_data);
-        response.setHeader("Content-Type", "text/html;charset=UTF-8");
-        response.getWriter().println(sHtmlText);
+    @RequestMapping(value = "/alipay/refund", produces = "text/html;charset=UTF-8", method = RequestMethod.POST)
+    public void alipayRefund(String no, HttpServletResponse response) {
+        logger.info("alipayRefund, no:" + no);
+
+        String refundHtml = "";
+
+        Refund refund = new Refund();
+        refund.setNo(no);
+        Refund dbRefund = (Refund)payDao.query(refund).get(0);
+
+        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+            refundHtml = AlipaySubmit.buildRequest(dbRefund.getNo(), "1",
+                    dbRefund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
+                            PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+        } else {
+            refundHtml = "退款记录：" + no + "不是未退款状态，不能退款";
+        }
+
+        writer.write(response, refundHtml);
     }
 
     /**
-     * 支付宝服务器异步通知页面
+     * 支付宝支付服务器异步通知
      *
-     * @param ayncNotify
-     * @param request
+     * @param json
      * @return
      */
     @RequestMapping(value = "/alipay/ayncNotify", method = RequestMethod.POST)
-    @ResponseBody
-    public String ayncNotify(AyncNotify ayncNotify, HttpServletRequest request) {
-        logger.info("Alipay aync notify: {}" + ayncNotify.toString());
+    public void alipayAyncNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipayAyncNotify, json" + json);
+        String result = CommonConstant.fail;
+
         // 验证签名
-        if (AlipayNotify.verifyRequest(request.getParameterMap())) {
-            //——请根据您的业务逻辑来编写程序（以下代码仅作参考）——
+        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success!");
 
-            if(ayncNotify.getTrade_status().equals("TRADE_FINISHED")){
-                //判断该笔订单是否在商户网站中已经做过处理
-                //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
-                //请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
-                //如果有做过处理，不执行商户的业务程序
+            AyncNotify ayncNotify = writer.gson.fromJson(json, new TypeToken<AyncNotify>(){}.getType());
 
-                //注意：
-                //退款日期超过可退款期限后（如三个月可退款），支付宝系统发送该交易状态通知
-            } else if (ayncNotify.getTrade_status().equals("TRADE_SUCCESS")){
-                //判断该笔订单是否在商户网站中已经做过处理
-                //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
-                //请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
-                //如果有做过处理，不执行商户的业务程序
+            String no = ayncNotify.getOut_trade_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
 
-                //注意：
-                //付款完成后，支付宝系统发送该交易状态通知
+                if(ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
+                        ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_success)){
+                    //判断该笔订单是否在商户网站中已经做过处理
+                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+                    //请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
+                    //如果有做过处理，不执行商户的业务程序
+                    //注意：退款日期超过可退款期限后（如三个月可退款），支付宝系统发送 TRADE_FINISHED 状态通知.
+                    //付款完成后，支付宝系统发送 TRADE_SUCCESS 状态通知
+
+                    result += payService.processAlipayNotify(ayncNotify);
+                }
+
+                payDao.deleteFromRedis(processKey);
             }
 
-            //——请根据您的业务逻辑来编写程序（以上代码仅作参考）——
-            logger.info("Verify aync notify success!");
-            return "success";
         } else {
-            logger.error("Verify aync notify fail!");
-            return "fail";
+            logger.info("verify fail!");
         }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        writer.write(response, result);
     }
 
     /**
-     * 支付宝页面跳转同步通知页面
+     * 支付宝支付页面跳转同步通知页面
      *
-     * @param ayncReturn
-     * @param request
+     * @param json
      * @return
      */
     @RequestMapping(value = "/alipay/syncReturn", method = RequestMethod.GET)
-    public String syncReturn(SyncReturn ayncReturn, HttpServletRequest request) {
-        logger.info("Alipay sync return: {}" + ayncReturn.toString());
+    public void alipaySyncReturn(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipaySyncReturn, json:" + json);
+        String result = CommonConstant.fail;
+
+        SyncReturn syncReturn = writer.gson.fromJson(json, new TypeToken<SyncReturn>(){}.getType());
+
         // 验证签名
-        if (AlipayNotify.verifyRequest(request.getParameterMap())) {
-            //——请根据您的业务逻辑来编写程序（以下代码仅作参考）——
+        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success");
 
-            if(ayncReturn.getTrade_status().equals("TRADE_FINISHED") || ayncReturn.getTrade_status().equals("TRADE_SUCCESS")){
-                //判断该笔订单是否在商户网站中已经做过处理
-                //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
-                //如果有做过处理，不执行商户的业务程序
+            String no = syncReturn.getOut_trade_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                if(syncReturn.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
+                        syncReturn.getTrade_status().equals(PayConstants.alipay_trade_success)){
+                    //判断该笔订单是否在商户网站中已经做过处理
+                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+                    //如果有做过处理，不执行商户的业务程序
+
+                    result += payService.processAlipayReturn(syncReturn);
+                }
+
+                payDao.deleteFromRedis(processKey);
             }
-            //——请根据您的业务逻辑来编写程序（以上代码仅作参考）——
 
-            logger.info("Verify sync notify success!");
-            //该页面可做页面美工编辑
-            return ayncReturn.toString();
         } else {
-            logger.info("Verify sync notify fail!");
-            //该页面可做页面美工编辑
-            return "验证支付宝签名失败";
+            logger.info("verify fail!");
         }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        Pay pay = new Pay();
+        pay.setNo(syncReturn.getOut_trade_no());
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result +
+                "\", \"" + CommonConstant.id + "\":" + dbPay.getEntityId() + ",\"" + CommonConstant.entity +"\":\"" + dbPay.getEntity() + "\"}");
     }
 
     /**
-     * 移动支付 签名机制
+     * 支付宝服务器退款异步通知页面
      *
-     * @param outTradeNO 商户网站唯一订单号
-     * @param subject 商品名称
-     * @param totalFee total_fee
-     * @return orderStr 主要包含商户的订单信息，key=“value”形式，以&连接。
-     * @throws UnsupportedEncodingException
+     * @param json
+     * @return
      */
-    @RequestMapping(value = "/alipay/mobilePaymentSign", method = RequestMethod.GET)
-    public String mobilePaymentSign(String outTradeNO, String subject, String totalFee) throws UnsupportedEncodingException {
-        return AlipayMobilePaymentSign.pay(outTradeNO, subject, totalFee);
-    }
+    @RequestMapping(value = "/alipay/refundAyncNotify", method = RequestMethod.POST)
+    public void alipayRefundAyncNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipayRefundAyncNotify, json:" + json);
+        String result = CommonConstant.fail;
 
+        // 验证签名
+        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success!");
+
+            RefundAyncNotify refundAyncNotify = writer.gson.fromJson(json, new TypeToken<RefundAyncNotify>(){}.getType());
+
+            String no = refundAyncNotify.getBatch_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                result += payService.processAlipayRefundNotify(refundAyncNotify);
+
+                payDao.deleteFromRedis(processKey);
+            }
+
+        } else {
+            logger.info("verify fail!");
+        }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        writer.write(response, result);
+    }
 
     /**
      * 获取一码付二维码图像
      * 二维码支付
-     * @param payNo 支付订单号
+     * @param no 支付号
      * @return 二维码图像
      */
-    @RequestMapping(value = "/alipay/payQrcode.jpg", produces = "image/jpeg;charset=UTF-8", method = RequestMethod.POST)
-    public byte[] payQrcode(String payNo, HttpServletRequest request) throws IOException {
+    @RequestMapping(value = "/alipay/payQrcode", produces = "image/jpeg;charset=UTF-8", method = RequestMethod.GET)
+    public void alipayPayQrcode(String no, HttpServletRequest request, HttpServletResponse response) {
+        logger.info("alipayPayQrcode, no:" + no);
+
         //获取对应的支付账户操作工具（可根据账户id）
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         //这里为需要生成二维码的地址
         StringBuffer url = request.getRequestURL();
         url = new StringBuffer(url.substring(0, url.lastIndexOf(request.getRequestURI())));
         url .append("/alipay/toAlipay?");
-        url.append("payNo=").append(payNo);
+        url.append("no=").append(no);
+        url.append("&payType=2");
 
-        ImageIO.write(MatrixToImageWriter.writeInfoToJpgBuff(url.toString()), "JPEG", baos);
-        return baos.toByteArray();
+        try {
+            ImageIO.write(MatrixToImageWriter.writeInfoToJpgBuff(url.toString()), "JPEG", baos);
+        } catch (IOException e) {
+            e.printStackTrace();
+            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        }
+        writer.writeBytes(response, baos.toByteArray());
     }
 
     /**
      *
      * 支付宝转跳
-     * @param payNo 支付订单号
+     * @param no 支付号
      * @return 支付宝与微信平台的判断
      */
-    @RequestMapping(value = "/alipay/toAlipay", produces = "text/html;charset=UTF-8")
-    public String toAlipay(String payNo, HttpServletRequest request) throws IOException {
-        StringBuilder html = new StringBuilder();
+    @RequestMapping(value = "/alipay/toAlipay", produces = "text/html;charset=UTF-8", method = RequestMethod.GET)
+    public void toAlipay(String no, String payType, HttpServletResponse response) {
+        logger.info("toAlipay, no:" + no + ", payType:" + payType);
 
-        //这里为WAP支付的地址，根据需求自行修改
-        StringBuffer url = request.getRequestURL();
-        url = new StringBuffer(url.substring(0, url.lastIndexOf(request.getRequestURI())));
+        StringBuilder payHtml = new StringBuilder();
 
-        Pay pay = new Pay();
-        pay.setNo(payNo);
-        Pay dbPay = (Pay)payDao.query(pay).get(0);
-
-        html.append("<html><head></head><form name='alipayForm' action='/pay/alipay/pay' method='post'>" +
-                "<input type='text' name='WIDout_trade_no' value='" + dbPay.getNo() + "'>" +
-                "<input type='text' name='WIDsubject' value='" + dbPay.getEntity() + "_" + dbPay.getEntityNo() + "'>" +
-                "<input type='text' name='WIDtotal_fee' value='" + dbPay.getAmount() + "'>" +
-                "<input type='text' name='WIDbody' value='alipay qrcode pay'>" +
+        payHtml.append("<html><head></head><form name='alipayForm' action='/pay/alipay/pay' method='post'>" +
+                "<input type='text' name='no' value='" + no + "'>" +
+                "<input type='text' name='payType' value='" + payType +"'>" +
                 "</form><body><script type=\"text/javascript\">\n");
 
-        html.append("if(isAliPay()){\n");
-        html.append("document.forms['alipayForm'].submit();");
-        html.append("\n } else {");
-        html.append("{\n alert('请使用支付宝App扫码'+window.navigator.userAgent.toLowerCase());}\n }");
+        payHtml.append("if(isAliPay()){\n");
+        payHtml.append("document.forms['alipayForm'].submit();");
+        payHtml.append("\n } else {");
+        payHtml.append("{\n alert('请使用支付宝App扫码'+window.navigator.userAgent.toLowerCase());}\n }");
 
         //判断是否为支付宝
-        html.append("function isAliPay(){\n" +
+        payHtml.append("function isAliPay(){\n" +
                 " var ua = window.navigator.userAgent.toLowerCase();\n" +
                 " if(ua.match(/AlipayClient/i) =='alipayclient'){\n" +
                 "  return true;\n" +
@@ -396,8 +482,24 @@ public class PayController {
                 "  return false;\n" +
                 "}</script><body></html>");
 
-        return html.toString();
+        writer.write(response, payHtml.toString());
     }
+
+/*
+    *//**
+     * 移动支付 签名机制
+     *
+     * @param outTradeNO 商户网站唯一订单号
+     * @param subject 商品名称
+     * @param totalFee total_fee
+     * @return orderStr 主要包含商户的订单信息，key=“value”形式，以&连接。
+     * @throws UnsupportedEncodingException
+     *//*
+    @RequestMapping(value = "/alipay/mobilePaymentSign", method = RequestMethod.GET)
+    public String mobilePaymentSign(String outTradeNO, String subject, String totalFee) throws UnsupportedEncodingException {
+        return AlipayMobilePaymentSign.pay(outTradeNO, subject, totalFee);
+    }*/
+
 
 
 
@@ -407,43 +509,46 @@ public class PayController {
      */
 
     private UnifiedOrderBusiness unifiedOrderBusiness = new UnifiedOrderBusiness();
-    private OrderQueryService orderQueryService = new OrderQueryService();
     private RefundService refundService = new RefundService();
+    private OrderQueryService orderQueryService = new OrderQueryService();
     private RefundQueryService refundQueryService = new RefundQueryService();
-    private DownloadBillService downloadBillService = new DownloadBillService();
+    /*private DownloadBillService downloadBillService = new DownloadBillService();*/
 
     /**
      * 统一下单
      * 除被扫支付场景以外，商户系统先调用该接口在微信支付服务后台生成预支付交易单，返回正确的预支付交易回话标识后再按扫码、JSAPI、APP等不同场景生成交易串调起支付。
      *
-     * @param productId 产品ID
+     * @param no 支付号
      * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_1">https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_1</a>
      */
-    @RequestMapping(value = "/wechat/unifiedOrder", method = RequestMethod.GET)
-    public void unifiedOrder(HttpServletResponse response, String productId) throws IOException {
+    @RequestMapping(value = "/wechat/unifiedOrder", produces = "image/jpeg;charset=UTF-8", method = RequestMethod.GET)
+    public void unifiedOrder(HttpServletResponse response, String no)  {
+        logger.info("unifiedOrder, no:" + no);
+
         // 调用统一下单API
         try {
-            UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData(getOrderById(productId)));
-            logger.debug("订单信息: {}" + resData.toString());
-            // 获得二维码URL
-            String qrcodeUrl = resData.getCode_url();
-            // 生成二维码字节数组输出流
-            ByteArrayOutputStream stream = QRCode.from(qrcodeUrl).stream();
-            // 输出
-            response.getOutputStream().write(stream.toByteArray());
+            Pay pay = new Pay();
+            pay.setNo(no);
+            Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+            if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+                UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData
+                        (new SimpleOrder("hzg wechat qrcode pay", dbPay.getNo(), (int)(dbPay.getAmount()*100f), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), "2")));
+                logger.info("订单信息: {}" + resData.toString());
+                // 获得二维码URL
+                String qrcodeUrl = resData.getCode_url();
+                // 生成二维码字节数组输出流
+                ByteArrayOutputStream stream = QRCode.from(qrcodeUrl).stream();
+                // 输出
+                writer.writeBytes(response, stream.toByteArray());
+            } else {
+                logger.info("支付记录：" + no + "不是未支付状态，不能支付");
+                response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            }
+
         } catch (Exception e) {
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    /**
-     * 获得简单订单(测试)
-     *
-     * @param productId 商户产品ID
-     * @return 简单订单(测试)
-     */
-    private SimpleOrder getOrderById(String productId) {
-        return new SimpleOrder("WxPay Text", "wxtest" + System.currentTimeMillis(), 1, productId);
     }
 
     /**
@@ -455,83 +560,130 @@ public class PayController {
      * 特别提醒：商户系统对于支付结果通知的内容一定要做签名验证，防止数据泄漏导致出现“假通知”，造成资金损失。
      * 技术人员可登进微信商户后台扫描加入接口报警群。
      *
-     * @param request the http request
+     * @param responseString
      * @return success or fail
      * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_7">https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_7</a>
      */
     @RequestMapping(value = "/wechat/payResultCallback", method = RequestMethod.POST)
-    public String payResultCallback(HttpServletRequest request) throws IOException {
-        String responseString = IOUtils.toString(request.getInputStream());
-        logger.debug("Pay result callback response string is: {}" + responseString);
+    public void wechatPayResultCallback(@RequestBody String responseString, HttpServletResponse response)  {
+        logger.info("wechatPayResultCallback, responseString:" + responseString);
+        String result = CommonConstant.fail;
+
         try {
             boolean isSign = Signature.checkIsSignValidFromResponseString(responseString);
             if (isSign) {
-                // TODO 检查对应业务数据的状态，判断该通知是否已经处理过, 如果没有处理过再进行处理，如果处理过直接返回结果成功
-                boolean isDealWith = false;
-                if (isDealWith) {
-                    // TODO 处理支付成功的业务逻辑
-                    UnifiedOrderReqData reqData = (UnifiedOrderReqData) XMLParser.getObjectFromXML(responseString, UnifiedOrderReqData.class);
-                } else {
-                    // 处理过直接返回结果成功
-                    return XMLParser.getXMLFromObject(new Result("SUCCESS", "OK"));
+                logger.info("verify success!");
+                ResultCallback reqData = (ResultCallback) XMLParser.getObjectFromXML(responseString, ResultCallback.class);
+
+                String no = reqData.getOut_trade_no();
+                String processKey = PayConstants.process_notify + no;
+                if (payDao.getFromRedis(processKey) == null) {
+                    payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                    result += payService.processWechatCallback(no, reqData);
+
+                    payDao.deleteFromRedis(processKey);
                 }
             } else {
-                // 签名验证失败, "假通知"
-                logger.warn("签名验证失败: {}" + responseString);
-                return XMLParser.getXMLFromObject(new Result("FAIL", "Sign Fail"));
+                logger.info("verify fail: {}" + responseString);
+                result += "sign fail";
+            }
+
+        } catch (Exception e) {
+            logger.info("pay_result_callback error!", e);
+            result += "code exception fail";
+        }
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = XMLParser.getXMLFromObject(new Result(CommonConstant.success.toUpperCase(), CommonConstant.OK));
+        } else {
+            result = XMLParser.getXMLFromObject(new Result(CommonConstant.fail.toUpperCase(), result));
+        }
+
+        writer.write(response, result);
+    }
+
+
+    /**
+     * 申请退款
+     * 当交易发生之后一段时间内，由于买家或者卖家的原因需要退款时，卖家可以通过退款接口将支付款退还给买家，微信支付将在收到退款请求并且验证成功之后，按照退款规则将支付款按原路退到买家帐号上。
+     * 注意：
+     * 1、交易时间超过一年的订单无法提交退款；
+     * 2、微信支付退款支持单笔交易分多次退款，多次退款需要提交原支付订单的商户订单号和设置不同的退款单号。一笔退款失败后重新提交，要采用原来的退款单号。总退款金额不能超过用户实际支付金额。
+     *
+     * @param no 退款编号
+     * @param response
+     * @return
+     */
+    @RequestMapping(value = "/wechat/refund", method = RequestMethod.POST)
+    public void wechatRefund(String no, HttpServletResponse response) {
+        logger.info("wechatRefund, no:" + no);
+
+        String result = null;
+
+        Refund refund = new Refund();
+        refund.setNo(no);
+        Refund dbRefund = (Refund)payDao.query(refund).get(0);
+
+        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+            RefundResData refundResData = null;
+            try {
+                refundResData = refundService.refund(new RefundReqData(dbRefund.getPay().getBankBillNo(),
+                        dbRefund.getPay().getNo(), dbRefund.getNo(), (int)(dbRefund.getAmount()*100F), (int)(dbRefund.getAmount()*100F)));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (refundResData != null && refundResData.getReturn_code().equalsIgnoreCase(CommonConstant.success) &&
+                    refundResData.getResult_code().equalsIgnoreCase(CommonConstant.success)) {
+                result = "{\"" + CommonConstant.result + "\":\"退款记录：" + no + "退款申请完成\"}";
+            } else {
+                result = "{\"" + CommonConstant.result + "\":\"退款记录：" + no + "申请退款失败,请联系工作人员处理\"}";
+            }
+
+        } else {
+            result = "{\"" + CommonConstant.result + "\":\"退款记录：" + no + "不是未退款状态，不能退款\"}";
+        }
+
+        writer.writeStringToJson(response, result);
+    }
+
+    @RequestMapping(value = "/wechat/refundResultCallback", method = RequestMethod.POST)
+    public void wechatRefundResultCallback(@RequestBody String responseString, HttpServletResponse response)  {
+        logger.info("wechatRefundResultCallback, responseString:" + responseString);
+        String result = CommonConstant.fail;
+
+        try {
+            /**
+             * 解密退款数据
+             */
+            RefundResultCallback reqData = payService.decryptWechatRefundResult(responseString);
+
+            String no = reqData.getOut_trade_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                result += payService.processWechatRefundCallback(no, reqData);
+
+                payDao.deleteFromRedis(processKey);
             }
         } catch (Exception e) {
-            logger.error("pay_result_callback error!", e);
-            return XMLParser.getXMLFromObject(new Result("FAIL", "Server Error"));
+            logger.info("pay_result_callback error!", e);
+            result += "code exception fail";
         }
-        return XMLParser.getXMLFromObject(new Result("SUCCESS", "OK"));
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = XMLParser.getXMLFromObject(new Result(CommonConstant.success.toUpperCase(), CommonConstant.OK));
+        } else {
+            result = XMLParser.getXMLFromObject(new Result(CommonConstant.fail.toUpperCase(), result));
+        }
+
+        writer.write(response, result);
     }
 
-    /**
-     * 获得App 调起支付需要的请求参数
-     * APP端调起支付的参数列表
-     *
-     * @param productId 产品ID
-     * @return 调起支付需要的请求参数
-     * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_12&index=2">https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_12&index=2</a>
-     */
-    @RequestMapping(value = "/wechat/appPayParams", method = RequestMethod.GET)
-    public AppPayParams appPayParams(String productId, HttpServletResponse response) {
-        try {
-            UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData("WxPay Text", 1, "wxtest" + System.currentTimeMillis()));
-            logger.debug("订单信息: {}" + resData.toString());
-            // 获得预支付交易会话ID
-            String prepay_id = resData.getPrepay_id();
-            return new AppPayParams(prepay_id);
-        } catch (Exception e) {
-            logger.error("app_pay_params error!", e);
-            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-            return null;
-        }
-    }
-
-    /**
-     * 获得H5 调起支付需要的请求参数
-     * H5端调起支付的参数列表
-     *
-     * @param openId openid
-     * @return 调起支付需要的请求参数
-     * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=7_7&index=6">https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=7_7&index=6</a>
-     */
-    @RequestMapping(value = "/wechat/h5PayParams", method = RequestMethod.GET)
-    public H5PayParams h5PayParams(String openId, HttpServletResponse response) {
-        try {
-            UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData("WxPay Text", "wxtest" + System.currentTimeMillis(), openId, 1));
-            logger.debug("订单信息: {}" + resData.toString());
-            // 获得预支付交易会话ID
-            String prepay_id = resData.getPrepay_id();
-            return new H5PayParams(prepay_id);
-        } catch (Exception e) {
-            logger.error("h5_pay_params error!", e);
-            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-            return null;
-        }
-    }
 
     /**
      * 查询订单
@@ -547,40 +699,13 @@ public class PayController {
      * @return 订单详情
      */
     @RequestMapping(value = "/wechat/orderQuery", method = RequestMethod.GET)
-    public OrderQueryResData orderQuery(String transactionID, String outTradeNo, HttpServletResponse response) {
+    public void orderQuery(String transactionID, String outTradeNo, HttpServletResponse response)  {
         try {
-            return orderQueryService.query(new OrderQueryReqData(transactionID, outTradeNo));
+            writer.writeObjectToJson(response, orderQueryService.query(new OrderQueryReqData(transactionID, outTradeNo)));
         } catch (Exception e) {
             logger.error("order_query error!", e);
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-            return null;
-        }
-    }
-
-    /**
-     * 申请退款
-     * 当交易发生之后一段时间内，由于买家或者卖家的原因需要退款时，卖家可以通过退款接口将支付款退还给买家，微信支付将在收到退款请求并且验证成功之后，按照退款规则将支付款按原路退到买家帐号上。
-     * 注意：
-     * 1、交易时间超过一年的订单无法提交退款；
-     * 2、微信支付退款支持单笔交易分多次退款，多次退款需要提交原支付订单的商户订单号和设置不同的退款单号。一笔退款失败后重新提交，要采用原来的退款单号。总退款金额不能超过用户实际支付金额。
-     *
-     * @param transactionID 是微信系统为每一笔支付交易分配的订单号，通过这个订单号可以标识这笔交易，它由支付订单API支付成功时返回的数据里面获取到。建议优先使用
-     * @param outTradeNo    商户系统内部的订单号,transaction_id 、out_trade_no 二选一，如果同时存在优先级：transaction_id>out_trade_no
-     * @param outRefundNo   商户系统内部的退款单号，商户系统内部唯一，同一退款单号多次请求只退一笔
-     * @param totalFee      订单总金额，单位为分
-     * @param refundFee     退款总金额，单位为分,可以做部分退款
-     * @param response
-     * @return
-     */
-    @RequestMapping(value = "/wechat/refund", method = RequestMethod.POST)
-    public RefundResData refund(String transactionID, String outTradeNo, String outRefundNo, int totalFee,
-                                int refundFee, HttpServletResponse response) {
-        try {
-            return refundService.refund(new RefundReqData(transactionID, outTradeNo, outRefundNo, totalFee, refundFee));
-        } catch (Exception e) {
-            logger.error("refund error!", e);
-            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-            return null;
+            writer.writeStringToJson(response, "{}");
         }
     }
 
@@ -596,18 +721,66 @@ public class PayController {
      * @return
      */
     @RequestMapping(value = "/wechat/refundQuery", method = RequestMethod.GET)
-    public RefundQueryResData refundQuery(String transactionID, String outTradeNo, String outRefundNo,
-                                          String refundID, HttpServletResponse response) {
+    public void refundQuery(String transactionID, String outTradeNo, String outRefundNo,
+                            String refundID, HttpServletResponse response) {
         try {
-            return refundQueryService.refundQuery(new RefundQueryReqData(transactionID, outTradeNo, outRefundNo, refundID));
+            writer.writeObjectToJson(response, refundQueryService.refundQuery(new RefundQueryReqData(transactionID, outTradeNo, outRefundNo, refundID)));
         } catch (Exception e) {
             logger.error("refund query error!", e);
+            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            writer.writeStringToJson(response, "{}");
+        }
+    }
+
+
+    /**
+     * 获得App 调起支付需要的请求参数
+     * APP端调起支付的参数列表
+     *
+     * @param productId 产品ID
+     * @return 调起支付需要的请求参数
+     * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_12&index=2">https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_12&index=2</a>
+     *//*
+    @RequestMapping(value = "/wechat/appPayParams", method = RequestMethod.GET)
+    public AppPayParams appPayParams(String productId, HttpServletResponse response) {
+        try {
+            UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData("WxPay Text", 1, "wxtest" + System.currentTimeMillis()));
+            logger.debug("订单信息: {}" + resData.toString());
+            // 获得预支付交易会话ID
+            String prepay_id = resData.getPrepay_id();
+            return new AppPayParams(prepay_id);
+        } catch (Exception e) {
+            logger.error("app_pay_params error!", e);
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
             return null;
         }
     }
 
-    /**
+    *//**
+     * 获得H5 调起支付需要的请求参数
+     * H5端调起支付的参数列表
+     *
+     * @param openId openid
+     * @return 调起支付需要的请求参数
+     * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=7_7&index=6">https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=7_7&index=6</a>
+     *//*
+    @RequestMapping(value = "/wechat/h5PayParams", method = RequestMethod.GET)
+    public H5PayParams h5PayParams(String openId, HttpServletResponse response) {
+        try {
+            UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData("WxPay Text", "wxtest" + System.currentTimeMillis(), openId, 1));
+            logger.debug("订单信息: {}" + resData.toString());
+            // 获得预支付交易会话ID
+            String prepay_id = resData.getPrepay_id();
+            return new H5PayParams(prepay_id);
+        } catch (Exception e) {
+            logger.error("h5_pay_params error!", e);
+            response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            return null;
+        }
+    }
+
+
+    *//**
      * 下载对账单
      * 商户可以通过该接口下载历史交易清单。比如掉单、系统错误等导致商户侧和微信侧数据不一致，通过对账单核对后可校正支付状态。
      * 注意：
@@ -624,7 +797,7 @@ public class PayController {
      *                   REFUND，返回当日退款订单
      *                   REVOKED，已撤销的订单
      * @return
-     */
+     *//*
     @RequestMapping(value = "/wechat/downloadBill", method = RequestMethod.GET)
     public String downloadBill(String billDate, String billType, HttpServletResponse response) {
         try {
@@ -634,51 +807,122 @@ public class PayController {
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
             return null;
         }
-    }
+    }*/
+
 
 
     /**
      *
      * ========================= 银联支付接口接口 =======================
+     * Unionpay - 网关支付: https://open.unionpay.com/ajweb/product/newProDetail?proId=1&cataId=11
      */
 
-    private OpenCardFront openCardFront = new OpenCardFront();
+/*    private OpenCardFront openCardFront = new OpenCardFront();
     private OpenQuery openQuery = new OpenQuery();
     private ConsumeSMS consumeSMS = new ConsumeSMS();
     private Consume consume = new Consume();
     private OpenAndConsume openAndConsume = new OpenAndConsume();
     private ConsumeStatusQuery consumeStatusQuery = new ConsumeStatusQuery();
-    private DeleteToken deleteToken = new DeleteToken();
+    private DeleteToken deleteToken = new DeleteToken();*/
     private FrontConsume frontConsume = new FrontConsume();
 
-    @RequestMapping("/unionpay/acp/openCardFront")
+
+    /**
+     * Unionpay - 网关支付
+     * @param no
+     * @param response
+     */
+    @RequestMapping(value = "/unionpay/acp/frontConsume", method = RequestMethod.POST)
+    public void unionpayFrontConsume(String no, HttpServletResponse response) {
+        logger.info("unionpayFrontConsume, no:" + no);
+
+        String payHtml = null;
+
+        Pay pay = new Pay();
+        pay.setNo(no);
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+        if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            payHtml = frontConsume.consume(((int)(dbPay.getAmount()*100f)+""));
+        } else {
+            payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
+        }
+
+        writer.write(response, payHtml);
+    }
+
+
+    /**
+     * unionpay 支付页面跳转同步通知页面
+     * @param json
+     * @param response
+     */
+    @RequestMapping("/unionpay/acp/frontNotify")
+    public void unionFrontNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("unionFrontNotify, json:" + json);
+        PayNotify payNotify =  writer.gson.fromJson(json, new TypeToken<PayNotify>(){}.getType());
+
+        Pay pay = new Pay();
+        pay.setNo(payNotify.getOrderId());
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + processUnionpayNotify(json) + "" +
+                "\", \"" + CommonConstant.id + "\":" + dbPay.getEntityId() + ",\"" + CommonConstant.entity +"\":\"" + dbPay.getEntity() + "\"}");
+
+    }
+
+    /**
+     * unionpay 支付服务器异步通知
+     * @param json
+     * @param response
+     */
+    @RequestMapping("/unionpay/acp/backNotify")
+    public void unionpayBackNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("unionpayBackNotify, json:" + json);
+        writer.write(response, processUnionpayNotify(json));
+    }
+
+    private String processUnionpayNotify(String json) {
+        String result = CommonConstant.fail;
+
+        if (AcpService.validate(AcpService.getAllRequestParam(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType())), Acp.encoding_UTF8)) {
+            logger.info("Sign validate success!");
+
+            PayNotify payNotify =  writer.gson.fromJson(json, new TypeToken<PayNotify>(){}.getType());
+
+            String no = payNotify.getOrderId();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                if(payNotify.getRespCode().equals(PayConstants.unionpay_trade_success) ||
+                        payNotify.getRespCode().equals(PayConstants.unionpay_trade_success_defect)){
+
+                    result += payService.processUnionpayNotify(payNotify);
+                }
+
+                payDao.deleteFromRedis(processKey);
+            }
+
+        } else {
+            logger.info("Sign validate fail!");
+        }
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.ok;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        return  result;
+    }
+
+
+    /*@RequestMapping("/unionpay/acp/openCardFront")
     public String openCardFront(String orderId) {
         String html = openCardFront.build(orderId);
         return html;
-    }
-
-    @RequestMapping("/unionpay/acp/frontNotify")
-    public Map<String, String> frontNotify(HttpServletRequest request) {
-        Map<String, String> allRequestMap = AcpService.getAllRequestParam(request.getParameterMap());
-        logger.debug("Front notify: {}" + allRequestMap.toString());
-        boolean isSign = AcpService.validate(allRequestMap, Acp.encoding_UTF8);
-        if (!isSign) {
-            logger.warn("Sign validate fail!");
-            return new HashMap<>();
-        }
-        return allRequestMap;
-    }
-
-    @RequestMapping("/unionpay/acp/backNotify")
-    public Map<String, String> backNotify(HttpServletRequest request) {
-        Map<String, String> allRequestMap = AcpService.getAllRequestParam(request.getParameterMap());
-        logger.debug("Back notify: {}" + allRequestMap.toString());
-        boolean isSign = AcpService.validate(allRequestMap, Acp.encoding_UTF8);
-        if (!isSign) {
-            logger.warn("Sign validate fail!");
-            return new HashMap<>();
-        }
-        return allRequestMap;
     }
 
     @RequestMapping("/unionpay/acp/openQuery")
@@ -744,10 +988,5 @@ public class PayController {
             e.printStackTrace();
         }
         return null;
-    }
-
-    @RequestMapping("/unionpay/acp/frontConsume")
-    public String frontConsume(String txnAmt) {
-        return frontConsume.consume(txnAmt);
-    }
+    }*/
 }

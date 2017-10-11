@@ -45,6 +45,7 @@ public class RefundReqData {
     private int refund_fee = 0;
     private String refund_fee_type = "";
     private String op_user_id = "";
+    private String refundNotifyUrl = "";
 
     /**
      * 请求退款服务
@@ -64,6 +65,9 @@ public class RefundReqData {
 
         //微信支付分配的商户号ID（开通公众号的微信支付功能之后可以获取到）
         setMch_id(Configure.getMchid());
+
+        //设置退款通知url
+        setRefundNotifyUrl(Configure.REFUND_NOTITY_URL);
 
         //transaction_id是微信系统为每一笔支付交易分配的订单号，通过这个订单号可以标识这笔交易，它由支付订单API支付成功时返回的数据里面获取到。
         setTransaction_id(transactionID);
@@ -180,6 +184,14 @@ public class RefundReqData {
 
     public void setRefund_fee_type(String refund_fee_type) {
         this.refund_fee_type = refund_fee_type;
+    }
+
+    public String getRefundNotifyUrl() {
+        return refundNotifyUrl;
+    }
+
+    public void setRefundNotifyUrl(String refundNotifyUrl) {
+        this.refundNotifyUrl = refundNotifyUrl;
     }
 
     public Map<String,Object> toMap(){

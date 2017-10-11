@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package com.boyuanitsm.pay.wxpay.protocol.refund_protocol;
+package com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol;
 
 /**
  * User: rizenguo
  * Date: 2014/10/25
- * Time: 16:12
- *
- * https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_4
+ * Time: 13:54
  */
-public class RefundResData {
+public class OrderQueryResData {
 
     //协议层
     private String return_code = "";
@@ -32,21 +30,40 @@ public class RefundResData {
     //协议返回的具体数据（以下字段在return_code 为SUCCESS 的时候有返回）
     private String appid = "";
     private String mch_id = "";
-    private String sub_mch_id = "";
-    private String device_info = "";
+    private String sub_mch_id = "";//新增
     private String nonce_str = "";
     private String sign = "";
     private String result_code = "";
     private String err_code = "";
     private String err_code_des = "";
 
+    //以下字段在return_code 和result_code 都为SUCCESS 的时候有返回
+    private String trade_state = "";
 
+    //trade_state的几种可能取值：
+    //    SUCCESS--支付成功
+    //    REFUND--转入退款
+    //    NOTPAY--未支付
+    //    CLOSED--已关闭
+    //    REVOKED--已撤销
+    //    USERPAYING--用户支付中
+    //    NOPAY--未支付(确认支付超时)
+    //    PAYERROR--支付失败(其他原因，
+    //            如银行返回失败)
+
+    //以下字段在trade_state 为SUCCESS 或者REFUND 的时候有返回
+    private String device_info = "";
+    private String openid = "";
+    private String is_subscribe = "";
+    private String trade_type = "";
+    private String bank_type = "";
+    private String total_fee = "";
+    private String coupon_fee = "";
+    private String fee_type = "";
     private String transaction_id = "";
     private String out_trade_no = "";
-    private String out_refund_no = "";
-    private String refund_id = "";
-    private String refund_fee = "";
-    private String coupon_refund_fee = "";
+    private String attach = "";
+    private String time_end = "";
 
     public String getReturn_code() {
         return return_code;
@@ -86,14 +103,6 @@ public class RefundResData {
 
     public void setSub_mch_id(String sub_mch_id) {
         this.sub_mch_id = sub_mch_id;
-    }
-
-    public String getDevice_info() {
-        return device_info;
-    }
-
-    public void setDevice_info(String device_info) {
-        this.device_info = device_info;
     }
 
     public String getNonce_str() {
@@ -136,6 +145,78 @@ public class RefundResData {
         this.err_code_des = err_code_des;
     }
 
+    public String getTrade_state() {
+        return trade_state;
+    }
+
+    public void setTrade_state(String trade_state) {
+        this.trade_state = trade_state;
+    }
+
+    public String getDevice_info() {
+        return device_info;
+    }
+
+    public void setDevice_info(String device_info) {
+        this.device_info = device_info;
+    }
+
+    public String getOpenid() {
+        return openid;
+    }
+
+    public void setOpenid(String openid) {
+        this.openid = openid;
+    }
+
+    public String getIs_subscribe() {
+        return is_subscribe;
+    }
+
+    public void setIs_subscribe(String is_subscribe) {
+        this.is_subscribe = is_subscribe;
+    }
+
+    public String getTrade_type() {
+        return trade_type;
+    }
+
+    public void setTrade_type(String trade_type) {
+        this.trade_type = trade_type;
+    }
+
+    public String getBank_type() {
+        return bank_type;
+    }
+
+    public void setBank_type(String bank_type) {
+        this.bank_type = bank_type;
+    }
+
+    public String getTotal_fee() {
+        return total_fee;
+    }
+
+    public void setTotal_fee(String total_fee) {
+        this.total_fee = total_fee;
+    }
+
+    public String getCoupon_fee() {
+        return coupon_fee;
+    }
+
+    public void setCoupon_fee(String coupon_fee) {
+        this.coupon_fee = coupon_fee;
+    }
+
+    public String getFee_type() {
+        return fee_type;
+    }
+
+    public void setFee_type(String fee_type) {
+        this.fee_type = fee_type;
+    }
+
     public String getTransaction_id() {
         return transaction_id;
     }
@@ -152,35 +233,20 @@ public class RefundResData {
         this.out_trade_no = out_trade_no;
     }
 
-    public String getOut_refund_no() {
-        return out_refund_no;
+    public String getAttach() {
+        return attach;
     }
 
-    public void setOut_refund_no(String out_refund_no) {
-        this.out_refund_no = out_refund_no;
+    public void setAttach(String attach) {
+        this.attach = attach;
     }
 
-    public String getRefund_id() {
-        return refund_id;
+    public String getTime_end() {
+        return time_end;
     }
 
-    public void setRefund_id(String refund_id) {
-        this.refund_id = refund_id;
+    public void setTime_end(String time_end) {
+        this.time_end = time_end;
     }
 
-    public String getRefund_fee() {
-        return refund_fee;
-    }
-
-    public void setRefund_fee(String refund_fee) {
-        this.refund_fee = refund_fee;
-    }
-
-    public String getCoupon_refund_fee() {
-        return coupon_refund_fee;
-    }
-
-    public void setCoupon_refund_fee(String coupon_refund_fee) {
-        this.coupon_refund_fee = coupon_refund_fee;
-    }
 }

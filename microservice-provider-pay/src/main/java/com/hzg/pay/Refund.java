@@ -17,12 +17,18 @@ public class Refund implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
+    @Column(name="no",length=32)
+    private String no;
+
     @ManyToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "payId")
     private Pay pay;
 
     @Column(name="state",length = 1)
     private Integer state;
+
+    @Column(name="amount", length = 11, precision = 2)
+    private Float amount;
 
     @Column(name="refundDate")
     private Timestamp refundDate;
@@ -54,6 +60,14 @@ public class Refund implements Serializable {
         this.id = id;
     }
 
+    public String getNo() {
+        return no;
+    }
+
+    public void setNo(String no) {
+        this.no = no;
+    }
+
     public Pay getPay() {
         return pay;
     }
@@ -68,6 +82,14 @@ public class Refund implements Serializable {
 
     public void setState(Integer state) {
         this.state = state;
+    }
+
+    public Float getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Float amount) {
+        this.amount = amount;
     }
 
     public Timestamp getRefundDate() {

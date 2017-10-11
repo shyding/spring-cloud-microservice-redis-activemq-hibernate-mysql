@@ -58,6 +58,8 @@ public class Configure {
 
 	public static String NOTIFY_URL = PayProperties.getInstance().getWechat().getNotifyUrl();
 
+	public static String REFUND_NOTITY_URL = PayProperties.getInstance().getWechat().getRefundNotifyUrl();
+
 	/**
 	 * 随机字符串长度
 	 */

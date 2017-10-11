@@ -117,10 +117,10 @@ public class AlipaySubmit {
     /**
      * 建立支付宝即时到账(create_direct_pay_by_user)请求, 以表单HTML形式构造（默认）以POST方式提交表单
      *
-     * @param outTradeNo 商户订单号
-     * @param subject 商品名称
-     * @param totalFee 付款金额
-     * @param body 商品描述
+     * @param outTradeNo 商户订单号, 必填(建议是英文字母和数字,不能含有特殊字符)
+     * @param subject 商品名称, 必填(建议中文，英文，数字，不能含有特殊字符)
+     * @param totalFee 付款金额, 必填(格式如：1.00,请精确到分)
+     * @param body 商品描述, 选填(建议中文，英文，数字，不能含有特殊字符)
      * @return 提交表单HTML文本
      */
     public static String buildRequest(String outTradeNo, String subject, String totalFee, String body) {
@@ -147,9 +147,9 @@ public class AlipaySubmit {
     /**
      * 建立即时到账批量退款有密接口(refund_fastpay_by_platform_pwd)请求, 以表单HTML形式构造（默认）以POST方式提交表单
      *
-     * @param batchNo 退款批次号
-     * @param batchNum 退款笔数
-     * @param detailData 退款详细数据
+     * @param batchNo 退款批次号, 必填(时间格式是yyyyMMddHHmmss+数字或者字母)
+     * @param batchNum 退款笔数, 必填(值为您退款的笔数,取值1~1000间的整数)
+     * @param detailData 退款详细数据, 必填(支付宝交易号^退款金额^备注)多笔请用#隔开
      * @return 提交表单HTML文本
      */
     public static String buildRequest(String batchNo, String batchNum, String detailData) {
@@ -157,7 +157,7 @@ public class AlipaySubmit {
         sParaTemp.put("service", AlipayConfig.refund_fastpay_by_platform_pwd);
         sParaTemp.put("partner", AlipayConfig.partner);
         sParaTemp.put("_input_charset", AlipayConfig.input_charset);
-        sParaTemp.put("notify_url", AlipayConfig.notify_url);
+        sParaTemp.put("notify_url", AlipayConfig.refund_notify_url);
         sParaTemp.put("seller_user_id", AlipayConfig.seller_id);
         sParaTemp.put("refund_date", UtilDate.getDateFormatter());
         sParaTemp.put("batch_no", batchNo);

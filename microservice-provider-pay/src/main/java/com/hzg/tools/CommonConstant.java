@@ -6,6 +6,9 @@ public class CommonConstant {
     public final static String success = "success";
     public final static String fail = "fail";
 
+    public final static String OK = "OK";
+    public final static String ok = "ok";
+
     public final static String add = "add";
     public final static String subtract = "subtract";
 
@@ -21,5 +24,10 @@ public class CommonConstant {
     public final static String salt = "salt";
 
     public final static String underline = "_";
+
+    public final static String no  = "no";
+
+    public final static String entity  = "entity";
+    public final static String id  = "id";
 
 }

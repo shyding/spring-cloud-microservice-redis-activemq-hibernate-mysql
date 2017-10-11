@@ -73,4 +73,14 @@ public class DateUtil {
     public SimpleDateFormat getSimpleDateFormat() {
         return simpleDateFormat;
     }
+
+    public Date getDate(String dateFormat, String dateStr) {
+        try {
+            return new SimpleDateFormat(dateFormat).parse(dateStr);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

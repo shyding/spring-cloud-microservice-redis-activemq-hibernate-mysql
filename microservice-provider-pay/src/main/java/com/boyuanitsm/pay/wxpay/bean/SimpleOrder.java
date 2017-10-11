@@ -23,17 +23,19 @@ package com.boyuanitsm.pay.wxpay.bean;
  */
 public class SimpleOrder {
 
-    public SimpleOrder(String body, String tradeNo, int totalFee, String productId) {
+    public SimpleOrder(String body, String tradeNo, int totalFee, String productId, String attach) {
         this.body = body;
         this.tradeNo = tradeNo;
         this.totalFee = totalFee;
         this.productId = productId;
+        this.attach = attach;
     }
 
     private String body;
     private String tradeNo;
     private int totalFee;
     private String productId;
+    private String attach;
 
     public String getBody() {
         return body;
@@ -65,5 +67,13 @@ public class SimpleOrder {
 
     public void setProductId(String productId) {
         this.productId = productId;
+    }
+
+    public String getAttach() {
+        return attach;
+    }
+
+    public void setAttach(String attach) {
+        this.attach = attach;
     }
 }

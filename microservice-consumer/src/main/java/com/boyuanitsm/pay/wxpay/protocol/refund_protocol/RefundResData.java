@@ -20,8 +20,6 @@ package com.boyuanitsm.pay.wxpay.protocol.refund_protocol;
  * User: rizenguo
  * Date: 2014/10/25
  * Time: 16:12
- *
- * https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_4
  */
 public class RefundResData {
 

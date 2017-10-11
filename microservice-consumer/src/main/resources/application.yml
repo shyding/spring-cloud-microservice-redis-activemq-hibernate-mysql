@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: microservice-comsumer
+    name: microservice-comsumer-portal
 
   mvc:
      view:
@@ -64,7 +64,7 @@ ribbon:
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
 visitInterceptor:
-  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer
+  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/article/ckeditorUploadfileCallback
   noAuthUrisAfterSignIn: /list/,/privateQuery/audit,/view/audit,/sys/audit,/customer/,/order/
   macValidateUris: /save/,/update/,/sys/audit
 
@@ -74,3 +74,6 @@ fileServerInfo:
   uploadFilesUrl: http://stream.demohzg.com/uploadFile  # 上传文件地址
   uploadDirOrFilesUrl: http://stream.demohzg.com/index.html  # 上传文件夹文件或文件地址
   imageServerUrl: http://static.demohzg.com            # 浏览图片服务器地址
+
+httpProxy:
+    url: /httpProxy/*

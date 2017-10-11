@@ -101,7 +101,7 @@ public class UnifiedOrderReqData {
      * @param simpleOrder
      */
     public UnifiedOrderReqData(SimpleOrder simpleOrder) throws IllegalAccessException {
-        this(simpleOrder.getBody(), simpleOrder.getTradeNo(), simpleOrder.getTotalFee(), simpleOrder.getProductId());
+        this(simpleOrder.getBody(), simpleOrder.getTradeNo(), simpleOrder.getTotalFee(), simpleOrder.getProductId(), simpleOrder.getAttach());
     }
 
     /**

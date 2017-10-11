@@ -22,42 +22,42 @@ package com.boyuanitsm.pay.alipay.bean;
  * @see <a href="https://doc.open.alipay.com/doc2/detail.htm?spm=a219a.7629140.0.0.7EWBns&treeId=62&articleId=104743&docType=1#s3">https://doc.open.alipay.com/doc2/detail.htm?spm=a219a.7629140.0.0.7EWBns&treeId=62&articleId=104743&docType=1#s3</a>
  * @author hookszhang on 7/15/16.
  *
-     * 服务器异步通知参数说明
+ * 服务器异步通知参数说明
 
-    支付宝对商户的请求数据处理完成后，会将处理的结果数据通过服务器主动通知的方式通知给商户网站。这些处理结果数据就是服务器异步通知参数。
+支付宝对商户的请求数据处理完成后，会将处理的结果数据通过服务器主动通知的方式通知给商户网站。这些处理结果数据就是服务器异步通知参数。
 
-    参数  参数名称  类型（字节长度）  参数说明  是否可为空  样例
+参数  参数名称  类型（字节长度）  参数说明  是否可为空  样例
 
-    基本参数
+基本参数
 
-    notify_time   通知时间   Date   通知的发送时间。  格式为yyyy-MM-dd HH:mm:ss。   不可空   2009-08-12 11:08:32
-    notify_type   通知类型   String   通知的类型。   不可空   trade_status_sync
-    notify_id   通知校验ID   String   通知校验ID。   不可空   70fec0c2730b27528665af4517c27b95
-    sign_type   签名方式   String   DSA、RSA、MD5三个值可选，必须大写。   不可空   DSA
-    sign   签名   String   请参见本文档“附录：签名与验签”。   不可空   _p_w_l_h_j0b_gd_aejia7n_ko4_m%2Fu_w_jd3_nx_s_k_mxus9_hoxg_y_r_lunli_pmma29_t_q%3D%  3D  业务参数
-    out_trade_no   商户网站唯一订单号   String(64)   对应商户网站的订单系统中的唯一订单号，非支付宝交易号。  需保证在商户网站中的唯一性。是请求时对应的参数，原样返回。   可空   3618810634349901
-    subject   商品名称   String(256)   商品的标题/交易标题/订单标题/订单关键字等。  它在支付宝的交易明细中排在第一列，对于财务对账尤为重要。是请求时对应的参数，原样通知回来。   可空   phone手机  payment_type   支付类型   String(4)   只支持取值为1（商品购买）。   可空   1
-    trade_no   支付宝交易号   String(64)   该交易在支付宝系统中的交易流水号。最长64位。   可空   2014040311001004370000361525
-    trade_status   交易状态   String   取值范围请参见交易状态。   可空   TRADE_FINISHED
-    gmt_create   交易创建时间   Date   该笔交易创建的时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:31
-    gmt_payment   交易付款时间   Date   该笔交易的买家付款时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:50
-    gmt_close   交易关闭时间   Date   交易关闭时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:46
-    refund_status   退款状态   String   取值范围请参见退款状态。   可空   REFUND_SUCCESS
-    gmt_refund   退款时间   Date   卖家退款的时间，退款通知时会发送。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-29 19:38:25
-    seller_email   卖家支付宝账号   String(100)   卖家支付宝账号，可以是email和手机号码。   可空   chao.chenc1@alipay.com
-    buyer_email   买家支付宝账号   String(100)   买家支付宝账号，可以是Email或手机号码。   可空   137******70
-    seller_id   卖家支付宝账户号   String(30)   卖家支付宝账号对应的支付宝唯一用户号。  以2088开头的纯16位数字。   可空   2088002007018916
-    buyer_id   买家支付宝账户号   String(30)   买家支付宝账号对应的支付宝唯一用户号。  以2088开头的纯16位数字。   可空   2088002007013600
-    price   商品单价   Number   如果请求时使用的是total_fee，那么price等于total_fee；如果请求时使用的是price，那么对应请求时的price参数，原样通知回来。   可空   10.00
-    total_fee   交易金额   Number   该笔订单的总金额。  请求时对应的参数，原样通知回来。   可空   10.00
-    quantity   购买数量   Number   如果请求时使用的是total_fee，那么quantity等于1；如果请求时使用的是quantity，那么对应请求时的quantity参数，原样通知回来。   可空   1
-    body   商品描述   String(1000)   该笔订单的备注、描述、明细等。  对应请求时的body参数，原样通知回来。   可空   Hello
-    discount   折扣   Number   支付宝系统会把discount的值加到交易金额上，如果需要折扣，本参数为负数。   可空   -5
-    is_total_fee_adjust   是否调整总价   String(1)   该交易是否调整过价格。   可空   N
-    use_coupon   是否使用红包买家   String(1)   是否在交易过程中使用了红包。   可空   N
-    extra_common_param   公用回传参数   String   用于商户回传参数，该值不能包含“=”、“&”等特殊字符。  如果用户请求时传递了该参数，则返回给商户时会回传该参数。   可空   你好，这是测试商户的广告。
+notify_time   通知时间   Date   通知的发送时间。  格式为yyyy-MM-dd HH:mm:ss。   不可空   2009-08-12 11:08:32
+notify_type   通知类型   String   通知的类型。   不可空   trade_status_sync
+notify_id   通知校验ID   String   通知校验ID。   不可空   70fec0c2730b27528665af4517c27b95
+sign_type   签名方式   String   DSA、RSA、MD5三个值可选，必须大写。   不可空   DSA
+sign   签名   String   请参见本文档“附录：签名与验签”。   不可空   _p_w_l_h_j0b_gd_aejia7n_ko4_m%2Fu_w_jd3_nx_s_k_mxus9_hoxg_y_r_lunli_pmma29_t_q%3D%  3D  业务参数
+out_trade_no   商户网站唯一订单号   String(64)   对应商户网站的订单系统中的唯一订单号，非支付宝交易号。  需保证在商户网站中的唯一性。是请求时对应的参数，原样返回。   可空   3618810634349901
+subject   商品名称   String(256)   商品的标题/交易标题/订单标题/订单关键字等。  它在支付宝的交易明细中排在第一列，对于财务对账尤为重要。是请求时对应的参数，原样通知回来。   可空   phone手机  payment_type   支付类型   String(4)   只支持取值为1（商品购买）。   可空   1
+trade_no   支付宝交易号   String(64)   该交易在支付宝系统中的交易流水号。最长64位。   可空   2014040311001004370000361525
+trade_status   交易状态   String   取值范围请参见交易状态。   可空   TRADE_FINISHED
+gmt_create   交易创建时间   Date   该笔交易创建的时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:31
+gmt_payment   交易付款时间   Date   该笔交易的买家付款时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:50
+gmt_close   交易关闭时间   Date   交易关闭时间。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-22 20:49:46
+refund_status   退款状态   String   取值范围请参见退款状态。   可空   REFUND_SUCCESS
+gmt_refund   退款时间   Date   卖家退款的时间，退款通知时会发送。  格式为yyyy-MM-dd HH:mm:ss。   可空   2008-10-29 19:38:25
+seller_email   卖家支付宝账号   String(100)   卖家支付宝账号，可以是email和手机号码。   可空   chao.chenc1@alipay.com
+buyer_email   买家支付宝账号   String(100)   买家支付宝账号，可以是Email或手机号码。   可空   137******70
+seller_id   卖家支付宝账户号   String(30)   卖家支付宝账号对应的支付宝唯一用户号。  以2088开头的纯16位数字。   可空   2088002007018916
+buyer_id   买家支付宝账户号   String(30)   买家支付宝账号对应的支付宝唯一用户号。  以2088开头的纯16位数字。   可空   2088002007013600
+price   商品单价   Number   如果请求时使用的是total_fee，那么price等于total_fee；如果请求时使用的是price，那么对应请求时的price参数，原样通知回来。   可空   10.00
+total_fee   交易金额   Number   该笔订单的总金额。  请求时对应的参数，原样通知回来。   可空   10.00
+quantity   购买数量   Number   如果请求时使用的是total_fee，那么quantity等于1；如果请求时使用的是quantity，那么对应请求时的quantity参数，原样通知回来。   可空   1
+body   商品描述   String(1000)   该笔订单的备注、描述、明细等。  对应请求时的body参数，原样通知回来。   可空   Hello
+discount   折扣   Number   支付宝系统会把discount的值加到交易金额上，如果需要折扣，本参数为负数。   可空   -5
+is_total_fee_adjust   是否调整总价   String(1)   该交易是否调整过价格。   可空   N
+use_coupon   是否使用红包买家   String(1)   是否在交易过程中使用了红包。   可空   N
+extra_common_param   公用回传参数   String   用于商户回传参数，该值不能包含“=”、“&”等特殊字符。  如果用户请求时传递了该参数，则返回给商户时会回传该参数。   可空   你好，这是测试商户的广告。
 
-    http://商户自定义地址/notify_url.php?trade_no=2014040311001004370000361525&out_trade_no=3618810634349901&discount=-5&payment_type=1&subject=iphone%E6%89%8B%E6%9C%BA&body=Hello&price=10.00&quantity=1&total_fee=10.00&trade_status=TRADE_FINISHED&refund_status=REFUND_SUCCESS&seller_email=chao.chenc1%40alipay.com&seller_id=2088002007018916&buyer_id=2088002007013600&buyer_email=137******70&gmt_create=2008-10-22+20%3A49%3A31&is_total_fee_adjust=N&gmt_payment=2008-10-22+20%3A49%3A50&gmt_close=2008-10-22+20%3A49%3A46&gmt_refund=2008-10-29+19%3A38%3A25&use_coupon=N&notify_time=2009-08-12+11%3A08%3A32&notify_type=trade_status_sync&notify_id=70fec0c2730b27528665af4517c27b95&sign_type=DSA&sign=_p_w_l_h_j0b_gd_aejia7n_ko4_m%252Fu_w_jd3_nx_s_k_mxus9_hoxg_y_r_lunli_pmma29_t_q%253D%253D&extra_common_param=%E4%BD%A0%E5%A5%BD%EF%BC%8C%E8%BF%99%E6%98%AF%E6%B5%8B%E8%AF%95%E5%95%86%E6%88%B7%E7%9A%84%E5%B9%BF%E5%91%8A%E3%80%82
+http://商户自定义地址/notify_url.php?trade_no=2014040311001004370000361525&out_trade_no=3618810634349901&discount=-5&payment_type=1&subject=iphone%E6%89%8B%E6%9C%BA&body=Hello&price=10.00&quantity=1&total_fee=10.00&trade_status=TRADE_FINISHED&refund_status=REFUND_SUCCESS&seller_email=chao.chenc1%40alipay.com&seller_id=2088002007018916&buyer_id=2088002007013600&buyer_email=137******70&gmt_create=2008-10-22+20%3A49%3A31&is_total_fee_adjust=N&gmt_payment=2008-10-22+20%3A49%3A50&gmt_close=2008-10-22+20%3A49%3A46&gmt_refund=2008-10-29+19%3A38%3A25&use_coupon=N&notify_time=2009-08-12+11%3A08%3A32&notify_type=trade_status_sync&notify_id=70fec0c2730b27528665af4517c27b95&sign_type=DSA&sign=_p_w_l_h_j0b_gd_aejia7n_ko4_m%252Fu_w_jd3_nx_s_k_mxus9_hoxg_y_r_lunli_pmma29_t_q%253D%253D&extra_common_param=%E4%BD%A0%E5%A5%BD%EF%BC%8C%E8%BF%99%E6%98%AF%E6%B5%8B%E8%AF%95%E5%95%86%E6%88%B7%E7%9A%84%E5%B9%BF%E5%91%8A%E3%80%82
  *
  */
 public class AyncNotify {

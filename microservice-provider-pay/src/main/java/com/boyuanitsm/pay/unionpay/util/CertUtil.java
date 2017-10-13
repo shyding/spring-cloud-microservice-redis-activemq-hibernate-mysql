@@ -18,11 +18,7 @@ package com.boyuanitsm.pay.unionpay.util;
 import com.boyuanitsm.pay.unionpay.config.SDKConfig;
 import com.boyuanitsm.pay.unionpay.config.SDKConstants;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.KeyStore;
@@ -109,7 +105,7 @@ public class CertUtil {
 		LogUtil.writeLog("加载证书文件[" + certFilePath + "]和证书密码[" + certPwd
 				+ "]的签名证书开始.");
 		certKeyStoreLocal.remove();
-		File files = new File(certFilePath);
+		File files = new File(CertUtil.class.getResource("/") + certFilePath);
 		if (!files.exists()) {
 			LogUtil.writeLog("证书文件不存在,初始化签名证书失败.");
 			return;
@@ -182,19 +178,17 @@ public class CertUtil {
 	private static X509Certificate initCert(String path) {
 		X509Certificate encryptCertTemp = null;
 		CertificateFactory cf = null;
-		FileInputStream in = null;
+		InputStream in = null;
 		try {
 			cf = CertificateFactory.getInstance("X.509", "BC");
-			in = new FileInputStream(path);
+			in = CertUtil.class.getResourceAsStream(path);
 			encryptCertTemp = (X509Certificate) cf.generateCertificate(in);
 			// 打印证书加载信息,供测试阶段调试
 			LogUtil.writeLog("[" + path + "][CertId="
 					+ encryptCertTemp.getSerialNumber().toString() + "]");
 		} catch (CertificateException e) {
 			LogUtil.writeErrorLog("InitCert Error", e);
-		} catch (FileNotFoundException e) {
-			LogUtil.writeErrorLog("InitCert Error File Not Found", e);
-		} catch (NoSuchProviderException e) {
+		}  catch (NoSuchProviderException e) {
 			LogUtil.writeErrorLog("LoadVerifyCert Error No BC Provider", e);
 		} finally {
 			if (null != in) {
@@ -224,7 +218,7 @@ public class CertUtil {
 		FileInputStream in = null;
 		try {
 			cf = CertificateFactory.getInstance("X.509", "BC");
-			File fileDir = new File(dir);
+			File fileDir = new File(CertUtil.class.getResource("/") + dir);
 			File[] files = fileDir.listFiles(new CerFilter());
 			for (int i = 0; i < files.length; i++) {
 				File file = files[i];
@@ -529,7 +523,7 @@ public class CertUtil {
 	public static KeyStore getKeyInfo(String pfxkeyfile, String keypwd,
 			String type) throws IOException {
 		LogUtil.writeLog("加载签名证书==>" + pfxkeyfile);
-		FileInputStream fis = null;
+		InputStream fis = null;
 		try {
 			if (Security.getProvider("BC") == null) {
 				LogUtil.writeLog("add BC provider");
@@ -552,7 +546,7 @@ public class CertUtil {
 			}
 			LogUtil.writeLog("Load RSA CertPath=[" + pfxkeyfile + "],Pwd=["
 					+ keypwd + "]");
-			fis = new FileInputStream(pfxkeyfile);
+			fis = CertUtil.class.getResourceAsStream(pfxkeyfile);
 			char[] nPassword = null;
 			nPassword = null == keypwd || "".equals(keypwd.trim()) ? null
 					: keypwd.toCharArray();

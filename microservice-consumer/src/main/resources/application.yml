@@ -64,7 +64,7 @@ ribbon:
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
 visitInterceptor:
-  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/article/ckeditorUploadfileCallback
+  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/
   noAuthUrisAfterSignIn: /list/,/privateQuery/audit,/view/audit,/sys/audit,/customer/,/order/
   macValidateUris: /save/,/update/,/sys/audit
 

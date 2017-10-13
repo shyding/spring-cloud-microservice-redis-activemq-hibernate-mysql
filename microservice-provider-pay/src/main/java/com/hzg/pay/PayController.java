@@ -242,184 +242,8 @@ public class PayController {
     }
 
     /**
-     * 支付宝即时到账批量退款有密接口快速通道
+     * 获取二维码支付图像
      *
-     * @param no 退款编号
-     * @param response
-     * @throws IOException
-     */
-    @RequestMapping(value = "/alipay/refund", produces = "text/html;charset=UTF-8", method = RequestMethod.POST)
-    public void alipayRefund(String no, HttpServletResponse response) {
-        logger.info("alipayRefund, no:" + no);
-
-        String refundHtml = "";
-
-        Refund refund = new Refund();
-        refund.setNo(no);
-        Refund dbRefund = (Refund)payDao.query(refund).get(0);
-
-        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
-            refundHtml = alipaySubmit.buildRequest(dbRefund.getNo(), "1",
-                    dbRefund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
-                            PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
-        } else {
-            refundHtml = "退款记录：" + no + "不是未退款状态，不能退款";
-        }
-
-        writer.write(response, refundHtml);
-    }
-
-    /**
-     * 支付宝支付服务器异步通知
-     *
-     * @param json
-     * @return
-     */
-    @RequestMapping(value = "/alipay/ayncNotify", method = RequestMethod.POST)
-    public void alipayAyncNotify(@RequestBody String json, HttpServletResponse response) {
-        logger.info("alipayAyncNotify, json" + json);
-        String result = CommonConstant.fail;
-
-        // 验证签名
-        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
-            logger.info("verify success!");
-
-            AyncNotify ayncNotify = writer.gson.fromJson(json, new TypeToken<AyncNotify>(){}.getType());
-
-            String no = ayncNotify.getOut_trade_no();
-            String processKey = PayConstants.process_notify + no;
-            if (payDao.getFromRedis(processKey) == null) {
-                payDao.storeToRedis(processKey, no, PayConstants.process_time);
-
-                if(ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
-                        ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_success)){
-                    //判断该笔订单是否在商户网站中已经做过处理
-                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
-                    //请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
-                    //如果有做过处理，不执行商户的业务程序
-                    //注意：退款日期超过可退款期限后（如三个月可退款），支付宝系统发送 TRADE_FINISHED 状态通知.
-                    //付款完成后，支付宝系统发送 TRADE_SUCCESS 状态通知
-
-                    result += payService.processAlipayNotify(ayncNotify);
-                }
-
-                payDao.deleteFromRedis(processKey);
-            }
-
-        } else {
-            logger.info("verify fail!");
-        }
-
-
-        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-        if (!result.contains(CommonConstant.fail)) {
-            result = CommonConstant.success;
-        } else {
-            result = CommonConstant.fail;
-        }
-
-        writer.write(response, result);
-    }
-
-    /**
-     * 支付宝支付页面跳转同步通知页面
-     *
-     * @param json
-     * @return
-     */
-    @RequestMapping(value = "/alipay/syncReturn", method = RequestMethod.GET)
-    public void alipaySyncReturn(@RequestBody String json, HttpServletResponse response) {
-        logger.info("alipaySyncReturn, json:" + json);
-        String result = CommonConstant.fail;
-
-        SyncReturn syncReturn = writer.gson.fromJson(json, new TypeToken<SyncReturn>(){}.getType());
-
-        // 验证签名
-        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
-            logger.info("verify success");
-
-            String no = syncReturn.getOut_trade_no();
-            String processKey = PayConstants.process_notify + no;
-            if (payDao.getFromRedis(processKey) == null) {
-                payDao.storeToRedis(processKey, no, PayConstants.process_time);
-
-                if(syncReturn.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
-                        syncReturn.getTrade_status().equals(PayConstants.alipay_trade_success)){
-                    //判断该笔订单是否在商户网站中已经做过处理
-                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
-                    //如果有做过处理，不执行商户的业务程序
-
-                    result += payService.processAlipayReturn(syncReturn);
-                }
-
-                payDao.deleteFromRedis(processKey);
-            }
-
-        } else {
-            logger.info("verify fail!");
-        }
-
-
-        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-        if (!result.contains(CommonConstant.fail)) {
-            result = CommonConstant.success;
-        } else {
-            result = CommonConstant.fail;
-        }
-
-        Pay pay = new Pay();
-        pay.setNo(syncReturn.getOut_trade_no());
-        Pay dbPay = (Pay)payDao.query(pay).get(0);
-
-        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result +
-                "\", \"" + CommonConstant.id + "\":" + dbPay.getEntityId() + ",\"" + CommonConstant.entity +"\":\"" + dbPay.getEntity() + "\"}");
-    }
-
-    /**
-     * 支付宝服务器退款异步通知页面
-     *
-     * @param json
-     * @return
-     */
-    @RequestMapping(value = "/alipay/refundAyncNotify", method = RequestMethod.POST)
-    public void alipayRefundAyncNotify(@RequestBody String json, HttpServletResponse response) {
-        logger.info("alipayRefundAyncNotify, json:" + json);
-        String result = CommonConstant.fail;
-
-        // 验证签名
-        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
-            logger.info("verify success!");
-
-            RefundAyncNotify refundAyncNotify = writer.gson.fromJson(json, new TypeToken<RefundAyncNotify>(){}.getType());
-
-            String no = refundAyncNotify.getBatch_no();
-            String processKey = PayConstants.process_notify + no;
-            if (payDao.getFromRedis(processKey) == null) {
-                payDao.storeToRedis(processKey, no, PayConstants.process_time);
-
-                result += payService.processAlipayRefundNotify(refundAyncNotify);
-
-                payDao.deleteFromRedis(processKey);
-            }
-
-        } else {
-            logger.info("verify fail!");
-        }
-
-
-        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-        if (!result.contains(CommonConstant.fail)) {
-            result = CommonConstant.success;
-        } else {
-            result = CommonConstant.fail;
-        }
-
-        writer.write(response, result);
-    }
-
-    /**
-     * 获取一码付二维码图像
-     * 二维码支付
      * @param no 支付号
      * @return 二维码图像
      */
@@ -479,8 +303,186 @@ public class PayController {
         writer.write(response, payHtml.toString());
     }
 
-/*
-    *//**
+    /**
+     * 支付宝支付服务器异步通知
+     *
+     * @param json
+     * @return
+     */
+    @Transactional
+    @RequestMapping(value = "/alipay/ayncNotify", method = RequestMethod.POST)
+    public void alipayAyncNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipayAyncNotify, json" + json);
+        String result = CommonConstant.fail;
+
+        // 验证签名
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success!");
+
+            AyncNotify ayncNotify = writer.gson.fromJson(json, new TypeToken<AyncNotify>(){}.getType());
+
+            String no = ayncNotify.getOut_trade_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                if(ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
+                        ayncNotify.getTrade_status().equals(PayConstants.alipay_trade_success)){
+                    //判断该笔订单是否在商户网站中已经做过处理
+                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+                    //请务必判断请求时的total_fee、seller_id与通知时获取的total_fee、seller_id为一致的
+                    //如果有做过处理，不执行商户的业务程序
+                    //注意：退款日期超过可退款期限后（如三个月可退款），支付宝系统发送 TRADE_FINISHED 状态通知.
+                    //付款完成后，支付宝系统发送 TRADE_SUCCESS 状态通知
+
+                    result += payService.processAlipayNotify(ayncNotify);
+                }
+
+                payDao.deleteFromRedis(processKey);
+            }
+
+        } else {
+            logger.info("verify fail!");
+        }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        writer.write(response, result);
+    }
+
+    /**
+     * 支付宝支付页面跳转同步通知页面
+     *
+     * @param json
+     * @return
+     */
+    @Transactional
+    @RequestMapping(value = "/alipay/syncReturn", method = RequestMethod.GET)
+    public void alipaySyncReturn(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipaySyncReturn, json:" + json);
+        String result = CommonConstant.fail;
+
+        SyncReturn syncReturn = writer.gson.fromJson(json, new TypeToken<SyncReturn>(){}.getType());
+
+        // 验证签名
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success");
+
+            String no = syncReturn.getOut_trade_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                if(syncReturn.getTrade_status().equals(PayConstants.alipay_trade_finished) ||
+                        syncReturn.getTrade_status().equals(PayConstants.alipay_trade_success)){
+                    //判断该笔订单是否在商户网站中已经做过处理
+                    //如果没有做过处理，根据订单号（out_trade_no）在商户网站的订单系统中查到该笔订单的详细，并执行商户的业务程序
+                    //如果有做过处理，不执行商户的业务程序
+
+                    result += payService.processAlipayReturn(syncReturn);
+                }
+
+                payDao.deleteFromRedis(processKey);
+            }
+
+        } else {
+            logger.info("verify fail!");
+        }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        Pay pay = new Pay();
+        pay.setNo(syncReturn.getOut_trade_no());
+        Pay dbPay = (Pay)payDao.query(pay).get(0);
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result +
+                "\", \"" + CommonConstant.id + "\":" + dbPay.getEntityId() + ",\"" + CommonConstant.entity +"\":\"" + dbPay.getEntity() + "\"}");
+    }
+
+    /**
+     * 支付宝即时到账批量退款有密接口快速通道
+     *
+     * @param no 退款编号
+     * @param response
+     * @throws IOException
+     */
+    @RequestMapping(value = "/alipay/refund", produces = "text/html;charset=UTF-8", method = RequestMethod.POST)
+    public void alipayRefund(String no, HttpServletResponse response) {
+        logger.info("alipayRefund, no:" + no);
+
+        String refundHtml = "";
+
+        Refund refund = new Refund();
+        refund.setNo(no);
+        Refund dbRefund = (Refund)payDao.query(refund).get(0);
+
+        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+            refundHtml = alipaySubmit.buildRequest(dbRefund.getNo(), "1",
+                    dbRefund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
+                            PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+        } else {
+            refundHtml = "退款记录：" + no + "不是未退款状态，不能退款";
+        }
+
+        writer.write(response, refundHtml);
+    }
+
+    /**
+     * 支付宝服务器退款异步通知页面
+     *
+     * @param json
+     * @return
+     */
+    @Transactional
+    @RequestMapping(value = "/alipay/refundAyncNotify", method = RequestMethod.POST)
+    public void alipayRefundAyncNotify(@RequestBody String json, HttpServletResponse response) {
+        logger.info("alipayRefundAyncNotify, json:" + json);
+        String result = CommonConstant.fail;
+
+        // 验证签名
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+            logger.info("verify success!");
+
+            RefundAyncNotify refundAyncNotify = writer.gson.fromJson(json, new TypeToken<RefundAyncNotify>(){}.getType());
+
+            String no = refundAyncNotify.getBatch_no();
+            String processKey = PayConstants.process_notify + no;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, no, PayConstants.process_time);
+
+                result += payService.processAlipayRefundNotify(refundAyncNotify);
+
+                payDao.deleteFromRedis(processKey);
+            }
+
+        } else {
+            logger.info("verify fail!");
+        }
+
+
+        result = result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        if (!result.contains(CommonConstant.fail)) {
+            result = CommonConstant.success;
+        } else {
+            result = CommonConstant.fail;
+        }
+
+        writer.write(response, result);
+    }
+
+    /**
      * 移动支付 签名机制
      *
      * @param outTradeNO 商户网站唯一订单号
@@ -562,6 +564,7 @@ public class PayController {
      * @return success or fail
      * @see <a href="https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_7">https://pay.weixin.qq.com/wiki/doc/api/native.php?chapter=9_7</a>
      */
+    @Transactional
     @RequestMapping(value = "/wechat/payResultCallback", method = RequestMethod.POST)
     public void wechatPayResultCallback(@RequestBody String responseString, HttpServletResponse response)  {
         logger.info("wechatPayResultCallback, responseString:" + responseString);
@@ -647,6 +650,7 @@ public class PayController {
         writer.writeStringToJson(response, result);
     }
 
+    @Transactional
     @RequestMapping(value = "/wechat/refundResultCallback", method = RequestMethod.POST)
     public void wechatRefundResultCallback(@RequestBody String responseString, HttpServletResponse response)  {
         logger.info("wechatRefundResultCallback, responseString:" + responseString);
@@ -859,6 +863,7 @@ public class PayController {
      * @param json
      * @param response
      */
+    @Transactional
     @RequestMapping("/unionpay/acp/frontNotify")
     public void unionFrontNotify(@RequestBody String json, HttpServletResponse response) {
         logger.info("unionFrontNotify, json:" + json);
@@ -878,6 +883,7 @@ public class PayController {
      * @param json
      * @param response
      */
+    @Transactional
     @RequestMapping("/unionpay/acp/backNotify")
     public void unionpayBackNotify(@RequestBody String json, HttpServletResponse response) {
         logger.info("unionpayBackNotify, json:" + json);

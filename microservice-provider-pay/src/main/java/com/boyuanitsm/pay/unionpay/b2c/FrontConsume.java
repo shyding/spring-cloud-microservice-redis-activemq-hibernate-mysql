@@ -22,6 +22,7 @@ import com.boyuanitsm.pay.unionpay.config.SDKConfig;
 import com.boyuanitsm.pay.unionpay.token.Consume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.Map;
  *
  * @author hookszhang on 8/1/16.
  */
+@Component
 public class FrontConsume {
 
     private Logger log = LoggerFactory.getLogger(Consume.class);

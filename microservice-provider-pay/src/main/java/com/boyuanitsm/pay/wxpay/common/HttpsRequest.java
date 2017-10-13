@@ -181,7 +181,7 @@ public class HttpsRequest implements IServiceRequest {
         }
 
         try {
-            if (Configure.DOWNLOAD_BILL_API.equals(url)) {
+            if (url.contains(Configure.DOWNLOAD_BILL_API.substring(Configure.DOWNLOAD_BILL_API.lastIndexOf("/")))) {
                 // 下载对账单接口 无需验证签名
                 return result;
             }

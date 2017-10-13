@@ -18,10 +18,13 @@ package com.boyuanitsm.pay.alipay.util;
 
 import com.boyuanitsm.pay.alipay.config.AlipayConfig;
 import com.boyuanitsm.pay.alipay.sign.RSA;
+import com.hzg.tools.HttpProxyDiscovery;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Node;
 import org.dom4j.io.SAXReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -41,20 +44,31 @@ import java.util.Map;
  *以下代码只是为了方便商户测试而提供的样例代码，商户可以根据自己网站的需要，按照技术文档编写,并非一定要使用该代码。
  *该代码仅供学习和研究支付宝接口使用，只是提供一个参考。
  */
-
+@Component
 public class AlipaySubmit {
-    
+
+    @Autowired
+    private HttpProxyDiscovery httpProxyDiscovery;
+
+    public HttpProxyDiscovery getHttpProxyDiscovery() {
+        return httpProxyDiscovery;
+    }
+
     /**
      * 支付宝提供给商户的服务接入网关URL(新)
      */
     private static final String ALIPAY_GATEWAY_NEW = "https://mapi.alipay.com/gateway.do?";
-	
+
+    public String getAlipayGatewayNew() {
+        return httpProxyDiscovery.getHttpProxyAddress() + "/gateway.do?";
+    }
+
     /**
      * 生成签名结果
      * @param sPara 要签名的数组
      * @return 签名结果字符串
      */
-	public static String buildRequestMysign(Map<String, String> sPara) {
+	public String buildRequestMysign(Map<String, String> sPara) {
     	String prestr = AlipayCore.createLinkString(sPara); //把数组所有元素，按照“参数=参数值”的模式用“&”字符拼接成字符串
         String mysign = "";
         if(AlipayConfig.sign_type.equals("RSA") ){
@@ -68,7 +82,7 @@ public class AlipaySubmit {
      * @param sParaTemp 请求前的参数数组
      * @return 要请求的参数数组
      */
-    private static Map<String, String> buildRequestPara(Map<String, String> sParaTemp) {
+    private Map<String, String> buildRequestPara(Map<String, String> sParaTemp) {
         //除去数组中的空值和签名参数
         Map<String, String> sPara = AlipayCore.paraFilter(sParaTemp);
         //生成签名结果
@@ -88,7 +102,7 @@ public class AlipaySubmit {
      * @param strButtonName 确认按钮显示文字
      * @return 提交表单HTML文本
      */
-    public static String buildRequest(Map<String, String> sParaTemp, String strMethod, String strButtonName) {
+    public String buildRequest(Map<String, String> sParaTemp, String strMethod, String strButtonName) {
         //待请求参数数组
         Map<String, String> sPara = buildRequestPara(sParaTemp);
         List<String> keys = new ArrayList<String>(sPara.keySet());
@@ -123,7 +137,7 @@ public class AlipaySubmit {
      * @param body 商品描述, 选填(建议中文，英文，数字，不能含有特殊字符)
      * @return 提交表单HTML文本
      */
-    public static String buildRequest(String outTradeNo, String subject, String totalFee, String body) {
+    public String buildRequest(String outTradeNo, String subject, String totalFee, String body) {
         //把请求参数打包成MAP
         Map<String, String> sParaTemp = new HashMap<>();
         sParaTemp.put("service", AlipayConfig.create_direct_pay_by_user);
@@ -141,7 +155,7 @@ public class AlipaySubmit {
         sParaTemp.put("body", body);
 
         //建立请求
-        return AlipaySubmit.buildRequest(sParaTemp, "post", "确认");
+        return buildRequest(sParaTemp, "post", "确认");
     }
 
     /**
@@ -152,7 +166,7 @@ public class AlipaySubmit {
      * @param detailData 退款详细数据, 必填(支付宝交易号^退款金额^备注)多笔请用#隔开
      * @return 提交表单HTML文本
      */
-    public static String buildRequest(String batchNo, String batchNum, String detailData) {
+    public String buildRequest(String batchNo, String batchNum, String detailData) {
         Map<String, String> sParaTemp = new HashMap<>();
         sParaTemp.put("service", AlipayConfig.refund_fastpay_by_platform_pwd);
         sParaTemp.put("partner", AlipayConfig.partner);
@@ -164,7 +178,7 @@ public class AlipaySubmit {
         sParaTemp.put("batch_num", batchNum);
         sParaTemp.put("detail_data", detailData);
 
-        return AlipaySubmit.buildRequest(sParaTemp, "post", "确认");
+        return buildRequest(sParaTemp, "post", "确认");
     }
     
  
@@ -177,11 +191,10 @@ public class AlipaySubmit {
      * @throws DocumentException
      * @throws MalformedURLException
      */
-	public static String query_timestamp() throws MalformedURLException,
-                                                        DocumentException, IOException {
+	public String query_timestamp() throws MalformedURLException, DocumentException, IOException {
 
         //构造访问query_timestamp接口的URL串
-        String strUrl = ALIPAY_GATEWAY_NEW + "service=query_timestamp&partner=" + AlipayConfig.partner + "&_input_charset" +AlipayConfig.input_charset;
+        String strUrl = getAlipayGatewayNew() + "service=query_timestamp&partner=" + AlipayConfig.partner + "&_input_charset" +AlipayConfig.input_charset;
         StringBuffer result = new StringBuffer();
 
         SAXReader reader = new SAXReader();

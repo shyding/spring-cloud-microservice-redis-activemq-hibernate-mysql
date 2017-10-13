@@ -21,6 +21,8 @@ import com.boyuanitsm.pay.wxpay.common.report.protocol.ReportReqData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.security.KeyManagementException;
@@ -35,11 +37,15 @@ import java.util.Date;
  * Date: 2014/11/12
  * Time: 17:07
  */
+@Component
 public class ReportService {
 
     private static Logger log = LoggerFactory.getLogger(ReportService.class);
 
     private ReportReqData reqData ;
+
+    @Autowired
+    Configure configure;
 
     /**
      * 请求统计上报API
@@ -49,8 +55,10 @@ public class ReportService {
         reqData = reportReqData;
     }
 
+    public ReportService(){}
+
     public String request() throws UnrecoverableKeyException, KeyManagementException, NoSuchAlgorithmException, KeyStoreException, IOException {
-        String responseString = new HttpsRequest().sendPost(Configure.REPORT_API, reqData);
+        String responseString = new HttpsRequest().sendPost(configure.getReportApi(), reqData);
 
         log.info("   report返回的数据：" + responseString);
 
@@ -63,12 +71,12 @@ public class ReportService {
      * @return API返回的数据
      * @throws Exception
      */
-    public static String request(ReportReqData reportReqData) throws Exception {
+    public String request(ReportReqData reportReqData) throws Exception {
 
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = new HttpsRequest().sendPost(Configure.REPORT_API, reportReqData);
+        String responseString = new HttpsRequest().sendPost(configure.getReportApi(), reportReqData);
 
         log.info("report返回的数据：" + responseString);
 

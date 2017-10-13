@@ -18,6 +18,9 @@ package com.boyuanitsm.pay.alipay.util;
 
 import com.boyuanitsm.pay.alipay.config.AlipayConfig;
 import com.boyuanitsm.pay.alipay.sign.RSA;
+import com.hzg.tools.HttpProxyDiscovery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -40,19 +43,27 @@ import java.util.Map;
  *************************注意*************************
  *调试通知返回时，可查看或改写log日志的写入TXT里的数据，来检查通知返回是否正常
  */
+@Component
 public class AlipayNotify {
+
+    @Autowired
+    private HttpProxyDiscovery httpProxyDiscovery;
 
     /**
      * 支付宝消息验证地址
      */
     private static final String HTTPS_VERIFY_URL = "https://mapi.alipay.com/gateway.do?service=notify_verify&";
 
+    public String getHttpsVerifyUrl() {
+        return httpProxyDiscovery.getHttpProxyAddress() + "/gateway.do?service=notify_verify&";
+    }
+
     /**
      * 验证消息是否是支付宝发出的合法消息
      * @param params 通知返回来的参数数组
      * @return 验证结果
      */
-    public static boolean verify(Map<String, String> params) {
+    public boolean verify(Map<String, String> params) {
 
         //判断responsetTxt是否为true，isSign是否为true
         //responsetTxt的结果不是true，与服务器设置问题、合作身份者ID、notify_id一分钟失效有关
@@ -82,7 +93,7 @@ public class AlipayNotify {
      * @param requestParams request.getParameterMap()
      * @return 验证结果
      */
-    public static boolean verifyRequest(Map requestParams) {
+    public boolean verifyRequest(Map requestParams) {
         Map<String,String> params = new HashMap<>();
         for (Iterator iter = requestParams.keySet().iterator(); iter.hasNext();) {
             String name = (String) iter.next();
@@ -96,7 +107,7 @@ public class AlipayNotify {
             //valueStr = new String(valueStr.getBytes("ISO-8859-1"), "utf-8");
             params.put(name, valueStr);
         }
-        return AlipayNotify.verify(params);
+        return verify(params);
     }
 
     /**
@@ -127,11 +138,11 @@ public class AlipayNotify {
     * true 返回正确信息
     * false 请检查防火墙或者是服务器阻止端口问题以及验证时间是否超过一分钟
     */
-    private static String verifyResponse(String notify_id) {
+    private String verifyResponse(String notify_id) {
         //获取远程服务器ATN结果，验证是否是支付宝服务器发来的请求
 
         String partner = AlipayConfig.partner;
-        String veryfy_url = HTTPS_VERIFY_URL + "partner=" + partner + "&notify_id=" + notify_id;
+        String veryfy_url = getHttpsVerifyUrl() + "partner=" + partner + "&notify_id=" + notify_id;
 
         return checkUrl(veryfy_url);
     }

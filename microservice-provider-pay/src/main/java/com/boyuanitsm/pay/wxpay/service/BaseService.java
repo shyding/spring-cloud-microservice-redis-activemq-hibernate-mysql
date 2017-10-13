@@ -49,6 +49,10 @@ public class BaseService{
         return serviceRequest.sendPost(apiURL,xmlObj);
     }
 
+    protected String sendPost(String apiURL, Object xmlObj) throws UnrecoverableKeyException, IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        return serviceRequest.sendPost(apiURL, xmlObj);
+    }
+
     /**
      * 供商户想自定义自己的HTTP请求器用
      * @param request 实现了IserviceRequest接口的HttpsRequest

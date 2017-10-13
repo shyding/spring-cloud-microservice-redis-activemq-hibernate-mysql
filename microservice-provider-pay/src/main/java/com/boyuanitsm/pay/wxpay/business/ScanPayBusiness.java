@@ -16,7 +16,6 @@
 
 package com.boyuanitsm.pay.wxpay.business;
 
-import com.boyuanitsm.pay.wxpay.common.report.ReporterFactory;
 import com.boyuanitsm.pay.wxpay.common.report.protocol.ReportReqData;
 import com.boyuanitsm.pay.wxpay.protocol.pay_protocol.ScanPayReqData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
@@ -33,6 +32,8 @@ import com.boyuanitsm.pay.wxpay.service.OrderQueryService;
 import com.boyuanitsm.pay.wxpay.service.ScanPayService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import static java.lang.Thread.sleep;
 
@@ -41,13 +42,20 @@ import static java.lang.Thread.sleep;
  * Date: 2014/12/1
  * Time: 17:05
  */
+@Component
 public class ScanPayBusiness {
 
-    public ScanPayBusiness() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
-        scanPayService = new ScanPayService();
-        orderQueryService = new OrderQueryService();
-        reverseService = new ReverseService();
-    }
+    @Autowired
+    ReportService reportService;
+
+    @Autowired
+    private ScanPayService scanPayService;
+
+    @Autowired
+    private OrderQueryService orderQueryService;
+
+    @Autowired
+    private ReverseService reverseService;
 
     public interface ResultListener {
 
@@ -90,12 +98,6 @@ public class ScanPayBusiness {
 
     //每次调用撤销API的等待时间
     private int waitingTimeBeforeReverseServiceInvoked = 5000;
-
-    private ScanPayService scanPayService;
-
-    private OrderQueryService orderQueryService;
-
-    private ReverseService reverseService;
 
     /**
      * 直接执行被扫支付业务逻辑（包含最佳实践流程）
@@ -146,16 +148,10 @@ public class ScanPayBusiness {
                 scanPayResData.getOut_trade_no(),
                 scanPayReqData.getSpbill_create_ip()
         );
-        long timeAfterReport;
-        if (Configure.isUseThreadToDoReport()) {
-            ReporterFactory.getReporter(reportReqData).run();
-            timeAfterReport = System.currentTimeMillis();
-            log.info("pay+report总耗时（异步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        } else {
-            ReportService.request(reportReqData);
-            timeAfterReport = System.currentTimeMillis();
-            log.info("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        }
+
+        reportService.request(reportReqData);
+        long timeAfterReport = System.currentTimeMillis();
+        log.info("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
 
         if (scanPayResData == null || scanPayResData.getReturn_code() == null) {
             log.error("【支付失败】支付请求逻辑错误，请仔细检测传过去的每一个参数是否合法，或是看API能否被正常访问");

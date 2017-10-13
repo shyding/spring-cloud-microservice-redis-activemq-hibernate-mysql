@@ -19,13 +19,19 @@ package com.boyuanitsm.pay.wxpay.service;
 
 import com.boyuanitsm.pay.wxpay.protocol.reverse_protocol.ReverseReqData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * User: rizenguo
  * Date: 2014/10/29
  * Time: 16:04
  */
+@Service
 public class ReverseService extends BaseService{
+
+    @Autowired
+    Configure configure;
 
     public ReverseService() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.REVERSE_API);
@@ -42,7 +48,7 @@ public class ReverseService extends BaseService{
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = sendPost(reverseReqData);
+        String responseString = sendPost(configure.getReverseApi(), reverseReqData);
 
         return responseString;
     }

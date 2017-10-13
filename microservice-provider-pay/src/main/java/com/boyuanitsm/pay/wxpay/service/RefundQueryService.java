@@ -20,13 +20,19 @@ import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
 import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryResData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * User: rizenguo
  * Date: 2014/10/29
  * Time: 16:04
  */
+@Service
 public class RefundQueryService extends BaseService{
+
+    @Autowired
+    Configure configure;
 
     public RefundQueryService() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.REFUND_QUERY_API);
@@ -43,7 +49,7 @@ public class RefundQueryService extends BaseService{
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = sendPost(refundQueryReqData);
+        String responseString = sendPost(configure.getRefundQueryApi(), refundQueryReqData);
 
         return responseString;
     }

@@ -17,6 +17,9 @@
 package com.boyuanitsm.pay.wxpay.common;
 
 import com.boyuanitsm.pay.PayProperties;
+import com.hzg.tools.HttpProxyDiscovery;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * User: rizenguo
@@ -24,8 +27,16 @@ import com.boyuanitsm.pay.PayProperties;
  * Time: 14:40
  * 这里放置各种配置数据
  */
+@Component
 public class Configure {
-//这个就是自己要保管好的私有Key了（切记只能放在自己的后台代码里，不能放在任何可能被看到源代码的客户端程序中）
+	@Autowired
+	private HttpProxyDiscovery httpProxyDiscovery;
+
+	public HttpProxyDiscovery getHttpProxyDiscovery() {
+		return httpProxyDiscovery;
+	}
+
+	//这个就是自己要保管好的私有Key了（切记只能放在自己的后台代码里，不能放在任何可能被看到源代码的客户端程序中）
 	// 每次自己Post数据给API的时候都要用这个key来对所有字段进行签名，生成的签名会放在Sign这个字段，API收到Post数据的时候也会用同样的签名算法对Post过来的数据进行签名和验证
 	// 收到API的返回的时候也要用这个key来对返回的数据算下签名，跟API的Sign数据进行比较，如果值不一致，有可能数据被第三方给篡改
 
@@ -91,6 +102,38 @@ public class Configure {
 	 * 统一下单API
 	 */
 	public static String UNIFIFED_ORDER_API = "https://api.mch.weixin.qq.com/pay/unifiedorder";
+
+	public String getPayApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/pay/micropay";
+	}
+
+	public String getPayQueryApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/pay/orderquery";
+	}
+
+	public String getRefundApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/secapi/pay/refund";
+	}
+
+	public String getRefundQueryApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/pay/refundquery";
+	}
+
+	public String getReverseApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/secapi/pay/reverse";
+	}
+
+	public String getDownloadBillApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/pay/downloadbill";
+	}
+
+	public String getReportApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/payitil/report";
+	}
+
+	public String getUnififedOrderApi() {
+		return httpProxyDiscovery.getHttpProxyAddress() + "/pay/unifiedorder";
+	}
 
 	public static boolean isUseThreadToDoReport() {
 		return useThreadToDoReport;

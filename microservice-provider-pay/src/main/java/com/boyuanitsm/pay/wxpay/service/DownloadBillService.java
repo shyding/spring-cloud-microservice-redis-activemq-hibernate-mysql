@@ -20,13 +20,19 @@ import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
 import com.boyuanitsm.pay.wxpay.protocol.downloadbill_protocol.DownloadBillReqData;
 import com.boyuanitsm.pay.wxpay.protocol.downloadbill_protocol.DownloadBillResData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * User: rizenguo
  * Date: 2014/10/29
  * Time: 16:04
  */
+@Service
 public class DownloadBillService extends BaseService{
+
+    @Autowired
+    Configure configure;
 
     public DownloadBillService() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.DOWNLOAD_BILL_API);
@@ -56,7 +62,7 @@ public class DownloadBillService extends BaseService{
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = sendPost(downloadBillReqData);
+        String responseString = sendPost(configure.getDownloadBillApi(), downloadBillReqData);
 
         return responseString;
     }

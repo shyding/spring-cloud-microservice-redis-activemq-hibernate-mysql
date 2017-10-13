@@ -16,7 +16,6 @@
 
 package com.boyuanitsm.pay.wxpay.business;
 
-import com.boyuanitsm.pay.wxpay.common.report.ReporterFactory;
 import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryResData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
@@ -29,6 +28,8 @@ import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundOrderData;
 import com.boyuanitsm.pay.wxpay.service.RefundQueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -40,11 +41,14 @@ import java.util.List;
  * Date: 2014/12/2
  * Time: 18:51
  */
+@Component
 public class RefundQueryBusiness {
 
-    public RefundQueryBusiness() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
-        refundQueryService = new RefundQueryService();
-    }
+    @Autowired
+    ReportService reportService;
+
+    @Autowired
+    private RefundQueryService refundQueryService;
 
     public interface ResultListener {
         //API返回ReturnCode不合法，支付请求逻辑错误，请仔细检测传过去的每一个参数是否合法，或是看API能否被正常访问
@@ -72,8 +76,6 @@ public class RefundQueryBusiness {
 
     //查询到的结果
     private static String orderListResult = "";
-
-    private RefundQueryService refundQueryService;
 
     public String getOrderListResult() {
         return orderListResult;
@@ -127,16 +129,10 @@ public class RefundQueryBusiness {
                 Configure.getIP()
         );
 
-        long timeAfterReport;
-        if (Configure.isUseThreadToDoReport()) {
-            ReporterFactory.getReporter(reportReqData).run();
-            timeAfterReport = System.currentTimeMillis();
-            log.info("pay+report总耗时（异步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        } else {
-            ReportService.request(reportReqData);
-            timeAfterReport = System.currentTimeMillis();
-            log.info("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        }
+
+        reportService.request(reportReqData);
+        long timeAfterReport = System.currentTimeMillis();
+        log.info("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
 
 
         if (refundQueryResData == null || refundQueryResData.getReturn_code() == null) {

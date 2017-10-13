@@ -19,13 +19,19 @@ package com.boyuanitsm.pay.wxpay.service;
 
 import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.protocol.pay_protocol.ScanPayReqData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * User: rizenguo
  * Date: 2014/10/29
  * Time: 16:03
  */
+@Service
 public class ScanPayService extends BaseService{
+
+    @Autowired
+    Configure configure;
 
     public ScanPayService() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.PAY_API);
@@ -42,7 +48,7 @@ public class ScanPayService extends BaseService{
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = sendPost(scanPayReqData);
+        String responseString = sendPost(configure.getPayApi(), scanPayReqData);
         return responseString;
     }
 }

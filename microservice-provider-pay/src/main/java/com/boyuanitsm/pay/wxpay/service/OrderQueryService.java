@@ -20,13 +20,19 @@ import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
 import com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol.OrderQueryReqData;
 import com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol.OrderQueryResData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 /**
  * User: rizenguo
  * Date: 2014/10/29
  * Time: 16:04
  */
+@Service
 public class OrderQueryService extends BaseService{
+
+    @Autowired
+    Configure configure;
 
     public OrderQueryService() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.PAY_QUERY_API);
@@ -43,7 +49,7 @@ public class OrderQueryService extends BaseService{
         //--------------------------------------------------------------------
         //发送HTTPS的Post请求到API地址
         //--------------------------------------------------------------------
-        String responseString = sendPost(orderQueryReqData);
+        String responseString = sendPost(configure.getPayQueryApi(), orderQueryReqData);
 
         return responseString;
     }

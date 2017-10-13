@@ -1,6 +1,8 @@
 package com.boyuanitsm.pay.unionpay.b2c;
 
 /**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: PayNotify.java
  * unionpay 网关支付通知类
  * https://open.unionpay.com/ajweb/product/newProDetail?proId=1&cataId=11
  *
@@ -18,6 +20,10 @@ package com.boyuanitsm.pay.unionpay.b2c;
  traceTime           交易传输时间。（月月日日时时分分秒秒）24小时制收单机构对账时使用，该域透传了请求上送的txnTime。
  traceNo             系统跟踪号。收单机构对账时使用，该域由银联系统产生。
 
+ *
+ * @author smjie
+ * @version 1.00
+ * @Date 2017/10/10
  */
 public class PayNotify {
 

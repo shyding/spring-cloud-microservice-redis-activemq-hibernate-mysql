@@ -12,6 +12,7 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.netflix.feign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
 import org.springframework.data.redis.connection.RedisClusterConfiguration;
 import org.springframework.data.redis.connection.RedisNode;
@@ -42,6 +43,7 @@ import java.util.*;
 @EnableTransactionManagement
 @EnableFeignClients
 @EnableCircuitBreaker
+@ComponentScan({"com.hzg", "com.boyuanitsm.pay"})
 public class PayApplication {
     @Autowired
     private DataSource dataSource;

@@ -16,7 +16,6 @@
 
 package com.boyuanitsm.pay.wxpay.business;
 
-import com.boyuanitsm.pay.wxpay.common.report.ReporterFactory;
 import com.boyuanitsm.pay.wxpay.common.report.protocol.ReportReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundReqData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
@@ -27,17 +26,22 @@ import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundResData;
 import com.boyuanitsm.pay.wxpay.service.RefundService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * User: rizenguo
  * Date: 2014/12/2
  * Time: 17:51
  */
+@Component
 public class RefundBusiness {
 
-    public RefundBusiness() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
-        refundService = new RefundService();
-    }
+    @Autowired
+    ReportService reportService;
+
+    @Autowired
+    RefundService refundService;
 
     public interface ResultListener {
         //API返回ReturnCode不合法，支付请求逻辑错误，请仔细检测传过去的每一个参数是否合法，或是看API能否被正常访问
@@ -62,8 +66,6 @@ public class RefundBusiness {
 
     //执行结果
     private static String result = "";
-
-    private RefundService refundService;
 
     /**
      * 调用退款业务逻辑
@@ -111,16 +113,9 @@ public class RefundBusiness {
                 Configure.getIP()
         );
 
-        long timeAfterReport;
-        if (Configure.isUseThreadToDoReport()) {
-            ReporterFactory.getReporter(reportReqData).run();
-            timeAfterReport = System.currentTimeMillis();
-            log.debug("pay+report总耗时（异步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        } else {
-            ReportService.request(reportReqData);
-            timeAfterReport = System.currentTimeMillis();
-            log.debug("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
-        }
+        reportService.request(reportReqData);
+        long timeAfterReport = System.currentTimeMillis();
+        log.debug("pay+report总耗时（同步方式上报）：" + (timeAfterReport - costTimeStart) + "ms");
 
         if (refundResData == null || refundResData.getReturn_code() == null) {
             log.error("Case1:退款API请求逻辑错误，请仔细检测传过去的每一个参数是否合法，或是看API能否被正常访问");

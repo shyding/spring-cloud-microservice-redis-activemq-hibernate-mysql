@@ -22,6 +22,8 @@ import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.common.Signature;
 import com.boyuanitsm.pay.wxpay.protocol.unified_order_protocol.UnifiedOrderReqData;
 import com.boyuanitsm.pay.wxpay.service.BaseService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -38,14 +40,22 @@ import java.security.UnrecoverableKeyException;
  * @see <a href="https://api.mch.weixin.qq.com/pay/unifiedorder">https://api.mch.weixin.qq.com/pay/unifiedorder</a>
  * @author hookszhang on 7/8/16.
  */
+@Component
 public class UnifiedOrderBusiness extends BaseService{
+
+    @Autowired
+    Configure configure;
+
+    public Configure getConfigure() {
+        return configure;
+    }
 
     public UnifiedOrderBusiness() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         super(Configure.UNIFIFED_ORDER_API);
     }
 
     public UnifiedOrderResData run(UnifiedOrderReqData unifiedOrderReqData) throws UnrecoverableKeyException, KeyManagementException, NoSuchAlgorithmException, KeyStoreException, IOException, ParserConfigurationException, SAXException {
-        String responseString = sendPost(unifiedOrderReqData);
+        String responseString = sendPost(configure.getUnififedOrderApi(), unifiedOrderReqData);
         boolean isSignValid = Signature.checkIsSignValidFromResponseString(responseString);
         if (!isSignValid) {
             throw new RuntimeException(String.format("验证签名失败! api: %s, response: %s", Configure.UNIFIFED_ORDER_API, responseString));

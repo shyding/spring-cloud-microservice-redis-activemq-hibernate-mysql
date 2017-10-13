@@ -70,7 +70,7 @@ public class AcpService {
 	
 	/**
 	 * 验证签名(SHA-1摘要算法)<br>
-	 * @param resData 返回报文数据<br>
+	 * @param rspData 返回报文数据<br>
 	 * @param encoding 上送请求报文域encoding字段的值<br>
 	 * @return true 通过 false 未通过<br>
 	 */
@@ -235,7 +235,7 @@ public class AcpService {
 	
 	/**
 	 * 功能：前台交易构造HTTP POST自动提交表单<br>
-	 * @param action 表单提交地址<br>
+	 * @param reqUrl 表单提交地址<br>
 	 * @param hiddens 以MAP形式存储的表单键值<br>
 	 * @param encoding 上送请求报文域encoding字段的值<br>
 	 * @return 构造好的HTTP POST交易表单<br>

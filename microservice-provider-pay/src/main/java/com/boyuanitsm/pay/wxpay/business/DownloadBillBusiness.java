@@ -16,7 +16,6 @@
 
 package com.boyuanitsm.pay.wxpay.business;
 
-import com.boyuanitsm.pay.wxpay.common.report.ReporterFactory;
 import com.boyuanitsm.pay.wxpay.common.report.protocol.ReportReqData;
 import com.boyuanitsm.pay.wxpay.common.Configure;
 import com.boyuanitsm.pay.wxpay.common.Util;
@@ -27,15 +26,21 @@ import com.boyuanitsm.pay.wxpay.service.DownloadBillService;
 import com.thoughtworks.xstream.io.StreamException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * @author rizenguo hookszhang
  */
+@Component
 public class DownloadBillBusiness {
 
-    public DownloadBillBusiness() throws IllegalAccessException, ClassNotFoundException, InstantiationException {
-        downloadBillService = new DownloadBillService();
-    }
+    @Autowired
+    ReportService reportService;
+
+    @Autowired
+    DownloadBillService downloadBillService;
+
 
     public interface ResultListener{
         //API返回ReturnCode不合法，支付请求逻辑错误，请仔细检测传过去的每一个参数是否合法，或是看API能否被正常访问
@@ -57,8 +62,6 @@ public class DownloadBillBusiness {
 
     //执行结果
     private static String result = "";
-
-    private DownloadBillService downloadBillService;
 
     /**
      * 请求对账单下载服务
@@ -141,16 +144,9 @@ public class DownloadBillBusiness {
                     Configure.getIP()
             );
 
-            long timeAfterReport;
-            if(Configure.isUseThreadToDoReport()){
-                ReporterFactory.getReporter(reportReqData).run();
-                timeAfterReport = System.currentTimeMillis();
-                log.debug("pay+report总耗时（异步方式上报）："+(timeAfterReport-costTimeStart) + "ms");
-            }else{
-                ReportService.request(reportReqData);
-                timeAfterReport = System.currentTimeMillis();
-                log.debug("pay+report总耗时（同步方式上报）："+(timeAfterReport-costTimeStart) + "ms");
-            }
+            reportService.request(reportReqData);
+            long timeAfterReport = System.currentTimeMillis();
+            log.debug("pay+report总耗时（同步方式上报）："+(timeAfterReport-costTimeStart) + "ms");
         }
     }
 

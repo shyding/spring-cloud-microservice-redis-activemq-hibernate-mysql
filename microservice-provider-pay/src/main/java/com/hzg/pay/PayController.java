@@ -3,18 +3,12 @@ package com.hzg.pay;
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
 import com.boyuanitsm.pay.alipay.bean.SyncReturn;
-import com.boyuanitsm.pay.alipay.util.AlipayMobilePaymentSign;
 import com.boyuanitsm.pay.alipay.util.AlipayNotify;
 import com.boyuanitsm.pay.alipay.util.AlipaySubmit;
 import com.boyuanitsm.pay.unionpay.Acp;
 import com.boyuanitsm.pay.unionpay.b2c.FrontConsume;
 import com.boyuanitsm.pay.unionpay.b2c.PayNotify;
 import com.boyuanitsm.pay.unionpay.common.AcpService;
-import com.boyuanitsm.pay.unionpay.common.ConsumeStatusQuery;
-import com.boyuanitsm.pay.unionpay.error.SignValidateFailException;
-import com.boyuanitsm.pay.unionpay.token.*;
-import com.boyuanitsm.pay.wxpay.bean.AppPayParams;
-import com.boyuanitsm.pay.wxpay.bean.H5PayParams;
 import com.boyuanitsm.pay.wxpay.bean.Result;
 import com.boyuanitsm.pay.wxpay.bean.SimpleOrder;
 import com.boyuanitsm.pay.wxpay.business.UnifiedOrderBusiness;
@@ -22,21 +16,14 @@ import com.boyuanitsm.pay.wxpay.common.Signature;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
 import com.boyuanitsm.pay.wxpay.protocol.RefundResultCallback;
 import com.boyuanitsm.pay.wxpay.protocol.ResultCallback;
-import com.boyuanitsm.pay.wxpay.protocol.downloadbill_protocol.DownloadBillReqData;
-import com.boyuanitsm.pay.wxpay.protocol.pay_query_protocol.OrderQueryReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundReqData;
 import com.boyuanitsm.pay.wxpay.protocol.refund_protocol.RefundResData;
-import com.boyuanitsm.pay.wxpay.protocol.refund_query_protocol.RefundQueryReqData;
 import com.boyuanitsm.pay.wxpay.protocol.unified_order_protocol.UnifiedOrderReqData;
 import com.boyuanitsm.pay.wxpay.protocol.unified_order_protocol.UnifiedOrderResData;
-import com.boyuanitsm.pay.wxpay.service.DownloadBillService;
-import com.boyuanitsm.pay.wxpay.service.OrderQueryService;
-import com.boyuanitsm.pay.wxpay.service.RefundQueryService;
 import com.boyuanitsm.pay.wxpay.service.RefundService;
 import com.google.gson.reflect.TypeToken;
 import com.hzg.tools.*;
 import net.glxn.qrgen.javase.QRCode;
-import org.apache.commons.httpclient.HttpException;
 import org.apache.http.HttpStatus;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +62,7 @@ public class PayController {
     @Autowired
     private DateUtil dateUtil;
 
-    public PayController() throws IllegalAccessException, ClassNotFoundException, InstantiationException {}
+    public PayController() throws Exception {}
 
     /**
      * 保存实体
@@ -220,6 +207,13 @@ public class PayController {
      *  ========================= alipay 支付接口 =======================
      */
 
+    @Autowired
+    private AlipaySubmit alipaySubmit;
+
+    @Autowired
+    private AlipayNotify alipayNotify;
+
+
     /**
      * 支付宝即时到账交易接口快速通道
      *
@@ -239,7 +233,7 @@ public class PayController {
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
         if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
-            payHtml = AlipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), payType);
+            payHtml = alipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), payType);
         } else {
             payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
         }
@@ -265,7 +259,7 @@ public class PayController {
         Refund dbRefund = (Refund)payDao.query(refund).get(0);
 
         if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
-            refundHtml = AlipaySubmit.buildRequest(dbRefund.getNo(), "1",
+            refundHtml = alipaySubmit.buildRequest(dbRefund.getNo(), "1",
                     dbRefund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
                             PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
         } else {
@@ -287,7 +281,7 @@ public class PayController {
         String result = CommonConstant.fail;
 
         // 验证签名
-        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
             logger.info("verify success!");
 
             AyncNotify ayncNotify = writer.gson.fromJson(json, new TypeToken<AyncNotify>(){}.getType());
@@ -341,7 +335,7 @@ public class PayController {
         SyncReturn syncReturn = writer.gson.fromJson(json, new TypeToken<SyncReturn>(){}.getType());
 
         // 验证签名
-        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
             logger.info("verify success");
 
             String no = syncReturn.getOut_trade_no();
@@ -393,7 +387,7 @@ public class PayController {
         String result = CommonConstant.fail;
 
         // 验证签名
-        if (AlipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
+        if (alipayNotify.verifyRequest(writer.gson.fromJson(json, new TypeToken<Map<String, String[]>>(){}.getType()))) {
             logger.info("verify success!");
 
             RefundAyncNotify refundAyncNotify = writer.gson.fromJson(json, new TypeToken<RefundAyncNotify>(){}.getType());
@@ -508,11 +502,15 @@ public class PayController {
      * ========================= 微信支付接口 =======================
      */
 
-    private UnifiedOrderBusiness unifiedOrderBusiness = new UnifiedOrderBusiness();
-    private RefundService refundService = new RefundService();
-    private OrderQueryService orderQueryService = new OrderQueryService();
+    @Autowired
+    private UnifiedOrderBusiness unifiedOrderBusiness;
+
+    @Autowired
+    private RefundService refundService;
+
+    /*private OrderQueryService orderQueryService = new OrderQueryService();
     private RefundQueryService refundQueryService = new RefundQueryService();
-    /*private DownloadBillService downloadBillService = new DownloadBillService();*/
+    private DownloadBillService downloadBillService = new DownloadBillService();*/
 
     /**
      * 统一下单
@@ -697,7 +695,8 @@ public class PayController {
      * @param transactionID 是微信系统为每一笔支付交易分配的订单号，通过这个订单号可以标识这笔交易，它由支付订单API支付成功时返回的数据里面获取到。建议优先使用
      * @param outTradeNo    商户系统内部的订单号,transaction_id 、out_trade_no 二选一，如果同时存在优先级：transaction_id>out_trade_no
      * @return 订单详情
-     */
+     *//*
+
     @RequestMapping(value = "/wechat/orderQuery", method = RequestMethod.GET)
     public void orderQuery(String transactionID, String outTradeNo, HttpServletResponse response)  {
         try {
@@ -707,7 +706,8 @@ public class PayController {
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
             writer.writeStringToJson(response, "{}");
         }
-    }
+    }*/
+
 
     /**
      * 查询退款
@@ -719,7 +719,7 @@ public class PayController {
      * @param refundID      来自退款API的成功返回，微信退款单号refund_id、out_refund_no、out_trade_no 、transaction_id 四个参数必填一个，如果同事存在优先级为：refund_id>out_refund_no>transaction_id>out_trade_no
      * @param response
      * @return
-     */
+     *//*
     @RequestMapping(value = "/wechat/refundQuery", method = RequestMethod.GET)
     public void refundQuery(String transactionID, String outTradeNo, String outRefundNo,
                             String refundID, HttpServletResponse response) {
@@ -730,7 +730,7 @@ public class PayController {
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
             writer.writeStringToJson(response, "{}");
         }
-    }
+    }*/
 
 
     /**
@@ -824,7 +824,9 @@ public class PayController {
     private OpenAndConsume openAndConsume = new OpenAndConsume();
     private ConsumeStatusQuery consumeStatusQuery = new ConsumeStatusQuery();
     private DeleteToken deleteToken = new DeleteToken();*/
-    private FrontConsume frontConsume = new FrontConsume();
+
+    @Autowired
+    private FrontConsume frontConsume;
 
 
     /**
@@ -989,4 +991,10 @@ public class PayController {
         }
         return null;
     }*/
+
+    @GetMapping("/httpProxyAddress")
+    public void getHttpProxyAddress(HttpServletResponse response) {
+        writer.writeStringToJson(response, "{\"alipay\":\"" + alipaySubmit.getHttpProxyDiscovery().getHttpProxyAddress() + "\"," +
+                "\"wechat\":\"" + unifiedOrderBusiness.getConfigure().getHttpProxyDiscovery().getHttpProxyAddress() + "\"}");
+    }
 }

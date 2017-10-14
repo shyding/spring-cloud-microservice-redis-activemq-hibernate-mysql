@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
@@ -838,7 +838,7 @@ public class PayController {
      * @param no
      * @param response
      */
-    @RequestMapping(value = "/unionpay/acp/frontConsume", method = RequestMethod.POST)
+    @RequestMapping(value = "/unionpay/acp/frontConsume", method = RequestMethod.GET)
     public void unionpayFrontConsume(String no, HttpServletResponse response) {
         logger.info("unionpayFrontConsume, no:" + no);
 

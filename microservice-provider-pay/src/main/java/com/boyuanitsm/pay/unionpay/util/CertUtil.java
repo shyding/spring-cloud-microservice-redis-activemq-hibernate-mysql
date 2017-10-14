@@ -218,7 +218,7 @@ public class CertUtil {
 		FileInputStream in = null;
 		try {
 			cf = CertificateFactory.getInstance("X.509", "BC");
-			File fileDir = new File(CertUtil.class.getResource("/") + dir);
+			File fileDir = new File(CertUtil.class.getResource(dir).getFile());
 			File[] files = fileDir.listFiles(new CerFilter());
 			for (int i = 0; i < files.length; i++) {
 				File file = files[i];

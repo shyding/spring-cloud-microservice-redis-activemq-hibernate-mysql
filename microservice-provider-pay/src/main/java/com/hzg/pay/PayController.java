@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
@@ -849,7 +849,7 @@ public class PayController {
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
         if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
-            payHtml = frontConsume.consume(((int)(dbPay.getAmount()*100f)+""));
+            payHtml = frontConsume.consume(dbPay.getNo(), ((int)(dbPay.getAmount()*100f)+""));
         } else {
             payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
         }

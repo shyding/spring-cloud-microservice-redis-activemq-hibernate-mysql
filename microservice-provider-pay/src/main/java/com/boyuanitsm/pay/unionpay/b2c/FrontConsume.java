@@ -44,7 +44,7 @@ public class FrontConsume {
      * @param txnAmt 交易金额，单位分，不要带小数点
      * @return 跳转到银联网关支付的HTML代码
      */
-    public String consume(String txnAmt) {
+    public String consume(String orderId, String txnAmt) {
         Map<String, String> requestData = new HashMap<>();
 
         /***银联全渠道系统，产品参数，除了encoding自行选择外其他不需修改***/
@@ -59,7 +59,7 @@ public class FrontConsume {
         /***商户接入参数***/
         requestData.put("merId", Acp.merId);                              //商户号码，请改成自己申请的正式商户号或者open上注册得来的777测试商户号
         requestData.put("accessType", "0");                          //接入类型，0：直连商户
-        requestData.put("orderId", Acp.getOrderId());             //商户订单号，8-40位数字字母，不能含“-”或“_”，可以自行定制规则
+        requestData.put("orderId", orderId);             //商户订单号，8-40位数字字母，不能含“-”或“_”，可以自行定制规则
         requestData.put("txnTime", Acp.getCurrentTime());        //订单发送时间，取系统时间，格式为YYYYMMDDhhmmss，必须取当前时间，否则会报txnTime无效
         requestData.put("currencyCode", "156");                      //交易币种（境内商户一般是156 人民币）
         requestData.put("txnAmt", txnAmt);                              //交易金额，单位分，不要带小数点

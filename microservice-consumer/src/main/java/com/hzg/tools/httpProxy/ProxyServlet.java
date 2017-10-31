@@ -125,6 +125,8 @@ public class ProxyServlet extends HttpServlet {
      srcToTargetUriMap.put("/httpProxy/payitil/report", "https://api.mch.weixin.qq.com/payitil/report");
   }
 
+  protected static String sfExpressHost = "http://open-prod.sf-express.com"; //测试host：http://open-sbox.sf-express.com
+
   private HttpClient proxyClient;
 
   @Override
@@ -219,8 +221,16 @@ public class ProxyServlet extends HttpServlet {
   protected void initTarget(String uri) throws ServletException {
     targetUri = srcToTargetUriMap.get(uri);
     if (targetUri == null)
-      throw new ServletException(P_TARGET_URI+" is required.");
-    //test it's valid
+    /**
+     * add sf-express target uri set, sf-express default uri like :
+     * https://{domain}/{type}/{version}/order/access_token/{access_token}/sf_appid/{sf_appid}/sf_appkey/{sf_appkey}
+     */
+      if (uri.contains("access_token") && uri.contains("sf_appid") && uri.contains("sf_appkey")) {
+         targetUri = sfExpressHost + uri.replace("/httpProxy", "");
+      } else {
+         throw new ServletException(P_TARGET_URI+" is required.");
+      }
+
     try {
       targetUriObj = new URI(targetUri);
     } catch (Exception e) {

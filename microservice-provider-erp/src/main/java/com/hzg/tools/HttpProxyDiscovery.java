@@ -1,4 +1,4 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -6,15 +6,6 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.netflix.eureka.EurekaDiscoveryClient;
 import org.springframework.stereotype.Component;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: HttpProxyDiscovery.java
- * 类的详细说明
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/10/12
- */
 @Component
 @ConfigurationProperties("httpProxyDiscovery")
 public class HttpProxyDiscovery {

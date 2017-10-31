@@ -1,4 +1,4 @@
-﻿package com.hzg.erp;
+package com.hzg.erp;
 
 import com.hzg.tools.CommonConstant;
 import org.springframework.cloud.netflix.feign.FeignClient;
@@ -33,13 +33,13 @@ public interface PayClient {
         @Override
         public String update(String entity, String json) {
             logger.info("update 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，更新出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，更新出错\"}";
         }
 
         @Override
         public String save(String entity, String json) {
             logger.info("save 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，保存出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
         }
 
 

@@ -1,17 +1,8 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: SfExpress.java
- * 类的详细说明
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/10/26
- */
 @Component
 @ConfigurationProperties("sfExpress")
 public class SfExpress {

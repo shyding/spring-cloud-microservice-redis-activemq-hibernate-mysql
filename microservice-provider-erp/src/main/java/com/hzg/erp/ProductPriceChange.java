@@ -1,6 +1,5 @@
 package com.hzg.erp;
 
-import com.hzg.customer.Express;
 import com.hzg.sys.User;
 import org.hibernate.annotations.Type;
 
@@ -47,6 +46,9 @@ public class ProductPriceChange implements Serializable {
 
     @Column(name="inputDate")
     private Timestamp inputDate;
+
+    @Transient
+    private String sessionId;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -122,5 +124,13 @@ public class ProductPriceChange implements Serializable {
 
     public void setInputDate(Timestamp inputDate) {
         this.inputDate = inputDate;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 }

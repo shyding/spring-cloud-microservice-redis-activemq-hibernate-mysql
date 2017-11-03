@@ -1,4 +1,4 @@
-﻿package com.hzg.erp;
+package com.hzg.erp;
 
 import com.hzg.base.Dao;
 import com.hzg.tools.DateUtil;
@@ -73,6 +73,49 @@ public class ErpDao extends Dao {
         return no;
     }
 
+    /**
+     * 顺丰交易流水号格式如：YYYYMMDD+流水号{10},例如:201404120000000001,交易流水号唯一且不能重复
+     */
+    private int sfTransMessageIdCountLength = 10;
+
+    public String getSfTransMessageId() {
+        String key = "counter_SfTransMessageId";
+
+        Long count = 1L;
+        Long value = redisTemplateLong.opsForValue().get(key);
+
+        if (value == null) {
+            counter = new RedisAtomicLong(key, redisTemplateLong.getConnectionFactory(), count);
+            counter.expireAt(dateUtil.getDay(1));
+            currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+
+        } else {
+            if (counter == null) {
+                counter = new RedisAtomicLong(key, redisTemplate.getConnectionFactory());
+                counter.set(value);
+                counter.expireAt(dateUtil.getDay(1));
+                currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+            }
+
+            count = counter.incrementAndGet();
+        }
+
+
+        String countStr = String.valueOf(count);
+
+        int minusLength = sfTransMessageIdCountLength - countStr.length();
+        while (minusLength > 0) {
+            countStr = "0" + countStr;
+            --minusLength;
+        }
+
+        String sfTransMessageId = currentDay + countStr;
+
+        logger.info("generate getSfTransMessageId:" + sfTransMessageId);
+
+        return sfTransMessageId;
+    }
+
     public Map<String, List<Object>> queryBySql(String sql, Class[] clazzs) {
         Map<String, List<Object>> result = new HashMap<>();
 
@@ -139,6 +182,34 @@ public class ErpDao extends Dao {
         }
 
         return num;
+    }
+
+    public String[] getSqlPart(String sql, Class clazz){
+        String[] sqlPartArr = new String[4];
+
+        String[] sqlParts = sql.split(" from ");
+        sqlPartArr[0] = getSelectColumns("t", clazz);
+        String[] sqlParts1 = sqlParts[1].split(" where ");
+
+        sqlPartArr[1] = sqlParts1[0];
+        if (sqlParts1.length == 2) {
+            String parts[] = sqlParts1[1].split(" order by ");
+
+            sqlPartArr[2] = parts[0];
+            if (parts.length == 2) {
+                sqlPartArr[3] = parts[1];
+            }
+        } else {
+            String parts[] = sqlParts1[0].split(" order by ");
+
+            sqlPartArr[1] = parts[0];
+            sqlPartArr[2] = "";
+            if (parts.length == 2) {
+                sqlPartArr[3] = parts[1];
+            }
+        }
+
+        return sqlPartArr;
     }
 
     public String getSelectColumns(String abbrTableName, Class clazz) {

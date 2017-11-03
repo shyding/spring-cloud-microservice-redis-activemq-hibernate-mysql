@@ -24,6 +24,9 @@ public interface SysClient {
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
     String delete(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/getUsersByUri", method = RequestMethod.POST)
+    String getUsersByUri(@RequestBody String json);
+
     @Component
     class SysClientFallback implements SysClient {
         @Override
@@ -47,6 +50,12 @@ public interface SysClient {
         public String delete(String entity, String json) {
             logger.info("delete 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
             return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，更新出错\"}";
+        }
+
+        @Override
+        public String getUsersByUri(String json) {
+            logger.info("getUsersByUri 异常发生，进入fallback方法，接收的参数：" + json);
+            return "[]";
         }
     }
 }

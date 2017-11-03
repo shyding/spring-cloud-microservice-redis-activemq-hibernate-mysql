@@ -21,7 +21,7 @@ public class Product implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
-    @Column(name="no",length=15)
+    @Column(name="no",length=16)
     private String no;
 
     @Column(name="name",length=30)
@@ -45,7 +45,7 @@ public class Product implements Serializable {
     @Column(name="feature",length=6)
     private String feature;
 
-    @Column(name="state",length = 1)
+    @Column(name="state",length = 2)
     private Integer state;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
@@ -63,6 +63,9 @@ public class Product implements Serializable {
     @Column(name="unitPrice", length = 32)
     @Type(type = "com.hzg.tools.FloatDesType")
     private Float unitPrice;
+
+    @Column(name="useType", length = 12)
+    private String useType;
 
     @OneToMany(mappedBy = "product", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<ProductOwnProperty> properties;
@@ -175,6 +178,14 @@ public class Product implements Serializable {
         this.unitPrice = unitPrice;
     }
 
+    public String getUseType() {
+        return useType;
+    }
+
+    public void setUseType(String useType) {
+        this.useType = useType;
+    }
+
     public Set<ProductOwnProperty> getProperties() {
         return properties;
     }
@@ -191,6 +202,9 @@ public class Product implements Serializable {
             case 3 : return "在售";
             case 4 : return "售完";
             case 10 : return "采购审核通过";
+            case 11 : return "采购完成";
+            case 6 : return "编辑";
+            case 7 : return "多媒体文件已上传";
             default : return "";
         }
     }
@@ -270,5 +284,13 @@ public class Product implements Serializable {
         }
 
         return values.equals("") ? "" : values.substring(0, values.length()-1);
+    }
+
+    public String getPropertyCode(String typeName, String propertyName) {
+        return ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyCode(typeName, propertyName);
+    }
+
+    public String getPropertyQuantityType(String propertyName) {
+        return ((ProductUtil)SpringUtil.getBean("productUtil")).getPropertyQuantityType(propertyName);
     }
 }

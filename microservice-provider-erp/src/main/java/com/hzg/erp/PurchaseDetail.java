@@ -4,6 +4,7 @@ import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.Set;
 
 @Entity(name = "hzg_purchase_detail")
 public class PurchaseDetail implements Serializable {
@@ -23,9 +24,8 @@ public class PurchaseDetail implements Serializable {
     @JoinColumn(name = "purchaseId")
     private Purchase purchase;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "productId")
-    private Product product;
+    @Column(name="no",length=16)
+    private String no;
 
     @Column(name="productName",length=30)
     private String productName;
@@ -48,6 +48,12 @@ public class PurchaseDetail implements Serializable {
     @JoinColumn(name="supplierId")
     private Supplier supplier;
 
+    @OneToMany(mappedBy = "purchaseDetail", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<PurchaseDetailProduct> purchaseDetailProducts;
+
+    @Transient
+    private Product product;
+
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
@@ -68,12 +74,12 @@ public class PurchaseDetail implements Serializable {
         this.purchase = purchase;
     }
 
-    public Product getProduct() {
-        return product;
+    public String getNo() {
+        return no;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+    public void setNo(String no) {
+        this.no = no;
     }
 
     public String getProductName() {
@@ -123,4 +129,21 @@ public class PurchaseDetail implements Serializable {
     public void setSupplier(Supplier supplier) {
         this.supplier = supplier;
     }
+
+    public Set<PurchaseDetailProduct> getPurchaseDetailProducts() {
+        return purchaseDetailProducts;
+    }
+
+    public void setPurchaseDetailProducts(Set<PurchaseDetailProduct> purchaseDetailProducts) {
+        this.purchaseDetailProducts = purchaseDetailProducts;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
 }

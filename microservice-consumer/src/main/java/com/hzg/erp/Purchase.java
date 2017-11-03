@@ -1,5 +1,6 @@
 package com.hzg.erp;
 
+import com.hzg.pay.Account;
 import com.hzg.sys.User;
 
 import javax.persistence.*;
@@ -30,7 +31,7 @@ public class Purchase implements Serializable {
     @JoinColumn(name = "userId")
     private User charger;
 
-    @Column(name="type",length=32)
+    @Column(name="type",length=1)
     private Integer type;
 
     @Column(name="state",length = 1)
@@ -51,6 +52,10 @@ public class Purchase implements Serializable {
 
     @Column(name="describes",length=256)
     private String describes;
+
+    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name = "account")
+    private Account account;
 
     @OneToMany(mappedBy = "purchase", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<PurchaseDetail> details;
@@ -145,6 +150,14 @@ public class Purchase implements Serializable {
 
     public void setDescribes(String describes) {
         this.describes = describes;
+    }
+
+    public Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(Account account) {
+        this.account = account;
     }
 
     public Set<PurchaseDetail> getDetails() {

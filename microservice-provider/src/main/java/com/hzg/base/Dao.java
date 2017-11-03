@@ -1,5 +1,9 @@
 ﻿package com.hzg.base;
 
+/**
+ * Created by Administrator on 2017/4/20.
+ */
+
 import com.hzg.tools.CommonConstant;
 import com.hzg.tools.Des;
 import com.hzg.tools.ObjectToSql;
@@ -48,6 +52,19 @@ public class Dao {
         sessionFactory.getCurrentSession().save(object);
         Class clazz = object.getClass();
         storeToRedis(clazz.getName() + CommonConstant.underline + getId(object, clazz), object);
+
+        return CommonConstant.success;
+    }
+
+    /**
+     * 插入对象
+     * @param object
+     * @return
+     */
+    public String insert(Object object){
+        Class clazz = object.getClass();
+        setId(object, clazz, null);
+        save(writer.gson.fromJson(writer.gson.toJson(object), clazz));
 
         return CommonConstant.success;
     }
@@ -200,6 +217,106 @@ public class Dao {
 
     /**
      * 有 id 则根据 id 查询，没有再根据其他属性查询
+     *
+     * 查询对象的层级说明：
+     ================================================
+     情况1：类对应都是 OneToOne 或者 ManyToOne
+     使用 query(a）查询 A 的对象 a 时，查询深度是：最深查询到第三级类，但是只能查询到第三级类的id属性： a.b.c.id，查询不到 a.b.c.no
+
+     class A {
+         @Id
+         @GeneratedValue(strategy= GenerationType.IDENTITY)
+         @Column(name="id", length = 11)
+         private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        @OneToOne 或者 @ManyToOne
+        @JoinColumn(name = "bId")
+        private B b;
+
+        ...
+      }
+
+     class B {
+         @Id
+         @GeneratedValue(strategy= GenerationType.IDENTITY)
+         @Column(name="id", length = 11)
+         private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        @OneToOne 或者 @ManyToOne
+        @JoinColumn(name = "cId")
+        private C c;
+
+        ...
+     }
+
+     class C {
+         @Id
+         @GeneratedValue(strategy= GenerationType.IDENTITY)
+         @Column(name="id", length = 11)
+         private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        ...
+     }
+     ================================================
+
+     ================================================
+     情况2：第一级类对应第二级类是任何类型，第二级类对应第三级类是 OneToMany 或者 ManyToMany
+     使用 query(a）查询 A 的对象 a 时，查询深度是：最深查询到第二级类，查询不到第三级类：可以查询到 a.b.no，查询不到 a.b.c.id, a.b.c.no
+
+     class A {
+        @Id
+        @GeneratedValue(strategy= GenerationType.IDENTITY)
+        @Column(name="id", length = 11)
+        private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        @OneToMany 或者 @ManyToMany 或者 @OneToMany 或者 @ManyToMany
+        @JoinColumn(name = "bId")
+        private B b;
+
+        ...
+     }
+
+     class B {
+        @Id
+        @GeneratedValue(strategy= GenerationType.IDENTITY)
+        @Column(name="id", length = 11)
+        private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        @OneToMany 或者 @ManyToMany
+        @JoinColumn(name = "cId")
+        private C c;
+
+        ...
+     }
+
+     class C {
+        @Id
+        @GeneratedValue(strategy= GenerationType.IDENTITY)
+        @Column(name="id", length = 11)
+        private Integer id;
+
+        @Column(name="no",length=16)
+        private String no;
+
+        ...
+     }
+     =====================================================
+     *
      * @param object
      * @return
      */
@@ -610,6 +727,22 @@ public class Dao {
         }
 
         return id;
+    }
+
+    /**
+     * 设置 id
+     * @param object
+     * @param clazz
+     * @return
+     */
+    public void setId(Object object, Class clazz, Integer id) {
+        if (object != null) {
+            try {
+                clazz.getMethod("setId").invoke(object, id);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 

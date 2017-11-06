@@ -1,4 +1,4 @@
-﻿package com.hzg.base;
+package com.hzg.base;
 
 /**
  * Created by Administrator on 2017/4/20.
@@ -64,7 +64,9 @@ public class Dao {
     public String insert(Object object){
         Class clazz = object.getClass();
         setId(object, clazz, null);
-        save(writer.gson.fromJson(writer.gson.toJson(object), clazz));
+        Object cloneObj = writer.gson.fromJson(writer.gson.toJson(object), clazz);
+        save(cloneObj);
+        setId(object, clazz, getId(cloneObj, clazz));
 
         return CommonConstant.success;
     }
@@ -738,7 +740,7 @@ public class Dao {
     public void setId(Object object, Class clazz, Integer id) {
         if (object != null) {
             try {
-                clazz.getMethod("setId").invoke(object, id);
+                clazz.getMethod("setId", Integer.class).invoke(object, new Object[] {id});
             } catch (Exception e) {
                 e.printStackTrace();
             }

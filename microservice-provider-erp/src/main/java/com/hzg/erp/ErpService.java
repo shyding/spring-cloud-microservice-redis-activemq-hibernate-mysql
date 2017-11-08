@@ -52,7 +52,7 @@ public class ErpService {
     @Autowired
     ImageBase64 imageBase64;
 
-    public String launchAuditFlow(String entity, Integer entityId, String auditName, User user) {
+    public String launchAuditFlow(String entity, Integer entityId, String auditName, String content, User user) {
         String result = CommonConstant.fail;
 
         logger.info("launchAuditFlow start:" + result);
@@ -64,6 +64,7 @@ public class ErpService {
         audit.setEntity(entity);
         audit.setEntityId(entityId);
         audit.setName(auditName);
+        audit.setContent(content);
 
         Post post = (Post)(((List<User>)erpDao.query(user)).get(0)).getPosts().toArray()[0];
         audit.setCompany(post.getDept().getCompany());
@@ -121,7 +122,7 @@ public class ErpService {
         return dbAudits.get(0).getNo();
     }
 
-    public String updateAudit(Integer entityId, String oldEntity, String newEntity, String newName) {
+    public String updateAudit(Integer entityId, String oldEntity, String newEntity, String newName, String newContent) {
         String result = CommonConstant.fail;
 
         Audit audit = new Audit();
@@ -135,6 +136,7 @@ public class ErpService {
         for (Audit audit1 : dbAudits) {
             audit.setId(audit1.getId());
             audit.setName(newName);
+            audit.setContent(newContent);
             audit.setEntity(newEntity);
 
             Map<String, String> result1 = writer.gson.fromJson(sysClient.update(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
@@ -187,6 +189,8 @@ public class ErpService {
                 detail.setPurchase(doubleRelatePurchase);
                 result += erpDao.save(detail);
 
+                erpDao.deleteFromRedis(detail.getClass().getName() + CommonConstant.underline + detail.getId());
+
                 PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
                 detailProduct.setPurchaseDetail(detail);
 
@@ -205,6 +209,12 @@ public class ErpService {
 
                     product.setDescribe(describe);
                     result += erpDao.insert(product);
+
+                    /**
+                     * 因为保存完 product 才保存它对应的 properties，所以会导致 product 里的 properties，是前一个 product 的 properties
+                     * 所以需要删除 redis 里的 product
+                     */
+                    erpDao.deleteFromRedis(product.getClass().getName() + CommonConstant.underline + product.getId());
 
                     /**
                      * 使用 new 新建，避免直接使用已经包含 property 属性的 product， 使得 product 与 property 循环嵌套
@@ -228,65 +238,6 @@ public class ErpService {
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
-    public String saveProductsCheckDetail(ProductCheck productCheck) {
-        String result = CommonConstant.fail;
-        if (productCheck.getDetails() != null && !productCheck.getDetails().isEmpty()) {
-            for (ProductCheckDetail detail : productCheck.getDetails()) {
-                // 不存在该条形码的商品，该条条形码对应商品不插入数据库
-                if (erpDao.queryById(detail.getProduct().getId(),Product.class) == null){
-                    continue;
-                }
-                // 设置盘点盘点详细条目的盘点单据编号
-                detail.setProductCheck(productCheck);
-                // 该条形码所对应的详细条目已存在，说明是商品扫重复了
-                if(erpDao.query(detail) != null && !erpDao.query(detail).isEmpty()){
-                    continue;
-                }
-                Product product = detail.getProduct();
-                product = (Product) (erpDao.query(product).get(0));
-                ProductCheckDetail detail1 = new ProductCheckDetail();
-                detail1.setItemNo(product.getNo());
-                detail1.setProductCheck(productCheck);
-                // 该存货编码所对应的盘点详细条目已存在
-                if (erpDao.query(detail1) != null && !erpDao.query(detail1).isEmpty()){
-                    detail1 = (ProductCheckDetail)(erpDao.query(detail1).get(0));
-                    // 更新已存在条目的盘点数量及盘点金额
-                    detail1.setCheckQuantity(detail1.getCheckQuantity()+1);
-                    detail1.setCheckAmount((detail1.getCheckQuantity()+1)*product.getUnitPrice());
-                    result += erpDao.updateById(detail1.getId(),detail1);
-
-                    // 插入一条盘点数量和盘点金额为0的数据，目的是为了扫描商品时判断是否扫重
-                    detail.setItemNo(detail1.getItemNo());
-                    detail.setProductCheck(detail1.getProductCheck());
-                    detail.setCheckQuantity(0.0f);
-                    detail.setCheckAmount(product.getUnitPrice()*0.0f);
-                    detail.setUnit(detail1.getUnit());
-                    result += erpDao.save(detail);
-
-                }else{
-                    Stock stock = new Stock();
-                    stock.setWarehouse(productCheck.getWarehouse());
-                    stock.setProductNo(product.getNo());
-                    // 该仓库中存在该该商品编码的商品
-                    if(erpDao.query(stock) != null && !erpDao.query(stock).isEmpty()){
-                         stock = (Stock)(erpDao.query(stock).get(0));
-                         String unit = stock.getUnit();
-                         // 设置计量单位
-                         detail.setUnit(unit);
-                         detail.setItemNo(product.getNo());
-                         detail.setProductCheck(productCheck);
-                         detail.setCheckQuantity(1.0f);
-                         detail.setCheckAmount(product.getUnitPrice()*1.0f);
-                         // 保存详细盘点条目
-                         result += erpDao.save(detail);
-                    }
-                }
-            }
-        }
-
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-    }
-
     public String deletePurchaseProducts(Purchase purchase) {
         String result = CommonConstant.fail;
 
@@ -297,7 +248,7 @@ public class ErpService {
                 for (PurchaseDetailProduct detailProduct : dbDetail.getPurchaseDetailProducts()) {
                     Product product = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
 
-                    if (product.getProperties() != null) {
+                    if (product.getProperties() != null && !product.getProperties().isEmpty()) {
                         for (ProductOwnProperty ownProperty : product.getProperties()) {
                             result += erpDao.delete(ownProperty);
                         }
@@ -330,10 +281,12 @@ public class ErpService {
         if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
             result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_cangchu, stockInOut.getId(),
                     "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnGoodsDate() + "退货",
+                    "请注意退货时间：" + stockInOut.getDeposit().getReturnGoodsDate(),
                     stockInOut.getInputer());
 
             result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_caiwu, stockInOut.getId(),
                     "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnDepositDate() + "退押金",
+                    "请注意退押金时间：" + stockInOut.getDeposit().getReturnDepositDate(),
                     stockInOut.getInputer());
         }
 
@@ -349,21 +302,23 @@ public class ErpService {
         String result = CommonConstant.fail;
 
         for (StockInOutDetail detail : stockInOut.getDetails()) {
-            result += backupPreStockInOut(detail.getProduct(), stockInOut.getId());
+            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockInOut.getId());
 
             /**
              * 修改商品为入库
              */
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
                 detailProduct.getProduct().setState(ErpConstant.product_state_stockIn);
-                result += erpDao.updateById(detail.getProduct().getId(), detailProduct.getProduct());
+                result += erpDao.updateById(detailProduct.getProduct().getId(), detailProduct.getProduct());
             }
+
+            Product dbProduct = (Product) erpDao.queryById(((StockInOutDetailProduct)(detail.getStockInOutDetailProducts().toArray()[0])).getProduct().getId(), Product.class);
 
             /**
              * 调仓入库，设置调仓出库为完成状态
              */
             if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) == 0) {
-                StockInOut stockOutChangeWarehouse = getLastStockInOutByProductAndType(detail.getProduct(), ErpConstant.stockOut);
+                StockInOut stockOutChangeWarehouse = getLastStockInOutByProductAndType(dbProduct, ErpConstant.stockOut);
                 stockOutChangeWarehouse.getChangeWarehouse().setState(ErpConstant.stockInOut_state_changeWarehouse_finished);
                 result += erpDao.updateById(stockOutChangeWarehouse.getChangeWarehouse().getId(), stockOutChangeWarehouse.getChangeWarehouse());
             }
@@ -372,7 +327,7 @@ public class ErpService {
              * 添加库存
              */
             Stock tempStock = new Stock();
-            tempStock.setProductNo(detail.getProduct().getNo());
+            tempStock.setProductNo(dbProduct.getNo());
             tempStock.setWarehouse(stockInOut.getWarehouse());
 
             /**
@@ -412,16 +367,18 @@ public class ErpService {
         String result = CommonConstant.fail;
 
         for (StockInOutDetail detail : stockInOut.getDetails()) {
-            result += backupPreStockInOut(detail.getProduct(), stockInOut.getId());
+            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockInOut.getId());
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
                 detailProduct.getProduct().setState(ErpConstant.product_state_stockOut);
-                result += erpDao.updateById(detailProduct.getProduct().getId(), detail.getProduct());
+                result += erpDao.updateById(detailProduct.getProduct().getId(), detailProduct.getProduct());
             }
 
+            Product dbProduct = (Product) erpDao.queryById(((StockInOutDetailProduct)(detail.getStockInOutDetailProducts().toArray()[0])).getProduct().getId(), Product.class);
+
             Stock tempStock = new Stock();
-            tempStock.setProductNo(detail.getProduct().getNo());
-            tempStock.setWarehouse(getLastStockInOutByProductAndType(detail.getProduct(), ErpConstant.stockIn).getWarehouse());
+            tempStock.setProductNo(dbProduct.getNo());
+            tempStock.setWarehouse(getLastStockInOutByProductAndType(dbProduct, ErpConstant.stockIn).getWarehouse());
             Stock dbStock = (Stock)erpDao.query(tempStock).get(0);
 
             if (dbStock.getQuantity().compareTo(detail.getQuantity()) >= 0) {
@@ -453,11 +410,13 @@ public class ErpService {
     public String backupPreStockInOut(Product product, Integer currentStockInOutId){
         String result = "";
 
-        StockInOutDetail queryDetail = new StockInOutDetail();
-        queryDetail.setProduct(product);
-        List<StockInOutDetail> dbDetails = erpDao.query(queryDetail);
+        StockInOutDetailProduct queryDetailProduct = new StockInOutDetailProduct();
+        queryDetailProduct.setProduct(product);
+        List<StockInOutDetailProduct> StockInOutDetailProduct = erpDao.query(queryDetailProduct);
 
-        for (StockInOutDetail dbDetail : dbDetails) {
+        for (StockInOutDetailProduct dbDetailProduct : StockInOutDetailProduct) {
+            StockInOutDetail dbDetail = (StockInOutDetail) erpDao.queryById(dbDetailProduct.getStockInOutDetail().getId(), dbDetailProduct.getStockInOutDetail().getClass());
+
             if (dbDetail.getStockInOut().getState().compareTo(ErpConstant.stockInOut_state_finished) == 0 &&
                     dbDetail.getStockInOut().getId().compareTo(currentStockInOutId) != 0) {
                 dbDetail.getStockInOut().setState(ErpConstant.stockInOut_state_backup);
@@ -541,8 +500,14 @@ public class ErpService {
             result += erpDao.save(detail);
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
-                detailProduct.setStockInOutDetail(detail);
-                result += erpDao.save(detailProduct);
+                /**
+                 * 由于 insert 方法里调用了 writer.gson.fromJson 方法，如果类和子类有嵌套，就会一直重复解析子类对象，
+                 * 因此new一个对象来防止嵌套
+                 */
+                StockInOutDetail idDetail = new StockInOutDetail();
+                idDetail.setId(detail.getId());
+                detailProduct.setStockInOutDetail(idDetail);
+                result += erpDao.insert(detailProduct);
             }
         }
 
@@ -606,12 +571,14 @@ public class ErpService {
 
         PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
         detailProduct.setPurchaseDetail(detail);
-        PurchaseDetailProduct dbDetailProduct = (PurchaseDetailProduct) erpDao.query(detailProduct).get(0);
+        List<PurchaseDetailProduct> dbDetailProducts = erpDao.query(detailProduct);
 
-        Product stateProduct = new Product();
-        stateProduct.setId(dbDetailProduct.getProduct().getId());
-        stateProduct.setState(productState);
-        result += erpDao.updateById(stateProduct.getId(), stateProduct);
+        for (PurchaseDetailProduct dbDetailProduct : dbDetailProducts) {
+            Product stateProduct = new Product();
+            stateProduct.setId(dbDetailProduct.getProduct().getId());
+            stateProduct.setState(productState);
+            result += erpDao.updateById(stateProduct.getId(), stateProduct);
+        }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
@@ -748,23 +715,6 @@ public class ErpService {
         return pays.isEmpty() ? null : pays.get(0);
     }
 
-    public String stockInOutStateModify(Audit audit, Integer stockInOutState, Integer productState) {
-        String result = CommonConstant.fail;
-
-        StockInOut stockInOut = new StockInOut();
-        stockInOut.setId(audit.getEntityId());
-        stockInOut.setState(stockInOutState);
-
-        result += erpDao.updateById(stockInOut.getId(), stockInOut);
-
-        for (StockInOutDetail detail : stockInOut.getDetails()) {
-            detail.getProduct().setState(productState);
-            result += erpDao.updateById(detail.getProduct().getId(), detail.getProduct());
-        }
-
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-    }
-
     public String productStateModify(Audit audit, Integer state) {
         Product stateProduct = new Product();
         stateProduct.setId(audit.getEntityId());
@@ -858,7 +808,7 @@ public class ErpService {
             return stocks;
 
         } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            Class[] clazzs = {Product.class, ProductType.class, Supplier.class, ProductDescribe.class, StockInOutDetail.class, StockInOut.class};
+            Class[] clazzs = {Product.class, ProductType.class, Supplier.class, ProductDescribe.class, StockInOutDetailProduct.class, StockInOutDetail.class, StockInOut.class};
             Map<String, List<Object>> results = erpDao.queryBySql(getProductComplexSql(json, position, rowNum), clazzs);
 
             List<Object> products = results.get(Product.class.getName());
@@ -1011,17 +961,20 @@ public class ErpService {
                     " = t." + objectToSql.getColumn(Product.class.getDeclaredField("describe"));
 
 
-
-            selectSql += ", " + erpDao.getSelectColumns("t11", StockInOutDetail.class);
-            fromSql += ", " + objectToSql.getTableName(StockInOutDetail.class) + " t11 ";
-            whereSql += " and t11." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("product")) +
+            selectSql += ", " + erpDao.getSelectColumns("t11", StockInOutDetailProduct.class);
+            fromSql += ", " + objectToSql.getTableName(StockInOutDetailProduct.class) + " t11 ";
+            whereSql += " and t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("product")) +
                     " = t." + objectToSql.getColumn(Product.class.getDeclaredField("id"));
 
+            selectSql += ", " + erpDao.getSelectColumns("t111", StockInOutDetail.class);
+            fromSql += ", " + objectToSql.getTableName(StockInOutDetail.class) + " t111 ";
+            whereSql += " and t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("id")) +
+                    " = t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("stockInOutDetail"));
 
             selectSql += ", " + erpDao.getSelectColumns("t22", StockInOut.class);
             fromSql += ", " + objectToSql.getTableName(StockInOut.class) + " t22 ";
             whereSql += " and t22." + objectToSql.getColumn(StockInOut.class.getDeclaredField("id")) +
-                    " = t11." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("stockInOut")) +
+                    " = t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("stockInOut")) +
                     " and t22.state = " + ErpConstant.stockInOut_state_finished;
 
             String stockInOutEntity = StockInOut.class.getSimpleName().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1);
@@ -1144,7 +1097,9 @@ public class ErpService {
 
                 if (auditEntity != null) {
                     result += launchAuditFlow(auditEntity, priceChange.getId(),
-                            "申请商品：" + product.getNo() + "的销售价格浮动为：" + priceChange.getPrice(), user);
+                            "申请商品：" + product.getNo() + "的销售价格浮动为：" + priceChange.getPrice(),
+                            "请审核商品：" + product.getNo() + "的销售价格：" + priceChange.getPrice(),
+                            user);
                 }
 
             } else {
@@ -1226,19 +1181,30 @@ public class ErpService {
     public String generateBarcodes(StockInOut stockInOut) {
         String barcodesImage = "<table border='1' cellpadding='0' cellspacing='0'><tr>";
 
-        StockInOutDetail[] details = (StockInOutDetail[])stockInOut.getDetails().toArray();
+        StockInOutDetail[] details = new StockInOutDetail[stockInOut.getDetails().size()];
+        stockInOut.getDetails().toArray(details);
+        int k = 0;
+
         for (int i = 0; i < details.length; i++) {
-            Product product = (Product) erpDao.queryById(details[i].getProduct().getId(), details[i].getProduct().getClass());
+            StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+            detailProduct.setStockInOutDetail(details[i]);
 
-            barcodesImage += "<td><img src='data:image/png;base64," + imageBase64.imageToBase64(barcodeUtil.generate(String.valueOf(product.getId()))) + "'/><br/>" +
-                    product.getNo() + "</td>";
+            List<StockInOutDetailProduct> detailProducts = erpDao.query(detailProduct);
+            for (int j = 0; j < detailProducts.size(); j++) {
 
-            if (i % 4 == 0 && i != 0) {
-                barcodesImage += "</tr>";
+                Product product = (Product) erpDao.queryById(detailProducts.get(j).getProduct().getId(), detailProducts.get(j).getProduct().getClass());
+                barcodesImage += "<td  align='center' style='padding:10px'><img src='data:image/png;base64," + imageBase64.imageToBase64(barcodeUtil.generate(String.valueOf(product.getId()))) + "'/><br/>" +
+                        product.getNo() + "</td>";
 
-                if (i < details.length-1) {
-                    barcodesImage += "<tr>";
+                if (k % 4 == 0 && k != 0) {
+                    barcodesImage += "</tr>";
+
+                    if (j < detailProducts.size()-1 || i < details.length-1) {
+                        barcodesImage += "<tr>";
+                    }
                 }
+
+                k++;
             }
         }
 

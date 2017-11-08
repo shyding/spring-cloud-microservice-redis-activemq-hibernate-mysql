@@ -88,10 +88,12 @@ public class ErpConstant {
     public final static float price_percent_90 = 0.90f;
     public final static float price_percent_95 = 0.95f;
 
-    public final static String post_name_saler = "销售员";
-    public final static String post_name_charger = "销售主管";
-    public final static String post_name_manager = "销售经理";
-    public final static String post_name_director = "销售总监";
+    public final static String privilege_resource_uri_price_change_saler = "/sys/audit/priceChange/saler";
+    public final static String privilege_resource_uri_price_change_charger = "/sys/audit/priceChange/charger";
+    public final static String privilege_resource_uri_price_change_manager = "/sys/audit/priceChange/manager";
+    public final static String privilege_resource_uri_price_change_director = "/sys/audit/priceChange/director";
+
+    public final static String privilege_resource_uri_print_expressWaybill = "/erp/print/expressWaybill";
 
     public final static Integer stockInOut_action_print_barcode = 0;
     public final static Integer stockInOut_action_print_stockOutBills = 1;
@@ -122,5 +124,9 @@ public class ErpConstant {
     public final static Integer express_detail_state_received = 1;
     public final static Integer express_detail_state_receive_fail = 2;
 
+    public final static String unit_g = "克";
+    public final static String unit_kg = "千克";
+    public final static String unit_ct = "克拉";
+    public final static String unit_oz = "盎司";
 
 }

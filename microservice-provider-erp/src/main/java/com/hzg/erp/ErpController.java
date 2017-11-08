@@ -20,6 +20,7 @@ import com.sf.openapi.express.sample.security.tools.SecurityTools;
 import com.sf.openapi.express.sample.waybill.dto.WaybillReqDto;
 import com.sf.openapi.express.sample.waybill.dto.WaybillRespDto;
 import com.sf.openapi.express.sample.waybill.tools.WaybillDownloadTools;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
@@ -107,26 +109,8 @@ public class ErpController {
                     auditEntity = AuditFlowConstant.business_purchaseEmergency;
                 }
 
-                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getName(), purchase.getInputer());
-
-            }else if(entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())){
-                ProductCheck productCheck = writer.gson.fromJson(json, ProductCheck.class);
-                // 设置盘点日期
-                productCheck.setCheckDate(inputDate);
-                com.hzg.sys.User user = productCheck.getChartMaker();
-                user = (com.hzg.sys.User)(erpDao.query(user).get(0));
-                Set<Post> posts = user.getPosts();
-                Post post = posts.iterator().next();
-                Dept dept = post.getDept();
-                Company company = dept.getCompany();
-                // 设置盘点部门
-                productCheck.setDept(dept);
-                // 设置盘点公司
-                productCheck.setCompany(company);
-                // 保存商品盘点单
-                result += erpDao.save(productCheck);
-                // 保存商品盘点单详细条目
-                result += erpService.saveProductsCheckDetail(productCheck);
+                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getName(),
+                        "请审核采购单：" + purchase.getNo() ,purchase.getInputer());
 
             } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
                 Supplier supplier = writer.gson.fromJson(json, Supplier.class);
@@ -230,7 +214,7 @@ public class ErpController {
                             stockInOut.setInputer(erpService.getRandomStockOutUser());
                             result += erpService.stockOut(stockInOut);
                             result += erpService.launchAuditFlow(AuditFlowConstant.business_stockOut_print_expressWaybill_notify, stockInOut.getId(),
-                                    "打印出库单 " + stockInOut.getNo() + " 里商品的快递单",
+                                    "打印出库单:" + stockInOut.getNo() + " 里商品的快递单", "打印出库单:" + stockInOut.getNo() + " 里商品的快递单",
                                     stockInOut.getInputer());
 
                         } else if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_breakage_outWarehouse) == 0) {
@@ -238,7 +222,7 @@ public class ErpController {
                              * 报损出库进入报损出库审批流程
                              */
                             result += erpService.launchAuditFlow(AuditFlowConstant.business_stockOut_breakage, stockInOut.getId(),
-                                    "出库单 " + stockInOut.getNo() + " 商品报损出库",
+                                    "出库单:" + stockInOut.getNo() + " 商品报损出库", "请报损出库出库单" + stockInOut.getNo() + " 的商品",
                                     stockInOut.getInputer());
 
                         } else {
@@ -249,6 +233,11 @@ public class ErpController {
                         }
                     }
                 }
+
+                result = transcation.dealResult(result);
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"" + CommonConstant.id + "\":" + stockInOut.getId() + "}");
+                logger.info("save end, result:" + result);
+                return;
 
             } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
                 Warehouse warehouse = writer.gson.fromJson(json, Warehouse.class);
@@ -312,7 +301,7 @@ public class ErpController {
                             break;
                     }
 
-                    result += erpService.updateAudit(dbPurchase.getId(), oldEntity, newEntity, purchase.getName());
+                    result += erpService.updateAudit(dbPurchase.getId(), oldEntity, newEntity, purchase.getName(), "请审核采购单：" + dbPurchase.getNo());
 
                 } else {
                     result = CommonConstant.fail + ", 采购单 " + purchase.getNo() + " 里的商品，已审核通过，不能修改";
@@ -423,6 +412,11 @@ public class ErpController {
                         result += CommonConstant.fail + ", 入库单 " + stockInOut.getNo() + " 不是申请状态，不能修改及入库";
                     }
                 }
+
+                result = transcation.dealResult(result);
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"" + CommonConstant.id + "\":" + stockInOut.getId() + "}");
+                logger.info("save end, result:" + result);
+                return;
 
             } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
                 Warehouse warehouse = writer.gson.fromJson(json, Warehouse.class);
@@ -680,7 +674,8 @@ public class ErpController {
                             auditEntity = AuditFlowConstant.business_purchaseEmergency;
                             break;
                     }
-                    result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getName(), dbPurchase.getInputer());
+                    result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getName(),
+                            "请审核采购单：" + purchase.getNo() ,dbPurchase.getInputer());
 
 
                 } else {
@@ -748,7 +743,7 @@ public class ErpController {
                     detailProduct.setPurchaseDetail(detail);
                     PurchaseDetailProduct dbDetailProduct = (PurchaseDetailProduct) erpDao.query(detailProduct).get(0);
 
-                    detail.setProduct(dbDetailProduct.getProduct());
+                    detail.setProduct((Product)erpDao.queryById(dbDetailProduct.getProduct().getId(), dbDetailProduct.getProduct().getClass()));
                 }
             }
 
@@ -773,12 +768,15 @@ public class ErpController {
             List<StockInOut> stockInOuts = erpDao.query(writer.gson.fromJson(json, StockInOut.class));
 
             for (StockInOut stockInOut : stockInOuts) {
+                Set<StockInOutDetail> dbDetails = new HashSet<>();
                 for (StockInOutDetail detail : stockInOut.getDetails()) {
                     StockInOutDetail dbDetail = (StockInOutDetail) erpDao.queryById(detail.getId(), detail.getClass());
                     dbDetail.setProduct((Product) erpDao.queryById(((StockInOutDetailProduct)dbDetail.getStockInOutDetailProducts().toArray()[0]).getProduct().getId(), Product.class));
 
-                    detail = dbDetail;
+                    dbDetails.add(dbDetail);
                 }
+
+                stockInOut.setDetails(dbDetails);
 
                 if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
                     PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
@@ -806,8 +804,6 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductPriceChange.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, ProductPriceChange.class)));
 
-        } else if (entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())) {
-            writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, ProductCheck.class)));
         }
 
         logger.info("query end");
@@ -830,6 +826,23 @@ public class ErpController {
 
             writer.writeObjectToJson(response,lastStockInOut);
 
+        } else if (entity.equalsIgnoreCase("productUnit")){
+            String unit = "";
+            if (erpDao.queryById(writer.gson.fromJson(json,Product.class).getId(),Product.class)==null){
+                unit = "";
+            } else {
+                Product product = (Product) (erpDao.queryById(writer.gson.fromJson(json, Product.class).getId(), Product.class));
+                PurchaseDetail purchaseDetail = new PurchaseDetail();
+                purchaseDetail.setNo(product.getNo());
+                if (erpDao.query(purchaseDetail) != null && !erpDao.query(purchaseDetail).isEmpty()){
+                    purchaseDetail = (PurchaseDetail)(erpDao.query(purchaseDetail).get(0));
+                    unit = purchaseDetail.getUnit();
+                } else {
+                    unit = "";
+                }
+            }
+            String js = "{\"unit\":\""+unit+"\"}";
+            writer.writeStringToJson(response, js);
         }
 
         logger.info("query end");
@@ -984,7 +997,34 @@ public class ErpController {
             writer.writeObjectToJson(response, erpDao.complexQuery(ProductProperty.class, queryParameters, position, rowNum));
 
         } else if (entity.equalsIgnoreCase(StockInOut.class.getSimpleName())) {
-            writer.writeObjectToJson(response, erpDao.complexQuery(StockInOut.class, queryParameters, position, rowNum));
+            Map<Integer, String> uniqueActionCodes = new HashedMap();
+            List<StockInOutAction> repeatActions = new ArrayList<>();
+            List<StockInOut> stockInOuts = erpDao.complexQuery(StockInOut.class, queryParameters, position, rowNum);
+
+            for (StockInOut stockInOut : stockInOuts) {
+                uniqueActionCodes.put(stockInOut.getId(), "");
+
+                for (StockInOutAction action : stockInOut.getActions()) {
+                    if (uniqueActionCodes.get(stockInOut.getId()).contains("," + action.getType() + ",")) {
+                        repeatActions.add(action);
+
+                    } else {
+                        String uniqueActionCode = uniqueActionCodes.get(stockInOut.getId());
+                        uniqueActionCode += "," + action.getType() + ",";
+                        uniqueActionCodes.put(stockInOut.getId(), uniqueActionCode);
+                    }
+                }
+            }
+
+            for (StockInOut stockInOut : stockInOuts) {
+                for (StockInOutAction action : repeatActions) {
+                    if (stockInOut.getActions().contains(action)) {
+                        stockInOut.getActions().remove(action);
+                    }
+                }
+            }
+
+            writer.writeObjectToJson(response, stockInOuts);
 
         } else if (entity.equalsIgnoreCase(Stock.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpService.privateQuery(entity, json, position, rowNum));

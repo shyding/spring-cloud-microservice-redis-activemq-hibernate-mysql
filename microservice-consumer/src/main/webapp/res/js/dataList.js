@@ -1,4 +1,4 @@
-var dataList = (function ($) {
+﻿var dataList = (function ($) {
     "use strict";
 
     var titles = {
@@ -8,10 +8,13 @@ var dataList = (function ($) {
         "company": "公司",
         "privilegeResource": "权限",
         "auditFlow": "流程",
+        "article": "文章",
+        "articleCate": "文章分类",
         "product": "商品",
         "productDescribe": "商品描述",
         "productType": "商品类型",
         "productPriceChange": "商品调价",
+        "productCheck": "商品盘点",
         "supplier": "供应商",
         "purchase": "采购",
         "stockInOut": "入库/出库",
@@ -31,10 +34,13 @@ var dataList = (function ($) {
         "company": "录入时间",
         "privilegeResource": "录入时间",
         "auditFlow": "录入时间",
+        "article": "创建时间",
+        "articleCate": "创建时间",
         "product": "入库时间",
         "productDescribe": "编辑时间",
         "productType": "录入时间",
         "productPriceChange": "录入时间",
+        "productCheck": "盘点日期",
         "supplier": "录入时间",
         "purchase": "采购时间",
         "stockInOut": "入库时间",
@@ -54,10 +60,13 @@ var dataList = (function ($) {
         "company": "inputDate",
         "privilegeResource": "inputDate",
         "auditFlow": "inputDate",
+        "article": "inputDate",
+        "articleCate": "inputDate",
         "product": "stockInOut[date]",
         "productDescribe": "date",
         "productType": "inputDate",
         "productPriceChange": "inputDate",
+        "productCheck": "checkDate",
         "supplier": "inputDate",
         "purchase": "date",
         "stockInOut": "date",
@@ -77,10 +86,13 @@ var dataList = (function ($) {
         "company": "类别",
         "privilegeResource": "类别",
         "auditFlow": "类别",
+        "article": "类别",
+        "articleCate": "类别",
         "product": "类别",
         "productDescribe": "类别",
         "productType": "类别",
         "productPriceChange": "类别",
+        "productCheck": "类别",
         "supplier": "类别",
         "purchase": "类别",
         "stockInOut": "类别",
@@ -99,8 +111,11 @@ var dataList = (function ($) {
         "company": "/view",
         "privilegeResource": "/view",
         "auditFlow": "/view",
+        "article": "/view",
+        "articleCate": "/view",
         "productType": "/view",
         "productPriceChange": "/view",
+        "productCheck": "/view",
         "supplier": "/view",
         "purchase": "/view",
         "stockInOut": "/view",
@@ -115,8 +130,11 @@ var dataList = (function ($) {
         "company": "注册公司",
         "privilegeResource": "添加权限",
         "auditFlow": "添加流程",
+        "article": "添加文章",
+        "articleCate": "添加文章分类",
         "productType": "添加商品类型",
         "productPriceChange": "添加商品调价",
+        "productCheck": "添加商品盘点",
         "supplier": "添加供应商",
         "purchase": "采购申请",
         "warehouse": "添加仓库",
@@ -132,10 +150,13 @@ var dataList = (function ($) {
         "privilegeResource": "/sys",
         "audit": "/sys",
         "auditFlow": "/sys",
+        "article": "/sys",
+        "articleCate": "/sys",
         "product": "/erp",
         "productDescribe": "/erp",
         "productType": "/erp",
         "productPriceChange": "/erp",
+        "productCheck": "/erp",
         "supplier": "/erp",
         "purchase": "/erp",
         "stockInOut": "/erp",
@@ -155,16 +176,19 @@ var dataList = (function ($) {
         "privilegeResource": "/complexQuery",
         "audit": "/privateQuery",
         "auditFlow": "/complexQuery",
+        "article": "/complexQuery",
+        "articleCate": "/complexQuery",
         "product": "/complexQuery",
         "productDescribe": "/complexQuery",
         "productType": "/complexQuery",
         "productPriceChange": "/complexQuery",
+        "productCheck": "/complexQuery",
         "supplier": "/complexQuery",
         "purchase": "/complexQuery",
         "stockInOut": "/complexQuery",
         "stock": "/complexQuery",
         "warehouse": "/complexQuery",
-        "order": "/complexQuery",
+        "order": "/unlimitedComplexQuery",
         "orderPrivate": "/unlimitedComplexQuery",
         "pay": "/complexQuery",
         "account": "/complexQuery"
@@ -178,10 +202,13 @@ var dataList = (function ($) {
         "privilegeResource": "/view",
         "audit": "/view",
         "auditFlow": "/view",
+        "article": "/view",
+        "articleCate": "/view",
         "product": "/view",
         "productDescribe": "/view",
         "productType": "/view",
         "productPriceChange": "/view",
+        "productCheck": "/view",
         "supplier": "/view",
         "purchase": "/view",
         "stockInOut": "/view",
@@ -201,13 +228,16 @@ var dataList = (function ($) {
         "privilegeResource": "<th>名称</th><th>URI</th>",
         "audit": "<th>名称</th><th>流转时间</th><th>状态</th>",
         "auditFlow": "<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
+        "article": "<th>标题</th><th>分类</th><th>摘要</th><th>阅读量</th><th>发布人</th><th>创建时间</th><th>状态</th><th>文章优化关键词</th>",
+        "articleCate": "<th>文章分类名称</th><th>分类名称简写</th><th>文章分类优化关键词</th>",
         "product": "<th>名称</th><th>编号</th><th>类别</th><th>结缘价</th><th>市场价</th><th>成本价</th><th>特性</th><th>入库时间</th><th>供应商</th><th>图片</th><th>状态</th>",
         "productDescribe": "<th>标题</th><th>关键词</th><th>编辑时间</th>",
         "productType": "<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "productPriceChange": "<th>编号</th><th>商品编号</th><th>商品名称</th><th>商品价格</th><th>调整后价格</th><th>状态</th>",
+        "productCheck": "<th>盘点单据编号</th><th>盘点日期</th><th>盘点仓库</th><th>盘点部门</th><th>盈亏总数量</th><th>盈亏总金额</th><th>制单人</th><th>公司</th><th>备注</th><th>状态</th>",
         "supplier": "<th>名称</th><th>主要供货类型</th><th>等级</th><th>负责人</th><th>地址</th><th>电话</th><th>合作日期</th><th>商家类型</th>",
         "purchase": "<th>名称</th><th>编号</th><th>状态</th><th>类型</th><th>采购时间</th><th>采购人</th><th>录入人</th>",
-        "stockInOut": "<th>单号</th><th>状态</th><th>类型</th><th>入/出库时间</th><th>入/出库人</th><th>仓库</th>",
+        "stockInOut": "<th>单号</th><th>状态</th><th>类型</th><th>入/出库时间</th><th>入/出库人</th><th>仓库</th><th>已执行操作</th>",
         "stock": "<th>库存编号</th><th>商品名称</th><th>商品编号</th><th>商品数量</th><th>商品单位</th><th>入库时间</th><th>仓库</th>",
         "warehouse": "<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
         "order": "<th>订单编号</th><th>状态</th><th>类型</th><th>金额</th><th>实际支付金额</th><th>折扣</th><th>创建时间</th><th>订单所有人</th><th>销售人</th>",
@@ -224,16 +254,19 @@ var dataList = (function ($) {
         "privilegeResource": ["name", "uri"],
         "audit": ["name", "inputDate", "state"],
         "auditFlow": ["name", "entity", "company[name]", "state"],
+        "article": ["title","articleCate[name]", "shortContent", "hits", "author[name]", "inputDate", "state", "seoKeyword"],
+        "articleCate": ["name", "nickname", "articleKeyword"],
         "product": ["product[name]", "product[no]", "product[type[name]]", "product[fatePrice]", "product[price]", "product[costPrice]", "product[feature]", "stockInOut[date]", "product[supplier[name]]", "product[describe[imageParentDirPath]]", "product[state]"],
         "productDescribe": ["seoTitle", "seoKeyword", "date"],
         "productType": ["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "productPriceChange": ["no", "product[name]", "product[no]", "product[fatePrice]", "price", "state"],
+        "productCheck": ["checkNo", "checkDate", "warehouse[name]", "dept[name]", "quantity", "amount", "chartMaker[name]", "company[name]", "remark","state"],
         "supplier": ["name", "mainProductType[name]", "level", "charger", "address", "phone", "cooperateDate", "types[]"],
         "purchase": ["name", "no", "state", "type", "date", "charger[name]", "inputer[name]"],
-        "stockInOut": ["no", "state", "type", "date", "inputer[name]", "warehouse[name]"],
+        "stockInOut": ["no", "state", "type", "date", "inputer[name]", "warehouse[name]", "actions[][type]"],
         "stock": ["no", "product[name]", "productNo", "quantity", "unit", "date", "warehouse[name]"],
         "warehouse": ["name", "charger[name]", "address", "company[name]"],
-        "order": ["no", "state", "type", "amount", "payAmount", "discount", "date", "user[name]", "saler[name]"],
+        "order": ["no", "state", "type", "amount", "payAmount", "discount", "date", "user[username]", "saler[name]"],
         "orderPrivate": ["product[name]", "product[no]", "order[no]", "orderPrivate[type]", "orderPrivate[describes]", "orderPrivate[authorize[amount]]", "orderPrivate[authorize[describes]]", "orderPrivate[authorize[date]]", "orderPrivate[authorize[user[name]]]"],
         "pay": ["no", "state", "amount", "payDate", "payType", "payAccount", "payBranch", "payBank", "receiptAccount", "entity", "entityNo"],
         "account": ["account", "bank", "owner[name]", "branch", "amount", "inputDate"]
@@ -247,10 +280,13 @@ var dataList = (function ($) {
         "privilegeResource": "name",
         "audit": "name",
         "auditFlow": "name",
+        "article": "title",
+        "articleCate": "name",
         "product": "product[name]",
         "productDescribe": "seoTitle",
         "productType": "name",
         "productPriceChange": "no",
+        "productCheck": "checkNo",
         "supplier": "name",
         "purchase": "name",
         "stockInOut": "no",
@@ -270,10 +306,13 @@ var dataList = (function ($) {
         "privilegeResource": "id",
         "audit": "id",
         "auditFlow": "id",
+        "article": "id",
+        "articleCate": "id",
         "product": "product[id]",
         "productDescribe": "id",
         "productType": "id",
         "productPriceChange": "id",
+        "productCheck": "id",
         "supplier": "id",
         "purchase": "id",
         "stockInOut": "id",
@@ -293,11 +332,13 @@ var dataList = (function ($) {
         "user": {"state": {0: "使用", 1: "注销"}},
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
+        "article": {"state": {0: "保存", 1: "发布",2:"删除"}},
         "product": {"product[state]": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 2: "出库", 3: "在售", 4: "售完", 5: "无效", 6: "编辑", 7: "多媒体文件已上传"}},
         "productPriceChange": {"state": {0: "申请", 1: "在用", 2: "保存"}},
+        "productCheck": {"state": {0: "保存", 1: "盘点"}},
         "purchase": {"state": {0: "正常", 1: "关闭", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
         "stockInOut": {
-            "state": {0: "正常", 1: "关闭", 2: "作废"},
+            "state": {0: "申请", 1: "完成", 2: "作废", 3: "归档"},
             "type": {
                 0: "现金入库",
                 1: "代销入库",
@@ -305,14 +346,16 @@ var dataList = (function ($) {
                 3: "加工入库",
                 4: "押金入库",
                 5: "修补入库",
+                6: "调仓入库",
                 10: "虚拟出库",
                 11: "正常出库",
                 12: "报损出库",
                 13: "调仓出库"
-            }
+            },
+            "actions[][type]": {0: "打印商品条码", 1: "打印出库单", 2: "打印快递单", 3: "打印入库单"}
         },
         "order": {
-            "state": {0: "未支付", 1: "已支付", 2: "取消", 3: "已退款"},
+            "state": {0: "未支付", 1: "已支付", 2: "取消", 3: "已退款", 4:"财务确认已支付"},
             "type": {
                 0: "自助下单",
                 1: "代下单",
@@ -337,12 +380,15 @@ var dataList = (function ($) {
         "privilegeResource": "privilegeResource",
         "audit": "audit",
         "auditFlow": "auditFlow",
+        "article":"article",
+        "articleCate":"articleCate",
         "product": "product",
         "stockInNotify": "purchase",
         "stockInNotifyCaiwu": "purchase",
         "productDescribe": "productDescribe",
         "productType": "productType",
         "productPriceChange": "productPriceChange",
+        "productCheck": "productCheck",
         "priceChangeSaler": "productPriceChange",
         "priceChangeCharger": "productPriceChange",
         "priceChangeManager": "productPriceChange",
@@ -353,6 +399,8 @@ var dataList = (function ($) {
         "stockInOut": "stockInOut",
         "stockInOutDepositCangchu": "stockInOut",
         "stockInOutDepositCaiwu": "stockInOut",
+        "stockOutBreakage": "stockInOut",
+        "printExpressWaybillNotify": "stockInOut",
         "stock": "stock",
         "order": "order",
         "orderPrivate": "orderPrivate",
@@ -371,9 +419,13 @@ var dataList = (function ($) {
         document.title = title;
         $("#htitle").empty().html(title);
         $("#stitle").empty().html(title);
-
-        $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">名称</label>' +
-            '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" /></div></div>');
+        if(entity=="article"){
+            $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">名称</label>' +
+                '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="title" name="title" class="form-control col-md-7 col-xs-12" placeholder="输入名称" /></div></div>');
+        }else{
+            $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">名称</label>' +
+                '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" /></div></div>');
+        }
 
         if (modules[entity] == "/sys") {
             if ("audit" != entity) {
@@ -383,8 +435,9 @@ var dataList = (function ($) {
                     .append(visitEntitiesOptions["auditFlow"])
                     .append(visitEntitiesOptions["post"])
                     .append(visitEntitiesOptions["dept"])
-                    .append(visitEntitiesOptions["company"]);
-
+                    .append(visitEntitiesOptions["company"])
+                    .append(visitEntitiesOptions["article"])
+                    .append(visitEntitiesOptions["articleCate"]);
             } else {
                 $("#entity").css("display", "none").empty().append(visitEntitiesOptions["audit"]).after('<select id="state" name="state" class="form-control col-md-7 col-xs-12"><option value="0">待办</option><option value="1">已办</option></select>');
             }
@@ -399,6 +452,7 @@ var dataList = (function ($) {
                 .append(visitEntitiesOptions["stockInOut"])
                 .append(visitEntitiesOptions["stock"])
                 .append(visitEntitiesOptions["productPriceChange"])
+                .append(visitEntitiesOptions["productCheck"])
                 .append(visitEntitiesOptions["warehouse"]);
 
             if (entity == "stockInOut") {
@@ -432,6 +486,13 @@ var dataList = (function ($) {
             if (entity == "productPriceChange") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="seoTitle">调价编号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>');
+            }
+
+            if (entity == "productCheck") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checkNo">盘点单据编号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="checkNo" name="checkNo" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>'+
+                    '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checker">盘点人</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="checker" name="checker" class="form-control col-md-7 col-xs-12" placeholder="输入名字" /></div></div>');
             }
 
         } else if (modules[entity] == "/pay") {
@@ -585,6 +646,7 @@ var dataList = (function ($) {
                     "sLast": "<a href=\"#/fast-forward\"><i class=\"fa fa-fast-forward\"></i></a>"
                 }
             },
+            //"defaultContent":  " ",
             "bJQueryUI": true,
             "bPaginate": true,// 分页按钮
             "bFilter": false,// 搜索栏

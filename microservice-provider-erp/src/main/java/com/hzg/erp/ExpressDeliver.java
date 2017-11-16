@@ -3,6 +3,7 @@ package com.hzg.erp;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.Set;
 
 @Entity(name = "hzg_sys_company")
 public class ExpressDeliver implements Serializable {
@@ -17,9 +18,6 @@ public class ExpressDeliver implements Serializable {
     @GeneratedValue(strategy= GenerationType.IDENTITY)
     @Column(name="id", length = 11)
     private Integer id;
-
-    @Column(name="no",length=20)
-    private String no;
 
     @Column(name="deliver",length=20)
     private String deliver;
@@ -87,11 +85,15 @@ public class ExpressDeliver implements Serializable {
     @Column(name="state", length = 1)
     private Integer state;
 
-    @Column(name="amount", length = 6, precision = 2)
-    private Float amount;
+    @Column(name="fee", length = 6, precision = 2)
+    private Float fee;
 
     @Column(name="remark",length=255)
     private String remark;
+
+    @OneToMany(mappedBy = "expressDeliver", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<ExpressDeliverDetail> details;
+
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -103,14 +105,6 @@ public class ExpressDeliver implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public String getNo() {
-        return no;
-    }
-
-    public void setNo(String no) {
-        this.no = no;
     }
 
     public String getDeliver() {
@@ -289,12 +283,12 @@ public class ExpressDeliver implements Serializable {
         this.state = state;
     }
 
-    public Float getAmount() {
-        return amount;
+    public Float getFee() {
+        return fee;
     }
 
-    public void setAmount(Float amount) {
-        this.amount = amount;
+    public void setFee(Float fee) {
+        this.fee = fee;
     }
 
     public String getRemark() {
@@ -303,5 +297,45 @@ public class ExpressDeliver implements Serializable {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    public Set<ExpressDeliverDetail> getDetails() {
+        return details;
+    }
+
+    public void setDetails(Set<ExpressDeliverDetail> details) {
+        this.details = details;
+    }
+
+    @Override
+    public String toString() {
+        return "ExpressDeliver{" +
+                "id=" + id +
+                ", deliver='" + deliver + '\'' +
+                ", type='" + type + '\'' +
+                ", date=" + date +
+                ", sender='" + sender + '\'' +
+                ", senderAddress='" + senderAddress + '\'' +
+                ", senderCity='" + senderCity + '\'' +
+                ", senderProvince='" + senderProvince + '\'' +
+                ", senderCountry='" + senderCountry + '\'' +
+                ", senderPostCode='" + senderPostCode + '\'' +
+                ", senderCompany='" + senderCompany + '\'' +
+                ", senderTel='" + senderTel + '\'' +
+                ", senderMobile='" + senderMobile + '\'' +
+                ", receiver='" + receiver + '\'' +
+                ", receiverAddress='" + receiverAddress + '\'' +
+                ", receiverCity='" + receiverCity + '\'' +
+                ", receiverProvince='" + receiverProvince + '\'' +
+                ", receiverCountry='" + receiverCountry + '\'' +
+                ", receiverPostCode='" + receiverPostCode + '\'' +
+                ", receiverCompany='" + receiverCompany + '\'' +
+                ", receiverTel='" + receiverTel + '\'' +
+                ", receiverMobile='" + receiverMobile + '\'' +
+                ", state=" + state +
+                ", fee=" + fee +
+                ", remark='" + remark + '\'' +
+                ", details=" + details +
+                '}';
     }
 }

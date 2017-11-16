@@ -55,7 +55,7 @@ public class StockInOut implements Serializable {
     private StockChangeWarehouse changeWarehouse;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "warehoustId")
+    @JoinColumn(name = "warehouseId")
     private Warehouse warehouse;
 
     @OneToMany(mappedBy = "stockInOut", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
@@ -178,5 +178,25 @@ public class StockInOut implements Serializable {
 
     public void setActions(Set<StockInOutAction> actions) {
         this.actions = actions;
+    }
+
+    @Override
+    public String toString() {
+        return "StockInOut{" +
+                "id=" + id +
+                ", no='" + no + '\'' +
+                ", type=" + type +
+                ", describes='" + describes + '\'' +
+                ", date=" + date +
+                ", inputer=" + inputer +
+                ", inputDate=" + inputDate +
+                ", state=" + state +
+                ", deposit=" + deposit +
+                ", processRepair=" + processRepair +
+                ", changeWarehouse=" + changeWarehouse +
+                ", warehouse=" + warehouse +
+                ", details=" + details +
+                ", actions=" + actions +
+                '}';
     }
 }

@@ -11,10 +11,8 @@ import com.boyuanitsm.pay.wxpay.common.MD5;
 import com.boyuanitsm.pay.wxpay.common.XMLParser;
 import com.boyuanitsm.pay.wxpay.protocol.RefundResultCallback;
 import com.boyuanitsm.pay.wxpay.protocol.ResultCallback;
-import com.hzg.tools.Aes;
-import com.hzg.tools.CommonConstant;
-import com.hzg.tools.DateUtil;
-import com.hzg.tools.PayConstants;
+import com.hzg.order.Order;
+import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,6 +33,9 @@ public class PayService {
 
     @Autowired
     private Aes aes;
+
+    @Autowired
+    private OrderClient orderClient;
 
     public String processAlipayNotify(AyncNotify ayncNotify) {
         String result = CommonConstant.fail;
@@ -251,7 +252,13 @@ public class PayService {
     }
 
     public String doBusinessAfterPay(String entity, Integer entityId) {
-        return "";
+        String result = "";
+
+        if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
+            result += orderClient.business("paidOrder", "{\"" + CommonConstant.id +"\":" + entityId + "}");
+        }
+
+        return result;
     }
 
     public String doBusinessAfterRefund(String entity, Integer entityId) {

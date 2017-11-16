@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-
 @FeignClient(name = "microservice-provider-pay", path="/pay", fallback = PayClient.PayClientFallback.class)
 public interface PayClient {
     org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(PayClient.class);

@@ -1,14 +1,15 @@
 package com.hzg.erp;
 
 import com.google.common.reflect.TypeToken;
+import com.hzg.order.Order;
+import com.hzg.order.OrderDetail;
+import com.hzg.order.OrderDetailProduct;
 import com.hzg.pay.Account;
 import com.hzg.pay.Pay;
 import com.hzg.pay.Refund;
-import com.hzg.sys.Audit;
-import com.hzg.sys.Post;
-import com.hzg.sys.PrivilegeResource;
-import com.hzg.sys.User;
+import com.hzg.sys.*;
 import com.hzg.tools.*;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.log4j.Logger;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -441,13 +442,13 @@ public class ErpService {
      * 根据商品获取出库/入库
      */
     public StockInOut getLastStockInOutByProductAndType(Product product, String type) {
-        StockInOutDetail detail = new StockInOutDetail();
-        detail.setProduct(product);
-        List<StockInOutDetail> details = erpDao.query(detail);
+        StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+        detailProduct.setProduct(product);
+        List<StockInOutDetailProduct> detailProducts = erpDao.query(detailProduct);
 
         List<StockInOut> stockInOuts = new ArrayList<>();
-        for (StockInOutDetail temp : details) {
-            stockInOuts.add(temp.getStockInOut());
+        for (StockInOutDetailProduct ele : detailProducts) {
+            stockInOuts.add((StockInOut) erpDao.queryById(ele.getStockInOutDetail().getStockInOut().getId(), ele.getStockInOutDetail().getStockInOut().getClass()));
         }
 
         StockInOut[] stockInOutsArr = new StockInOut[stockInOuts.size()];
@@ -723,12 +724,13 @@ public class ErpService {
         return erpDao.updateById(stateProduct.getId(), stateProduct);
     }
 
-    public String queryTargetEntity(String targetEntity, String entity, Map<String, String> queryParameters) {
+    public String queryTargetEntity(String targetEntity, String entity, Object queryObject, int position, int rowNum) {
         String result = "";
 
         if (targetEntity.equalsIgnoreCase(Purchase.class.getSimpleName()) &&
                 entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
-            List<Purchase> purchases = (List<Purchase>)erpDao.complexQuery(Purchase.class, queryParameters, 0, -1);
+            List<Purchase> purchases = (List<Purchase>)erpDao.complexQuery(Purchase.class,
+                    writer.gson.fromJson(writer.gson.toJson(queryObject), new TypeToken<Map<String, String>>(){}.getType()), position, rowNum);
 
             Purchase tempPurchase = new Purchase();
             PurchaseDetail tempPurchaseDetail = new PurchaseDetail();
@@ -740,9 +742,24 @@ public class ErpService {
                 List<PurchaseDetail> details = erpDao.query(tempPurchaseDetail);
 
                 for (int j = 0; j < details.size(); j++) {
-                    Product product = (Product) erpDao.queryById(((PurchaseDetailProduct)details.get(j).getPurchaseDetailProducts().toArray()[0]).getProduct().getId(), Product.class);
-                    if (product.getState().compareTo(ErpConstant.product_state_purchase_close) == 0) {
-                        details.get(j).setProduct(product);
+                    if (details.get(j).getPurchaseDetailProducts() != null && !details.get(j).getPurchaseDetailProducts().isEmpty()) {
+                        PurchaseDetailProduct detailProduct = (PurchaseDetailProduct) details.get(j).getPurchaseDetailProducts().toArray()[0];
+
+                        Product product = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
+                        if (product != null) {
+
+                            if (product.getState().compareTo(ErpConstant.product_state_purchase_close) == 0) {
+                                details.get(j).setProduct(product);
+
+                            } else {
+                                details.remove(details.get(j));
+                                j--;
+                            }
+
+                        } else {
+                            details.remove(details.get(j));
+                            j--;
+                        }
 
                     } else {
                         details.remove(details.get(j));
@@ -756,7 +773,6 @@ public class ErpService {
                     purchases.remove(purchases.get(i));
                     i--;
                 }
-
             }
 
             result = writer.gson.toJson(purchases);
@@ -764,21 +780,47 @@ public class ErpService {
 
         } else if (targetEntity.equalsIgnoreCase(PurchaseDetail.class.getSimpleName()) &&
                 entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            List<Product> products = (List<Product>) erpDao.complexQuery(Product.class, queryParameters, 0, -1);
+            Map<String, String> queryParameters = writer.gson.fromJson(writer.gson.toJson(queryObject), new TypeToken<Map<String, String>>(){}.getType());
+            StockInOut stockInOut = writer.gson.fromJson(queryParameters.get(StockInOut.class.getSimpleName().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)), StockInOut.class);
+
+            List products;
+            if (stockInOut == null) {
+                products = erpDao.complexQuery(Product.class, queryParameters, position, rowNum);
+
+            } else {
+                Class[] clazzs = {Product.class, ProductType.class, ProductDescribe.class};
+                Map<String, List<Object>> results = erpDao.queryBySql(getStockInProductsByWarehouseComplexSql(queryParameters, stockInOut, position, rowNum), clazzs);
+                products = results.get(Product.class.getName());
+                List<Object> types = results.get(ProductType.class.getName());
+                List<Object> describes = results.get(ProductDescribe.class.getName());
+
+                int ii = 0;
+                for (Object ele : products) {
+                    ((Product)ele).setType((ProductType) types.get(ii));
+                    ((Product)ele).setDescribe((ProductDescribe) describes.get(ii));
+                    ii++;
+                }
+            }
 
             if (!products.isEmpty()) {
                 List<PurchaseDetail> details = new ArrayList<>();
 
                 PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
-                for (Product product : products) {
-                    detailProduct.setProduct(product);
-                    PurchaseDetailProduct dbDetailProduct = (PurchaseDetailProduct) erpDao.query(detailProduct).get(0);
+                for (int i = 0; i < products.size(); i++) {
+                    detailProduct.setProduct((Product) products.get(i));
 
-                    PurchaseDetail detail = (PurchaseDetail) erpDao.queryById(dbDetailProduct.getPurchaseDetail().getId(), dbDetailProduct.getPurchaseDetail().getClass());
-                    detail.setProduct(product);
-                    detail.setPurchaseDetailProducts(new HashSet<>());
-                    detail.getPurchaseDetailProducts().add(dbDetailProduct);
-                    details.add(detail);
+                    List<PurchaseDetailProduct> dbDetailProducts = erpDao.query(detailProduct);
+                    if (dbDetailProducts != null && !dbDetailProducts.isEmpty()) {
+                        PurchaseDetail detail = (PurchaseDetail) erpDao.queryById(dbDetailProducts.get(0).getPurchaseDetail().getId(), dbDetailProducts.get(0).getPurchaseDetail().getClass());
+
+                        if (detail != null) {
+                            detail.setProduct((Product) products.get(i));
+                            detail.setPurchaseDetailProducts(new HashSet<>());
+                            detail.getPurchaseDetailProducts().add(dbDetailProducts.get(0));
+                            details.add(detail);
+                        }
+                    }
+
                 }
 
                 result = writer.gson.toJson(details);
@@ -836,6 +878,7 @@ public class ErpService {
 
         } else if (entity.equalsIgnoreCase(ProductDescribe.class.getSimpleName())) {
             return erpDao.queryBySql(getProductDescribeSql(json, position, rowNum), ProductDescribe.class);
+
         }
 
         return new ArrayList();
@@ -852,6 +895,7 @@ public class ErpService {
 
         } else if (entity.equalsIgnoreCase(ProductDescribe.class.getSimpleName())) {
             sql = getProductDescribeSql(json, 0, -1);
+
         }
 
         sql = "select count(t.id) from " + sql.split(" from ")[1];
@@ -905,9 +949,9 @@ public class ErpService {
 
             }
 
-            selectSql += ", " + erpDao.getSelectColumns("t22", Warehouse.class);
-            fromSql += ", " + objectToSql.getTableName(Warehouse.class) + " t22 ";
-            whereSql += " and t22." + objectToSql.getColumn(Warehouse.class.getDeclaredField("id")) +
+            selectSql += ", " + erpDao.getSelectColumns("t12", Warehouse.class);
+            fromSql += ", " + objectToSql.getTableName(Warehouse.class) + " t12 ";
+            whereSql += " and t12." + objectToSql.getColumn(Warehouse.class.getDeclaredField("id")) +
                     " = t." + objectToSql.getColumn(Stock.class.getDeclaredField("warehouse"));
 
 
@@ -1010,6 +1054,78 @@ public class ErpService {
         return sql;
     }
 
+    private String getStockInProductsByWarehouseComplexSql(Map<String, String> queryParameters, StockInOut stockInOut, int position, int rowNum) {
+        String sql = "";
+
+        try {
+            String productSql = objectToSql.generateComplexSqlByAnnotation(Product.class, queryParameters, position, rowNum);
+
+            String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";
+
+            String[] sqlParts = erpDao.getSqlPart(productSql, Product.class);
+            selectSql = sqlParts[0];
+            fromSql = sqlParts[1];
+            whereSql = sqlParts[2];
+            sortNumSql = sqlParts[3];
+
+
+            selectSql += ", " + erpDao.getSelectColumns("t13", ProductType.class);
+            fromSql += ", " + objectToSql.getTableName(ProductType.class) + " t13 ";
+            if (!whereSql.trim().equals("")) {
+                whereSql += " and ";
+            }
+            whereSql += " t13." + objectToSql.getColumn(ProductType.class.getDeclaredField("id")) +
+                    " = t." + objectToSql.getColumn(Product.class.getDeclaredField("type"));
+
+            selectSql += ", " + erpDao.getSelectColumns("t14", ProductDescribe.class);
+            fromSql += ", " + objectToSql.getTableName(ProductDescribe.class) + " t14 ";
+            whereSql += " and t14." + objectToSql.getColumn(ProductDescribe.class.getDeclaredField("id")) +
+                    " = t." + objectToSql.getColumn(Product.class.getDeclaredField("describe"));
+
+
+            selectSql += ", " + erpDao.getSelectColumns("t11", StockInOutDetailProduct.class);
+            fromSql += ", " + objectToSql.getTableName(StockInOutDetailProduct.class) + " t11 ";
+            whereSql += " and t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("product")) +
+                    " = t." + objectToSql.getColumn(Product.class.getDeclaredField("id"));
+
+            selectSql += ", " + erpDao.getSelectColumns("t111", StockInOutDetail.class);
+            fromSql += ", " + objectToSql.getTableName(StockInOutDetail.class) + " t111 ";
+            whereSql += " and t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("id")) +
+                    " = t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("stockInOutDetail"));
+
+            selectSql += ", " + erpDao.getSelectColumns("t22", StockInOut.class);
+            fromSql += ", " + objectToSql.getTableName(StockInOut.class) + " t22 ";
+            whereSql += " and t22." + objectToSql.getColumn(StockInOut.class.getDeclaredField("id")) +
+                    " = t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("stockInOut"));
+
+            String stockInOutSql = objectToSql.generateSelectSqlByAnnotation(stockInOut);
+
+            stockInOutSql = stockInOutSql.substring(0, stockInOutSql.indexOf(" order by "));
+            stockInOutSql = stockInOutSql.replace(" t ", " t22 ").replace(" t.", " t22.");
+
+            if (stockInOutSql.contains(" where ")) {
+                String[] parts = stockInOutSql.split(" where ");
+                String[] tables = parts[0].split(" from ")[1].split(" t22 ");
+
+                if (tables.length > 1) {
+                    fromSql += tables[1];
+                }
+                whereSql += " and " + parts[1];
+            }
+
+
+            if (whereSql.indexOf(" and") == 0) {
+                whereSql = whereSql.substring(" and".length());
+            }
+
+            sql = "select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return sql;
+    }
+
     private String getProductDescribeSql(String json, int position, int rowNum) {
         Map<String, String> queryParameters = writer.gson.fromJson(json, new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
         String sql = objectToSql.generateComplexSqlByAnnotation(ProductDescribe.class, queryParameters, position, rowNum);
@@ -1065,7 +1181,11 @@ public class ErpService {
         String result = CommonConstant.fail;
 
         ProductPriceChange priceChange = writer.gson.fromJson(json, ProductPriceChange.class);
-        Product product = (Product) erpDao.queryById(priceChange.getProduct().getId(), priceChange.getProduct().getClass());
+        Product queryProduct = new Product();
+        queryProduct.setNo(priceChange.getProductNo());
+        queryProduct.setFatePrice(priceChange.getPrePrice());
+        queryProduct.setState(ErpConstant.product_state_onSale);
+        Product product = (Product) erpDao.query(queryProduct).get(0);
 
         if (product.getFatePrice() > ErpConstant.price_1000) {
             User user = (User)erpDao.getFromRedis(
@@ -1211,5 +1331,92 @@ public class ErpService {
         barcodesImage += "</tr></table>";
 
         return barcodesImage;
+    }
+
+    public ExpressDeliver generateExpressDeliver(ExpressDeliver receiverInfo, StockInOut stockOut) {
+        logger.info("generateExpressDeliver start, receiverInfo:" + receiverInfo.toString() + ",  stockInOut:" + stockOut.toString());
+
+        User sender = (User) erpDao.queryById(stockOut.getInputer().getId(), stockOut.getInputer().getClass());
+        Warehouse warehouse = (Warehouse) erpDao.queryById(stockOut.getWarehouse().getId(), stockOut.getWarehouse().getClass());
+
+        ExpressDeliver expressDeliver = new ExpressDeliver();
+        expressDeliver.setDeliver(ErpConstant.deliver_sfExpress);
+        expressDeliver.setType(ErpConstant.deliver_sfExpress_type);
+        expressDeliver.setDate(receiverInfo.getDate());
+        expressDeliver.setState(ErpConstant.express_state_sending);
+
+        expressDeliver.setReceiver(receiverInfo.getReceiver());
+        expressDeliver.setReceiverAddress(receiverInfo.getReceiverAddress());
+        expressDeliver.setReceiverCity(receiverInfo.getReceiverCity());
+        expressDeliver.setReceiverProvince(receiverInfo.getReceiverProvince());
+        expressDeliver.setReceiverCountry(receiverInfo.getReceiverCountry());
+        expressDeliver.setReceiverCompany(receiverInfo.getReceiverCompany());
+        expressDeliver.setReceiverMobile(receiverInfo.getReceiverMobile());
+        expressDeliver.setReceiverTel(receiverInfo.getReceiverTel());
+        expressDeliver.setReceiverPostCode(receiverInfo.getReceiverPostCode());
+
+        expressDeliver.setSender(sender.getName());
+        expressDeliver.setSenderAddress(warehouse.getCompany().getAddress());
+        expressDeliver.setSenderCity(warehouse.getCompany().getCity());
+        expressDeliver.setSenderProvince(warehouse.getCompany().getProvince());
+        expressDeliver.setSenderCountry(warehouse.getCompany().getCountry());
+        expressDeliver.setSenderCompany(warehouse.getCompany().getName());
+        expressDeliver.setSenderMobile(sender.getMobile());
+        expressDeliver.setSenderTel(warehouse.getCompany().getPhone());
+        expressDeliver.setSenderPostCode(warehouse.getCompany().getPostCode());
+
+        Set<ExpressDeliverDetail> deliverDetails = new HashSet<>();
+
+        for (StockInOutDetail detail : stockOut.getDetails()) {
+            StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+            detailProduct.setStockInOutDetail(detail);
+
+            List<StockInOutDetailProduct> detailProducts = erpDao.query(detailProduct);
+            Product product = (Product) erpDao.queryById(detailProducts.get(0).getProduct().getId(), detailProducts.get(0).getProduct().getClass());
+
+            ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
+            expressDeliverDetail.setExpressNo(ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId());
+            expressDeliverDetail.setProductNo(product.getNo());
+            expressDeliverDetail.setQuantity(detail.getQuantity());
+            expressDeliverDetail.setUnit(detail.getUnit());
+            expressDeliverDetail.setPrice(product.getFatePrice());
+            expressDeliverDetail.setState(ErpConstant.express_detail_state_unReceive);
+
+            Set<ExpressDeliverDetailProduct> deliverDetailProducts = new HashSet<>();
+            for (StockInOutDetailProduct ele : detailProducts) {
+                ExpressDeliverDetailProduct deliverDetailProduct = new ExpressDeliverDetailProduct();
+                deliverDetailProduct.setProduct(ele.getProduct());
+                deliverDetailProducts.add(deliverDetailProduct);
+            }
+
+            expressDeliverDetail.setExpressDeliverDetailProducts(deliverDetailProducts);
+            deliverDetails.add(expressDeliverDetail);
+            expressDeliver.setDetails(deliverDetails);
+        }
+
+        logger.info("generateExpressDeliver end");
+        return expressDeliver;
+    }
+
+    public ExpressDeliverDetail queryLastUnReceiveExpressDeliverDetailByProductNo(String productNo) {
+        ExpressDeliverDetail detail = new ExpressDeliverDetail();
+        detail.setProductNo(productNo);
+        detail.setState(ErpConstant.express_detail_state_unReceive);
+
+        return (ExpressDeliverDetail) erpDao.query(detail).get(0);
+    }
+
+    public Float getCanSellProductQuantity(String productNo) {
+        Stock stock = new Stock();
+        stock.setProductNo(productNo);
+        stock.setState(ErpConstant.stock_state_valid);
+        List<Stock> stocks = erpDao.query(stock);
+        BigDecimal canSellQuantity = new BigDecimal(0);
+
+        for (Stock ele : stocks) {
+            canSellQuantity.add(new BigDecimal(Float.toString(ele.getQuantity())));
+        }
+
+        return canSellQuantity.floatValue();
     }
 }

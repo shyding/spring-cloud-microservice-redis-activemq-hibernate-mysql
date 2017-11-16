@@ -1,13 +1,14 @@
 package com.hzg.order;
 
 import com.hzg.customer.Express;
-import com.hzg.customer.User;
 import com.hzg.erp.Product;
+import com.hzg.erp.ProductPriceChange;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.Set;
 
 @Entity(name = "hzg_order_detail")
 public class OrderDetail implements Serializable {
@@ -26,9 +27,12 @@ public class OrderDetail implements Serializable {
     @JoinColumn(name = "orderId")
     private Order order;
 
-    @OneToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "productId")
-    private Product product;
+    @Column(name = "productNo")
+    private String productNo;
+
+    @Column(name="productPrice", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float productPrice;
 
     @Column(name="state",length = 1)
     private Integer state;
@@ -55,11 +59,24 @@ public class OrderDetail implements Serializable {
     @JoinColumn(name = "expressId")
     private Express express;
 
+    @Column(name="expressDate")
+    private Timestamp expressDate;
+
     @Column(name="date")
     private Timestamp date;
 
+    @OneToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name="priceChangeId")
+    private ProductPriceChange priceChange;
+
+    @OneToMany(mappedBy = "orderDetail", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<OrderDetailProduct> orderDetailProducts;
+
     @Transient
     private OrderPrivate orderPrivate;
+
+    @Transient
+    private Product product;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -81,12 +98,20 @@ public class OrderDetail implements Serializable {
         this.order = order;
     }
 
-    public Product getProduct() {
-        return product;
+    public String getProductNo() {
+        return productNo;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+    public void setProductNo(String productNo) {
+        this.productNo = productNo;
+    }
+
+    public Float getProductPrice() {
+        return productPrice;
+    }
+
+    public void setProductPrice(Float productPrice) {
+        this.productPrice = productPrice;
     }
 
     public Integer getState() {
@@ -145,6 +170,14 @@ public class OrderDetail implements Serializable {
         this.express = express;
     }
 
+    public Timestamp getExpressDate() {
+        return expressDate;
+    }
+
+    public void setExpressDate(Timestamp expressDate) {
+        this.expressDate = expressDate;
+    }
+
     public Timestamp getDate() {
         return date;
     }
@@ -159,5 +192,40 @@ public class OrderDetail implements Serializable {
 
     public void setOrderPrivate(OrderPrivate orderPrivate) {
         this.orderPrivate = orderPrivate;
+    }
+
+    public ProductPriceChange getPriceChange() {
+        return priceChange;
+    }
+
+    public void setPriceChange(ProductPriceChange priceChange) {
+        this.priceChange = priceChange;
+    }
+
+    public Set<OrderDetailProduct> getOrderDetailProducts() {
+        return orderDetailProducts;
+    }
+
+    public void setOrderDetailProducts(Set<OrderDetailProduct> orderDetailProducts) {
+        this.orderDetailProducts = orderDetailProducts;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public String getStateName() {
+        switch (state) {
+            case 0 : return "未售";
+            case 1 : return "已售";
+            case 2 : return "预定";
+            case 3 : return "退货";
+            case 4 : return "换货";
+            default : return "";
+        }
     }
 }

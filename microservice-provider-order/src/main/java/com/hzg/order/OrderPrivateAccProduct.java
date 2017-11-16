@@ -1,14 +1,16 @@
-package com.hzg.erp;
+package com.hzg.order;
+
+import com.hzg.erp.Product;
 
 import javax.persistence.*;
 import java.io.Serializable;
 
-@Entity(name = "hzg_stock_inout_detail_product")
-public class StockInOutDetailProduct implements Serializable {
+@Entity(name = "hzg_order_private_acc_product")
+public class OrderPrivateAccProduct implements Serializable {
 
-    private static final long serialVersionUID = 345435245233255L;
+    private static final long serialVersionUID = 345435245233259L;
 
-    public StockInOutDetailProduct(){
+    public OrderPrivateAccProduct(){
         super();
     }
 
@@ -18,8 +20,8 @@ public class StockInOutDetailProduct implements Serializable {
     private Integer id;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "stockInOutDetailId")
-    private StockInOutDetail stockInOutDetail;
+    @JoinColumn(name = "orderPrivateAccId")
+    private OrderPrivateAcc orderPrivateAcc;
 
     @ManyToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "productId")
@@ -37,12 +39,12 @@ public class StockInOutDetailProduct implements Serializable {
         this.id = id;
     }
 
-    public StockInOutDetail getStockInOutDetail() {
-        return stockInOutDetail;
+    public OrderPrivateAcc getOrderPrivateAcc() {
+        return orderPrivateAcc;
     }
 
-    public void setStockInOutDetail(StockInOutDetail stockInOutDetail) {
-        this.stockInOutDetail = stockInOutDetail;
+    public void setOrderPrivateAcc(OrderPrivateAcc orderPrivateAcc) {
+        this.orderPrivateAcc = orderPrivateAcc;
     }
 
     public Product getProduct() {

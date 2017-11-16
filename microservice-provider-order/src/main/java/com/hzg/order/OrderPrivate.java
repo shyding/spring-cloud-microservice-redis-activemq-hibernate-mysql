@@ -1,10 +1,7 @@
-﻿package com.hzg.order;
-
-import org.hibernate.annotations.Type;
+package com.hzg.order;
 
 import javax.persistence.*;
 import java.io.Serializable;
-import java.sql.Timestamp;
 import java.util.Set;
 
 @Entity(name = "hzg_order_private")
@@ -33,9 +30,6 @@ public class OrderPrivate implements Serializable {
     @OneToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "authorizerId")
     private OrderPrivateAuthorize authorize;
-
-    @Column(name="date")
-    private Timestamp date;
 
     @OneToMany(mappedBy = "orderPrivate", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<OrderPrivateAcc> accs;
@@ -82,14 +76,6 @@ public class OrderPrivate implements Serializable {
 
     public void setAuthorize(OrderPrivateAuthorize authorize) {
         this.authorize = authorize;
-    }
-
-    public Timestamp getDate() {
-        return date;
-    }
-
-    public void setDate(Timestamp date) {
-        this.date = date;
     }
 
     public Set<OrderPrivateAcc> getAccs() {

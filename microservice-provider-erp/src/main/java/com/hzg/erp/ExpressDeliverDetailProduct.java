@@ -3,12 +3,12 @@ package com.hzg.erp;
 import javax.persistence.*;
 import java.io.Serializable;
 
-@Entity(name = "hzg_stock_inout_detail_product")
-public class StockInOutDetailProduct implements Serializable {
+@Entity(name = "hzg_express_deliver_detail_product")
+public class ExpressDeliverDetailProduct implements Serializable {
 
-    private static final long serialVersionUID = 345435245233255L;
+    private static final long serialVersionUID = 345435245233256L;
 
-    public StockInOutDetailProduct(){
+    public ExpressDeliverDetailProduct(){
         super();
     }
 
@@ -18,10 +18,10 @@ public class StockInOutDetailProduct implements Serializable {
     private Integer id;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "stockInOutDetailId")
-    private StockInOutDetail stockInOutDetail;
+    @JoinColumn(name = "expressDeliverDetailId")
+    private ExpressDeliverDetail expressDeliverDetail;
 
-    @ManyToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
+    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "productId")
     private Product product;
 
@@ -37,12 +37,12 @@ public class StockInOutDetailProduct implements Serializable {
         this.id = id;
     }
 
-    public StockInOutDetail getStockInOutDetail() {
-        return stockInOutDetail;
+    public ExpressDeliverDetail getExpressDeliverDetail() {
+        return expressDeliverDetail;
     }
 
-    public void setStockInOutDetail(StockInOutDetail stockInOutDetail) {
-        this.stockInOutDetail = stockInOutDetail;
+    public void setExpressDeliverDetail(ExpressDeliverDetail expressDeliverDetail) {
+        this.expressDeliverDetail = expressDeliverDetail;
     }
 
     public Product getProduct() {

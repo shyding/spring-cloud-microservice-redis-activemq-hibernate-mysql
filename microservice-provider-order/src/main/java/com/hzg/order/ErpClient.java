@@ -30,6 +30,17 @@ public interface ErpClient {
     @RequestMapping(value = "/getWarehouseByCompany", method = RequestMethod.GET)
     String getWarehouseByCompany(@RequestBody String json);
 
+    @RequestMapping(value = "/sfExpressOrder", method = RequestMethod.POST)
+    String sfExpressOrder(@RequestBody String json);
+
+    @RequestMapping(value = "/query", method = RequestMethod.POST)
+    String query(@RequestParam("entity") String entity, @RequestBody String json);
+
+    @RequestMapping(value = "/getLastStockInOutByProductAndType", method = RequestMethod.POST)
+    String getLastStockInOutByProductAndType(@RequestBody String json, @RequestParam("type") String type);
+
+    @RequestMapping(value = "/getExpressNo", method = RequestMethod.GET)
+    String getExpressNo();
 
     @Component
     class ErpClientFallback implements ErpClient {
@@ -67,6 +78,30 @@ public interface ErpClient {
         public String getWarehouseByCompany(String json) {
             logger.info("getWarehouseByCompany 异常发生，进入fallback方法，接收的参数：" + json);
             return "[]";
+        }
+
+        @Override
+        public String sfExpressOrder(String json) {
+            logger.info("sfExpressOrder 异常发生，进入fallback方法，接收的参数：" + json);
+            return "{\"" + CommonConstant.result + "\":\"系统异常，执行顺丰下单出错\"}";
+        }
+
+        @Override
+        public String query(String entity, String json) {
+            logger.info("query 异常发生，进入fallback方法，接收的参数：" + entity + ":" +json);
+            return "[]";
+        }
+
+        @Override
+        public String getLastStockInOutByProductAndType(String json, String type) {
+            logger.info("query 异常发生，进入fallback方法，接收的参数：" + json + "," + type);
+            return "{}";
+        }
+
+        @Override
+        public String getExpressNo() {
+            logger.info("query 异常发生，进入fallback方法");
+            return "{}";
         }
     }
 }

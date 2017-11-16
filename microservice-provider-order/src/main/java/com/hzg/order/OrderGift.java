@@ -1,17 +1,18 @@
 package com.hzg.order;
 
 import com.hzg.erp.Product;
-import org.hibernate.annotations.Type;
+import com.hzg.sys.User;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.sql.Timestamp;
 import java.util.Set;
 
-@Entity(name = "hzg_order_private_acc")
-public class OrderPrivateAcc implements Serializable {
-    private static final long serialVersionUID = 345435245233246L;
+@Entity(name = "hzg_order_gift")
+public class OrderGift implements Serializable {
+    private static final long serialVersionUID = 345435245233250L;
 
-    public OrderPrivateAcc(){
+    public OrderGift(){
         super();
     }
 
@@ -19,6 +20,10 @@ public class OrderPrivateAcc implements Serializable {
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     @Column(name="id", length=11)
     private Integer id;
+
+    @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    @JoinColumn(name = "orderId")
+    private Order order;
 
     @Column(name = "productNo")
     private String productNo;
@@ -29,12 +34,8 @@ public class OrderPrivateAcc implements Serializable {
     @Column(name="unit",length=6)
     private String unit;
 
-    @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "privateId")
-    private OrderPrivate orderPrivate;
-
-    @OneToMany(mappedBy = "orderPrivateAcc", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    private Set<OrderPrivateAccProduct> orderPrivateAccProducts;
+    @OneToMany(mappedBy = "orderGift", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<OrderGiftProduct> orderGiftProducts;
 
     @Transient
     private Product product;
@@ -49,6 +50,14 @@ public class OrderPrivateAcc implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Order getOrder() {
+        return order;
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
     }
 
     public String getProductNo() {
@@ -75,20 +84,12 @@ public class OrderPrivateAcc implements Serializable {
         this.unit = unit;
     }
 
-    public OrderPrivate getOrderPrivate() {
-        return orderPrivate;
+    public Set<OrderGiftProduct> getOrderGiftProducts() {
+        return orderGiftProducts;
     }
 
-    public void setOrderPrivate(OrderPrivate orderPrivate) {
-        this.orderPrivate = orderPrivate;
-    }
-
-    public Set<OrderPrivateAccProduct> getOrderPrivateAccProducts() {
-        return orderPrivateAccProducts;
-    }
-
-    public void setOrderPrivateAccProducts(Set<OrderPrivateAccProduct> orderPrivateAccProducts) {
-        this.orderPrivateAccProducts = orderPrivateAccProducts;
+    public void setOrderGiftProducts(Set<OrderGiftProduct> orderGiftProducts) {
+        this.orderGiftProducts = orderGiftProducts;
     }
 
     public Product getProduct() {

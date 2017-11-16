@@ -2,8 +2,6 @@ package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
 import com.hzg.sys.*;
-import com.hzg.customer.User;
-import com.hzg.order.Order;
 import com.hzg.order.OrderDetail;
 import com.hzg.tools.*;
 import com.sf.openapi.common.entity.AppInfo;
@@ -26,18 +24,22 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 
+/**
+ * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+ * 文件名: SysController.java
+ *
+ * @author smjie
+ * @version 1.00
+ * @Date 2017/5/25
+ */
 @Controller
 @RequestMapping("/erp")
 public class ErpController {
@@ -70,12 +72,6 @@ public class ErpController {
 
     @Autowired
     private SfExpress sfExpress;
-
-    @Autowired
-    private CustomerClient customerClient;
-
-    @Autowired
-    private OrderClient orderClient;
 
     /**
      * 保存实体
@@ -209,9 +205,13 @@ public class ErpController {
 
                         if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_normal_outWarehouse) == 0) {
                             /**
-                             * 正常出库，随机设置出库人员, 设置出库库存,商品出库状态, 提醒出库人员打印快递单
+                             * 确认订单支付完成后，系统会自动出库商品，即系统自动出库，这时没有出库人员，因此随机设置出库人员
                              */
-                            stockInOut.setInputer(erpService.getRandomStockOutUser());
+                             stockInOut.setInputer(erpService.getRandomStockOutUser());
+
+                            /**
+                             * 设置出库库存,商品出库状态, 提醒出库人员打印快递单
+                             */
                             result += erpService.stockOut(stockInOut);
                             result += erpService.launchAuditFlow(AuditFlowConstant.business_stockOut_print_expressWaybill_notify, stockInOut.getId(),
                                     "打印出库单:" + stockInOut.getNo() + " 里商品的快递单", "打印出库单:" + stockInOut.getNo() + " 里商品的快递单",
@@ -234,8 +234,11 @@ public class ErpController {
                     }
                 }
 
-                result = transcation.dealResult(result);
-                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"" + CommonConstant.id + "\":" + stockInOut.getId() + "}");
+                result = "{\"" + CommonConstant.result + "\":\"" + transcation.dealResult(result) + "\"" +
+                        ",\"" + CommonConstant.id + "\":" + stockInOut.getId() +
+                        ",\"" + CommonConstant.type + "\":" + stockInOut.getType() +
+                        ",\"" + CommonConstant.state + "\":" + stockInOut.getState() + "}";
+                writer.writeStringToJson(response, result);
                 logger.info("save end, result:" + result);
                 return;
 
@@ -413,8 +416,11 @@ public class ErpController {
                     }
                 }
 
-                result = transcation.dealResult(result);
-                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"" + CommonConstant.id + "\":" + stockInOut.getId() + "}");
+                result = "{\"" + CommonConstant.result + "\":\"" + transcation.dealResult(result) + "\"" +
+                        ",\"" + CommonConstant.id + "\":" + stockInOut.getId() +
+                        ",\"" + CommonConstant.type + "\":" + stockInOut.getType() +
+                        ",\"" + CommonConstant.state + "\":" + stockInOut.getState() + "}";
+                writer.writeStringToJson(response, result);
                 logger.info("save end, result:" + result);
                 return;
 
@@ -482,10 +488,22 @@ public class ErpController {
             } else if (name.equalsIgnoreCase("setProductsSold")) {
                 List<Product> products = writer.gson.fromJson(writer.gson.toJson(queryParameters.get("product")), new TypeToken<List<Product>>(){}.getType());
                 for (Product product : products) {
-                    product.setState(ErpConstant.product_state_sold);
-                    erpDao.updateById(product.getId(), product);
-                }
 
+                    boolean isSetProductSold = true;
+                    if (product.getSoldUnit().equals(ErpConstant.unit_g) || product.getSoldUnit().equals(ErpConstant.unit_kg) ||
+                            product.getSoldUnit().equals(ErpConstant.unit_oz) || product.getSoldUnit().equals(ErpConstant.unit_ct) ) {
+                        if (erpService.getCanSellProductQuantity(product.getNo()).compareTo(product.getSoldQuantity()) > 0) {
+                            isSetProductSold = false;
+                        }
+                    }
+
+                    if (isSetProductSold) {
+                        product.setState(ErpConstant.product_state_sold);
+                        result += erpDao.updateById(product.getId(), product);
+                    } else {
+                        result += CommonConstant.success;
+                    }
+                }
             }
 
         } catch (Exception e) {
@@ -528,14 +546,28 @@ public class ErpController {
                 result = erpService.generateBarcodes(stockInOut);
 
             } else if (name.equalsIgnoreCase("stockOutBills")) {
-                result = ((Map<String, String>) writer.gson.fromJson(json, new TypeToken<Map<String, String>>() {}.getType())).get(CommonConstant.printContent);
+                result = ((Map<String, Object>) writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType())).get(CommonConstant.printContent).toString();
 
             } else if (name.equalsIgnoreCase("expressWaybill")) {
-                result = downloadSfWaybill(stockInOut);
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_normal_outWarehouse) == 0) {
+                    result = downloadSfWaybill(stockInOut);
+
+                } else if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_normal_outWarehouse_manual) == 0) {
+                    /**
+                     * 人工正常出库打印顺丰快递单，先生成顺丰快递单，再下载快递单图片
+                     */
+                    ExpressDeliver expressDeliver = erpService.generateExpressDeliver(
+                            writer.gson.fromJson(((Map<String, Object>)writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType())).get(CommonConstant.expressReceiverInfo).toString(), ExpressDeliver.class), stockInOut);
+                    String sfExpressOrderResult = expressDeliverOrder(expressDeliver);
+
+                    if (!sfExpressOrderResult.contains(CommonConstant.fail)) {
+                        result = downloadSfWaybill(stockInOut);
+                    }
+                }
             }
         }
 
-        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        writer.write(response, result);
         logger.info("print end, result:" + result);
     }
 
@@ -802,7 +834,16 @@ public class ErpController {
             writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, Warehouse.class)));
 
         } else if (entity.equalsIgnoreCase(ProductPriceChange.class.getSimpleName())) {
-            writer.writeObjectToJson(response, erpDao.query(writer.gson.fromJson(json, ProductPriceChange.class)));
+            List<ProductPriceChange> priceChanges = erpDao.query(writer.gson.fromJson(json, ProductPriceChange.class));
+            Product queryProduct = new Product();
+
+            for (ProductPriceChange priceChange : priceChanges) {
+                queryProduct.setNo(priceChange.getProductNo());
+                queryProduct.setFatePrice(priceChange.getPrePrice());
+                priceChange.setProduct((Product)erpDao.query(queryProduct).get(0));
+            }
+
+            writer.writeObjectToJson(response, priceChanges);
 
         }
 
@@ -819,12 +860,14 @@ public class ErpController {
             StockInOut lastStockInOut = erpService.getLastStockInOutByProductAndType(
                     writer.gson.fromJson(writer.gson.toJson(queryParameters.get("product")), Product.class), (String)queryParameters.get("type"));
 
-            if (lastStockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse_outWarehouse) == 0) {
-                lastStockInOut.setChangeWarehouse(
-                        (StockChangeWarehouse) erpDao.queryById(lastStockInOut.getChangeWarehouse().getId(), lastStockInOut.getChangeWarehouse().getClass()));
+            if (lastStockInOut != null) {
+                if (lastStockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse_outWarehouse) == 0) {
+                    lastStockInOut.setChangeWarehouse(
+                            (StockChangeWarehouse) erpDao.queryById(lastStockInOut.getChangeWarehouse().getId(), lastStockInOut.getChangeWarehouse().getClass()));
+                }
             }
 
-            writer.writeObjectToJson(response,lastStockInOut);
+            writer.writeObjectToJson(response, lastStockInOut);
 
         } else if (entity.equalsIgnoreCase("productUnit")){
             String unit = "";
@@ -916,15 +959,19 @@ public class ErpController {
                 }
 
                 if (priceChange.getProduct() != null) {
-                    limitFields.add(priceChange.getClass().getDeclaredField("product"));
+                    limitFields.add(priceChange.getClass().getDeclaredField("productNo"));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
             List<ProductPriceChange> priceChanges = erpDao.suggest(priceChange, limitFields.toArray(new Field[limitFields.size()]));
+            Product queryProduct = new Product();
+
             for (ProductPriceChange ele : priceChanges) {
-                ele.setProduct((Product)erpDao.queryById(ele.getProduct().getId(), ele.getProduct().getClass()));
+                queryProduct.setNo(ele.getProductNo());
+                queryProduct.setFatePrice(ele.getPrePrice());
+                ele.setProduct((Product) erpDao.query(queryProduct).get(0));
             }
 
             writer.writeObjectToJson(response, priceChanges);
@@ -945,8 +992,7 @@ public class ErpController {
         Map<String, Object> queryEntities = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
 
         for (int i = 0; i < entitiesArr.length; i++) {
-            String partResult = erpService.queryTargetEntity(targetEntitiesArr[i], entitiesArr[i],
-                    writer.gson.fromJson(writer.gson.toJson(queryEntities.get(entitiesArr[i])), new TypeToken<Map<String, String>>(){}.getType()));
+            String partResult = erpService.queryTargetEntity(targetEntitiesArr[i], entitiesArr[i], queryEntities.get(entitiesArr[i]), 0, 30);
 
             if (partResult != null) {
                 if (!partResult.equals("[]") && !partResult.trim().equals("")) {
@@ -1034,6 +1080,7 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(ProductPriceChange.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(ProductPriceChange.class, queryParameters, position, rowNum));
+
         }
 
         logger.info("complexQuery end");
@@ -1083,6 +1130,7 @@ public class ErpController {
 
         } else if (entity.equalsIgnoreCase(Warehouse.class.getSimpleName())) {
             recordsSum =  erpDao.recordsSum(Warehouse.class, queryParameters);
+
         }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
@@ -1138,7 +1186,8 @@ public class ErpController {
         if (priceChange.getId() != null) {
             salePrice = ((List<ProductPriceChange>)erpDao.query(priceChange)).get(0).getPrice();
         } else {
-            salePrice = ((Product)erpDao.queryById(priceChange.getProduct().getId(), priceChange.getProduct().getClass())).getFatePrice();
+            priceChange.getProduct().setState(ErpConstant.product_state_onSale);
+            salePrice = ((Product)erpDao.query(priceChange.getProduct()).get(0)).getFatePrice();
         }
 
         writer.writeStringToJson(response, "{\"" + ErpConstant.price +"\":" + salePrice + "}");
@@ -1251,14 +1300,6 @@ public class ErpController {
                     priceChange.setDate(dateUtil.getSecondCurrentTimestamp());
 
                     result += erpDao.updateById(priceChange.getId(), priceChange);
-
-                    /**
-                     * 缓存变动价格的 key
-                     */
-                    ProductPriceChange dbPriceChange = (ProductPriceChange) erpDao.queryById(priceChange.getId(), priceChange.getClass());
-                    erpDao.storeToRedis(ErpConstant.price_change + CommonConstant.underline + dbPriceChange.getProduct().getId() + dbPriceChange.getNo(),
-                            dbPriceChange.getClass().getName() + CommonConstant.underline + dbPriceChange.getId());
-
                 }
                 break;
 
@@ -1291,20 +1332,28 @@ public class ErpController {
     }
 
     /**
-     * 根据 user 获取用户所在公司
+     * 根据公司获取仓库
      */
-    @RequestMapping(value="/getWarehouseByCompany")
+    @PostMapping(value="/getWarehouseByCompany")
     public void getWarehouseByCompany(HttpServletResponse response,  @RequestBody String json) {
         logger.info("getWarehouseByCompany start, parameter:" + json);
 
         Warehouse warehouse = new Warehouse();
-        warehouse.setCompany(writer.gson.fromJson(json, new TypeToken<Company>(){}.getType()));
-
+        warehouse.setCompany(writer.gson.fromJson(json, Company.class));
         writer.writeObjectToJson(response, erpDao.query(warehouse));
 
         logger.info("getWarehouseByCompany end");
     }
 
+    @PostMapping(value = "/getLastStockInOutByProductAndType")
+    public void getLastStockInOutByProductAndType(HttpServletResponse response,  @RequestBody String json, String type){
+        writer.writeObjectToJson(response, erpService.getLastStockInOutByProductAndType(writer.gson.fromJson(json, Product.class), type));
+    }
+
+    @GetMapping(value = "/getExpressNo")
+    public void getExpressNo(HttpServletResponse response){
+        writer.writeStringToJson(response, "{\"" + CommonConstant.no + "\":\"" + ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId() + "\"");
+    }
 
 
     /**
@@ -1313,15 +1362,57 @@ public class ErpController {
      *  https://open.sf-express.com/apitools/sdk.html
      */
 
+    /**
+     * sf快递单下单接口
+     * @param json
+     * @param response
+     */
+    @PostMapping(value = "/sfExpressOrder")
+    public void sfExpressOrder(String json, HttpServletResponse response) {
+        logger.info("sfExpressOrder start, json:" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            result += expressDeliverOrder(writer.gson.fromJson(json, ExpressDeliver.class));
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("sfExpressOrder end");
+    }
+
+    public String expressDeliverOrder(ExpressDeliver expressDeliver) {
+        String result = CommonConstant.fail;
+
+        result += erpDao.save(expressDeliver);
+
+        for (ExpressDeliverDetail expressDeliverDetail : expressDeliver.getDetails()) {
+            expressDeliverDetail.setExpressDeliver(expressDeliver);
+            result += erpDao.save(expressDeliverDetail);
+
+            for (ExpressDeliverDetailProduct expressDeliverDetailProduct : expressDeliverDetail.getExpressDeliverDetailProducts()) {
+                expressDeliverDetailProduct.setExpressDeliverDetail(expressDeliverDetail);
+                result += erpDao.save(expressDeliverDetailProduct);
+            }
+        }
+
+        result += sfExpressOrder(expressDeliver);
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
 
     /**
      * 调用顺丰快递单接口，在顺丰系统生成快递单
-     * @param json
-     * @param response
-     *
-     *  快递单内容
-     *
-     *  请求报文内容
+     * @param expressDeliver
+         *
+         *  快递单内容
+         *
+         *  请求报文内容
         字段名称 类型 是否
         必须
         描述
@@ -1466,9 +1557,8 @@ public class ErpController {
         订单号重复
      *
      */
-    @PostMapping(value = "/sfExpressOrder")
-    public void sfExpressOrder(String json, HttpServletResponse response) {
-        logger.info("sfExpressOrder start, stockOutId:" + json);
+    public String sfExpressOrder(ExpressDeliver expressDeliver) {
+        logger.info("sfExpressOrder start, details:" + expressDeliver.toString());
 
         String result = CommonConstant.fail;
 
@@ -1479,141 +1569,81 @@ public class ErpController {
         appInfo.setAppKey(sfExpress.getAppKey());
         appInfo.setAccessToken(getSfToken(sfExpress.getAppId(), sfExpress.getAppKey()));
 
-        List<OrderDetail> details = writer.gson.fromJson(json, new TypeToken<List<OrderDetail>>(){}.getType());
-        try {
-            for (OrderDetail detail : details) {
-                Order order = ((List<Order>)writer.gson.fromJson(
-                        orderClient.query(detail.getOrder().getClass().getSimpleName(), writer.gson.toJson(detail.getOrder())), new TypeToken<List<Order>>() {}.getType())).get(0);
-                User user = ((List<User>)writer.gson.fromJson(
-                        customerClient.query(order.getUser().getClass().getSimpleName(), writer.gson.toJson(order.getUser())), new TypeToken<List<User>>() {}.getType())).get(0);
+        for (ExpressDeliverDetail expressDeliverDetail : expressDeliver.getDetails()) {
+            //设置请求头
+            MessageReq req = new MessageReq();
+            HeadMessageReq head = new HeadMessageReq();
+            head.setTransType(ErpConstant.sf_action_code_order);
+            head.setTransMessageId(expressDeliverDetail.getExpressNo().replace(ErpConstant.no_expressDelivery_perfix, ""));
+            req.setHead(head);
 
-                StockInOut stockOut = erpService.getLastStockInOutByProductAndType(detail.getProduct(), ErpConstant.stockOut);
-                Warehouse warehouse = (Warehouse) erpDao.queryById(stockOut.getWarehouse().getId(), stockOut.getWarehouse().getClass());
+            OrderReqDto orderReqDto = new OrderReqDto();
+            orderReqDto.setOrderId(expressDeliverDetail.getExpressNo());
+            orderReqDto.setExpressType((short) 5);
+            orderReqDto.setPayMethod((short) 1);
+            orderReqDto.setNeedReturnTrackingNo((short) 0);
+            orderReqDto.setIsDoCall((short) 1);
+            orderReqDto.setIsGenBillNo((short) 1);
+            orderReqDto.setCustId(sfExpress.getCustId());
+            orderReqDto.setPayArea(sfExpress.getPayArea());
+            orderReqDto.setSendStartTime(dateUtil.getSimpleDateFormat().format(expressDeliver.getDate()));
+            orderReqDto.setRemark("易碎物品，小心轻放");
 
-                Product product = (Product) erpDao.queryById(detail.getProduct().getId(), detail.getProduct().getClass());
+            //收件人信息
+            DeliverConsigneeInfoDto consigneeInfoDto = new DeliverConsigneeInfoDto();
+            consigneeInfoDto.setCompany(expressDeliver.getReceiverCompany());
+            consigneeInfoDto.setAddress(expressDeliver.getReceiverAddress());
+            consigneeInfoDto.setCity(expressDeliver.getReceiverCity());
+            consigneeInfoDto.setProvince(expressDeliver.getReceiverProvince());
+            consigneeInfoDto.setCountry(expressDeliver.getReceiverCountry());
+            consigneeInfoDto.setShipperCode(expressDeliver.getReceiverPostCode());
+            consigneeInfoDto.setMobile(expressDeliver.getReceiverMobile());
+            consigneeInfoDto.setTel(expressDeliver.getReceiverTel());
+            consigneeInfoDto.setContact(expressDeliver.getReceiver());
 
-                //设置请求头
-                MessageReq req = new MessageReq();
-                HeadMessageReq head = new HeadMessageReq();
-                head.setTransType(ErpConstant.sf_action_code_order);
-                head.setTransMessageId(erpDao.getSfTransMessageId());
-                req.setHead(head);
+            //寄件人信息
+            DeliverConsigneeInfoDto deliverInfoDto = new DeliverConsigneeInfoDto();
+            deliverInfoDto.setCompany(expressDeliver.getSenderCompany());
+            deliverInfoDto.setAddress(expressDeliver.getSenderAddress());
+            deliverInfoDto.setCity(expressDeliver.getSenderCity());
+            deliverInfoDto.setProvince(expressDeliver.getSenderProvince());
+            deliverInfoDto.setCountry(expressDeliver.getSenderCountry());
+            deliverInfoDto.setShipperCode(expressDeliver.getSenderPostCode());
+            deliverInfoDto.setMobile(expressDeliver.getSenderMobile());
+            deliverInfoDto.setTel(expressDeliver.getSenderTel());
+            deliverInfoDto.setContact(expressDeliver.getSender());
 
-                OrderReqDto orderReqDto = new OrderReqDto();
-                orderReqDto.setOrderId(ErpConstant.no_expressDelivery_perfix + head.getTransMessageId());
-                orderReqDto.setExpressType((new Short("5")).shortValue());
-                orderReqDto.setPayMethod((new Short("1")).shortValue());
-                orderReqDto.setNeedReturnTrackingNo((new Short("0")).shortValue());
-                orderReqDto.setIsDoCall((new Short("1")).shortValue());
-                orderReqDto.setIsGenBillNo((new Short("1")).shortValue());
-                orderReqDto.setCustId(sfExpress.getCustId());
-                orderReqDto.setPayArea(sfExpress.getPayArea());
-                orderReqDto.setSendStartTime(dateUtil.getSimpleDateFormat().format(details.get(0).getExpressDate()));
-                orderReqDto.setRemark("易碎物品，小心轻放");
+            //货物信息
+            CargoInfoDto cargoInfoDto = new CargoInfoDto();
+            cargoInfoDto.setParcelQuantity(Integer.valueOf(1));
+            cargoInfoDto.setCargo(expressDeliverDetail.getProductNo());
+            cargoInfoDto.setCargoCount(Float.toString(expressDeliverDetail.getQuantity()));
+            cargoInfoDto.setCargoUnit(expressDeliverDetail.getUnit());
+            cargoInfoDto.setCargoAmount(Float.toString(expressDeliverDetail.getPrice()));
 
-                //收件人信息
-                DeliverConsigneeInfoDto consigneeInfoDto = new DeliverConsigneeInfoDto();
-                consigneeInfoDto.setCompany(user.getCustomer().getHirer());
-                consigneeInfoDto.setAddress(detail.getExpress().getAddress());
-                consigneeInfoDto.setCity(detail.getExpress().getCity());
-                consigneeInfoDto.setProvince(detail.getExpress().getProvince());
-                consigneeInfoDto.setCountry(detail.getExpress().getCountry());
-                consigneeInfoDto.setShipperCode(detail.getExpress().getPostCode());
-                consigneeInfoDto.setMobile(detail.getExpress().getPhone());
-                consigneeInfoDto.setTel(detail.getExpress().getPhone());
-                consigneeInfoDto.setContact(detail.getExpress().getReceiver());
+            orderReqDto.setDeliverInfo(deliverInfoDto);
+            orderReqDto.setConsigneeInfo(consigneeInfoDto);
+            orderReqDto.setCargoInfo(cargoInfoDto);
+            req.setBody(orderReqDto);
 
-                //寄件人信息
-                DeliverConsigneeInfoDto deliverInfoDto = new DeliverConsigneeInfoDto();
-                deliverInfoDto.setAddress(warehouse.getCompany().getAddress());
-                deliverInfoDto.setCity(warehouse.getCompany().getCity());
-                deliverInfoDto.setProvince(warehouse.getCompany().getProvince());
-                deliverInfoDto.setCountry(warehouse.getCompany().getCountry());
-                deliverInfoDto.setShipperCode(warehouse.getCompany().getPostCode());
-                deliverInfoDto.setTel(warehouse.getCompany().getPhone());
-                deliverInfoDto.setContact(stockOut.getInputer().getName());
-                deliverInfoDto.setCompany(warehouse.getCompany().getName());
-
-                //货物信息
-                CargoInfoDto cargoInfoDto = new CargoInfoDto();
-                cargoInfoDto.setParcelQuantity(Integer.valueOf(1));
-                cargoInfoDto.setCargo(product.getName());
-                cargoInfoDto.setCargoCount(Float.toString(detail.getQuantity()));
-                cargoInfoDto.setCargoUnit(detail.getUnit());
-                cargoInfoDto.setCargoAmount(Float.toString(detail.getAmount()));
-
-                String productWeight = null;
-                for (ProductOwnProperty property : product.getProperties()) {
-                    if (property.getName().contains(ErpConstant.product_property_name_weight)) {
-                        productWeight = ((Integer.parseInt(property.getValue())/1000))+"";
-                    }
-                }
-                if (productWeight != null) {
-                    cargoInfoDto.setCargoWeight(productWeight);
-                }
-
-                orderReqDto.setDeliverInfo(deliverInfoDto);
-                orderReqDto.setConsigneeInfo(consigneeInfoDto);
-                orderReqDto.setCargoInfo(cargoInfoDto);
-                req.setBody(orderReqDto);
-
-                System.out.println("传入参数" + ToStringBuilder.reflectionToString(req));
-                MessageResp messageResp = OrderTools.order(url, appInfo, req);
-
-                /**
-                 * 调用顺丰下单接口下单成功，保存本地快递单数据
-                 */
-                if (messageResp.getHead().getCode().equals(ErpConstant.sf_response_code_success)) {
-                    ExpressDeliver expressDeliver = new ExpressDeliver();
-                    expressDeliver.setNo(orderReqDto.getOrderId());
-                    expressDeliver.setDeliver(ErpConstant.deliver_sfExpress);
-                    expressDeliver.setType(orderReqDto.getExpressType()+"");
-                    expressDeliver.setDate(Timestamp.valueOf(orderReqDto.getSendStartTime()));
-                    expressDeliver.setState(ErpConstant.express_state_sending);
-
-                    expressDeliver.setReceiver(orderReqDto.getConsigneeInfo().getContact());
-                    expressDeliver.setReceiverAddress(orderReqDto.getConsigneeInfo().getAddress());
-                    expressDeliver.setReceiverCity(orderReqDto.getConsigneeInfo().getCity());
-                    expressDeliver.setReceiverProvince(orderReqDto.getConsigneeInfo().getProvince());
-                    expressDeliver.setReceiverCountry(orderReqDto.getConsigneeInfo().getCountry());
-                    expressDeliver.setReceiverCompany(orderReqDto.getConsigneeInfo().getCompany());
-                    expressDeliver.setReceiverMobile(orderReqDto.getConsigneeInfo().getMobile());
-                    expressDeliver.setReceiverTel(orderReqDto.getConsigneeInfo().getTel());
-                    expressDeliver.setReceiverPostCode(orderReqDto.getConsigneeInfo().getShipperCode());
-
-                    expressDeliver.setSender(orderReqDto.getDeliverInfo().getContact());
-                    expressDeliver.setSenderAddress(orderReqDto.getDeliverInfo().getAddress());
-                    expressDeliver.setSenderCity(orderReqDto.getDeliverInfo().getCity());
-                    expressDeliver.setSenderProvince(orderReqDto.getDeliverInfo().getProvince());
-                    expressDeliver.setSenderCountry(orderReqDto.getDeliverInfo().getCountry());
-                    expressDeliver.setSenderCompany(orderReqDto.getDeliverInfo().getCompany());
-                    expressDeliver.setSenderMobile(orderReqDto.getDeliverInfo().getMobile());
-                    expressDeliver.setSenderTel(orderReqDto.getDeliverInfo().getTel());
-                    expressDeliver.setSenderPostCode(orderReqDto.getDeliverInfo().getShipperCode());
-
-                    result += erpDao.save(expressDeliver);
-
-                    ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
-                    expressDeliverDetail.setProduct(product);
-                    expressDeliverDetail.setQuantity(Integer.parseInt(orderReqDto.getCargoInfo().getCargoCount()));
-                    expressDeliverDetail.setUnit(orderReqDto.getCargoInfo().getCargoUnit());
-                    expressDeliverDetail.setWeight(orderReqDto.getCargoInfo().getCargoWeight());
-                    expressDeliverDetail.setAmount(Float.valueOf(orderReqDto.getCargoInfo().getCargoAmount()));
-                    expressDeliverDetail.setState(ErpConstant.express_detail_state_unReceive);
-                    expressDeliverDetail.setExpressDeliver(expressDeliver);
-
-                    result += erpDao.save(expressDeliverDetail);
-                }
+            System.out.println("传入参数" + ToStringBuilder.reflectionToString(req));
+            MessageResp messageResp = null;
+            try {
+                messageResp = OrderTools.order(url, appInfo, req);
+            } catch (Exception e) {
+                e.printStackTrace();
+                result += CommonConstant.fail;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            result += CommonConstant.fail;
-        } finally {
-            result = transcation.dealResult(result);
+
+            if (messageResp.getHead().getCode().equals(ErpConstant.sf_response_code_success)) {
+                result += CommonConstant.success;
+            } else {
+                result += CommonConstant.fail;
+            }
         }
 
-        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("sfExpressOrder end");
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
     /**
@@ -1632,16 +1662,12 @@ public class ErpController {
         appInfo.setAppKey(sfExpress.getAppKey());
         appInfo.setAccessToken(getSfToken(sfExpress.getAppId(), sfExpress.getAppKey()));
 
-        ExpressDeliverDetail dbExpressDeliverDetail = null;
-        ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
         for (StockInOutDetail detail : stockInOut.getDetails()) {
-
             StockInOutDetail dbDetail = (StockInOutDetail) erpDao.queryById(detail.getId(), detail.getClass());
             for (StockInOutDetailProduct detailProduct : dbDetail.getStockInOutDetailProducts()) {
-                expressDeliverDetail.setProduct(detailProduct.getProduct());
-                expressDeliverDetail.setState(ErpConstant.express_detail_state_unReceive);
 
-                dbExpressDeliverDetail = (ExpressDeliverDetail) erpDao.query(expressDeliverDetail).get(0);
+                Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
+                ExpressDeliverDetail dbExpressDeliverDetail = erpService.queryLastUnReceiveExpressDeliverDetailByProductNo(dbProduct.getNo());
 
                 //设置请求头
                 MessageReq<WaybillReqDto> req = new MessageReq<>();
@@ -1651,7 +1677,7 @@ public class ErpController {
                 req.setHead(head);
 
                 WaybillReqDto waybillReqDto = new WaybillReqDto();
-                waybillReqDto.setOrderId(dbExpressDeliverDetail.getExpressDeliver().getNo());
+                waybillReqDto.setOrderId(dbExpressDeliverDetail.getExpressNo());
                 req.setBody(waybillReqDto);
 
                 try {

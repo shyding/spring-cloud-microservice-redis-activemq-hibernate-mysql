@@ -1,9 +1,11 @@
 package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.customer.Express;
 import com.hzg.customer.User;
 import com.hzg.erp.*;
 import com.hzg.pay.Pay;
+import com.hzg.sys.Company;
 import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.hibernate.SessionFactory;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.util.*;
 
 @Service
@@ -29,6 +32,9 @@ public class OrderService {
     private ErpClient erpClient;
 
     @Autowired
+    private SysClient sysClient;
+
+    @Autowired
     private Writer writer;
 
     @Autowired
@@ -39,6 +45,9 @@ public class OrderService {
 
     @Autowired
     private DateUtil dateUtil;
+
+    @Autowired
+    CustomerClient customerClient;
 
     /**
      * 根据订单类型保存订单
@@ -107,6 +116,69 @@ public class OrderService {
 
     }
 
+    public List<Order> queryOrder(Order order) {
+        List<Order> orders = orderDao.query(order);
+
+        for (Order orderItem : orders) {
+            for (OrderDetail detail : orderItem.getDetails()) {
+
+                OrderPrivate orderPrivate = new OrderPrivate();
+                orderPrivate.setDetail(detail);
+                List<OrderPrivate> orderPrivates = orderDao.query(orderPrivate);
+
+                if (!orderPrivates.isEmpty()) {
+                    for (OrderPrivate ele : orderPrivates) {
+                        if (ele.getAccs() != null) {
+                            for (OrderPrivateAcc acc : ele.getAccs()) {
+                                OrderPrivateAccProduct accProduct = new OrderPrivateAccProduct();
+                                accProduct.setOrderPrivateAcc(acc);
+                                List<OrderPrivateAccProduct> accProducts = orderDao.query(accProduct);
+
+                                acc.setProduct(accProducts.get(0).getProduct());
+                                acc.setOrderPrivateAccProducts(new HashSet<>(accProducts));
+                            }
+                        }
+                    }
+
+                    detail.setOrderPrivate(orderPrivates.get(0));
+                }
+
+                if (detail.getPriceChange() != null) {
+                    detail.setPriceChange((ProductPriceChange) orderDao.queryById(detail.getPriceChange().getId(), detail.getPriceChange().getClass()));
+                }
+
+                OrderDetailProduct detailProduct = new OrderDetailProduct();
+                detailProduct.setOrderDetail(detail);
+                List<OrderDetailProduct> detailProducts = orderDao.query(detailProduct);
+
+                detail.setProduct(detailProducts.get(0).getProduct());
+                detail.setOrderDetailProducts(new HashSet<>(detailProducts));
+
+                detail.setExpress(((List<Express>)writer.gson.fromJson(
+                        customerClient.query(detail.getExpress().getClass().getSimpleName(), writer.gson.toJson(detail.getExpress())),
+                        new TypeToken<List<Express>>(){}.getType())).get(0));
+            }
+
+            if (orderItem.getGifts() != null) {
+                for (OrderGift gift : orderItem.getGifts()) {
+                    OrderGiftProduct giftProduct = new OrderGiftProduct();
+                    giftProduct.setOrderGift(gift);
+                    List<OrderGiftProduct> giftProducts = orderDao.query(giftProduct);
+
+                    gift.setProduct(giftProducts.get(0).getProduct());
+                    gift.setOrderGiftProducts(new HashSet<>(giftProducts));
+                }
+            }
+
+            Pay pay = new Pay();
+            pay.setEntity(orderItem.getClass().getSimpleName().toLowerCase());
+            pay.setEntityId(orderItem.getId());
+            orderItem.setPays(writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)), new TypeToken<List<Pay>>() {}.getType()));
+        }
+
+        return orders;
+    }
+
     /**
      * 检查金额是否正确
      * @param order
@@ -118,7 +190,7 @@ public class OrderService {
         BigDecimal amount = new BigDecimal(0);
 
         for (OrderDetail detail : order.getDetails()) {
-            String queryJson = "{\"" + ErpConstant.product + "\":{\"id\":" + detail.getProduct().getId() + "}";
+            String queryJson = "{\"" + ErpConstant.product + "\":{\"no\":" + detail.getProductNo() + "}";
             if (detail.getPriceChange() != null) {
                 queryJson += ",\"" + CommonConstant.id +"\":\"" + detail.getPriceChange().getId() + "\"," +
                         "\"" + CommonConstant.state +"\":" + ErpConstant.product_price_change_state_use + "}";
@@ -131,7 +203,7 @@ public class OrderService {
                     multiply(new BigDecimal(Float.toString(detail.getQuantity())));
 
             if (detailAmount.floatValue() != detail.getPayAmount() || detailAmount.floatValue() == 0f) {
-                result += "商品" + detail.getProduct().getNo() + "支付金额不对;";
+                result += "商品" + detail.getProductNo() + "支付金额不对;";
             } else {
                 amount = amount.add(detailAmount);
             }
@@ -173,12 +245,46 @@ public class OrderService {
             }
 
             result += orderDao.save(detail);
+
+            /**
+             * 保存订单明细对应商品记录
+             */
+            Product queryProduct = new Product();
+            queryProduct.setNo(detail.getProductNo());
+            queryProduct.setState(ErpConstant.product_state_onSale);
+            List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
+                    new TypeToken<List<Product>>(){}.getType());
+
+            for (Product product : products) {
+                OrderDetailProduct detailProduct = new OrderDetailProduct();
+                detailProduct.setProduct(product);
+                detailProduct.setOrderDetail(detail);
+
+                result += orderDao.save(detailProduct);
+            }
         }
 
         if (order.getGifts() != null) {
             for (OrderGift gift : order.getGifts()) {
                 gift.setOrder(order);
                 result += orderDao.save(gift);
+
+                /**
+                 * 保存订单赠品对应商品记录
+                 */
+                Product queryProduct = new Product();
+                queryProduct.setNo(gift.getProductNo());
+                queryProduct.setState(ErpConstant.product_state_onSale);
+                List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
+                        new TypeToken<List<Product>>(){}.getType());
+
+                for (Product product : products) {
+                    OrderGiftProduct giftProduct = new OrderGiftProduct();
+                    giftProduct.setProduct(product);
+                    giftProduct.setOrderGift(gift);
+
+                    result += orderDao.save(giftProduct);
+                }
             }
         }
 
@@ -228,11 +334,27 @@ public class OrderService {
             for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
                 acc.setOrderPrivate(idOrderPrivate);
                 result += orderDao.save(acc);
+
+                /**
+                 * 保存私人订制配饰对应商品记录
+                 */
+                Product queryProduct = new Product();
+                queryProduct.setNo(acc.getProductNo());
+                queryProduct.setState(ErpConstant.product_state_onSale);
+                List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
+                        new TypeToken<List<Product>>(){}.getType());
+
+                for (Product product : products) {
+                    OrderPrivateAccProduct accProduct = new OrderPrivateAccProduct();
+                    accProduct.setProduct(product);
+                    accProduct.setOrderPrivateAcc(acc);
+
+                    result += orderDao.save(accProduct);
+                }
             }
         }
 
         logger.info("savePrivateOrder end, result:" + result);
-
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
@@ -282,10 +404,10 @@ public class OrderService {
         String canSellMsg = "";
 
         for (OrderDetail detail : order.getDetails()) {
-            Float sellableQuantity = getOnSaleQuantity(detail.getProduct().getNo());
+            Float sellableQuantity = getOnSaleQuantity(detail.getProductNo());
 
             if (sellableQuantity.compareTo(detail.getQuantity()) < 0) {
-                canSellMsg += detail.getQuantity() + detail.getUnit() + "编号为:" + detail.getProduct().getNo() +
+                canSellMsg += detail.getQuantity() + detail.getUnit() + "编号为:" + detail.getProductNo() +
                         "的商品，但该商品可售数量为：" + sellableQuantity + ";";
             }
         }
@@ -314,9 +436,9 @@ public class OrderService {
                 }
             }
 
-            String key = detail.getProduct().getNo() + CommonConstant.underline + order.getNo();
+            String key = detail.getProductNo() + CommonConstant.underline + order.getNo();
             orderDao.storeToRedis(key, detail.getQuantity(), lockTime);
-            orderDao.putKeyToList(OrderConstant.lock_product_quantity + CommonConstant.underline + detail.getProduct().getNo(), key);
+            orderDao.putKeyToList(OrderConstant.lock_product_quantity + CommonConstant.underline + detail.getProductNo(), key);
         }
 
         return CommonConstant.success;
@@ -348,7 +470,7 @@ public class OrderService {
         String result;
 
         for (OrderDetail detail : order.getDetails()) {
-            orderDao.deleteFromRedis(detail.getProduct().getNo() + CommonConstant.underline + order.getNo());
+            orderDao.deleteFromRedis(detail.getProductNo() + CommonConstant.underline + order.getNo());
         }
 
         order.setState(OrderConstant.order_state_cancel);
@@ -368,31 +490,27 @@ public class OrderService {
          * 移除订购时锁定的商品
          */
         for (OrderDetail detail : order.getDetails()) {
-            orderDao.deleteFromRedis(detail.getProduct().getNo() + CommonConstant.underline + order.getNo());
+            orderDao.deleteFromRedis(detail.getProductNo() + CommonConstant.underline + order.getNo());
         }
 
         for (OrderDetail detail : order.getDetails()) {
             detail.setState(OrderConstant.order_detail_state_saled);
             result += orderDao.updateById(detail.getId(), detail);
 
-            orderDao.deleteFromRedis(detail.getProduct().getNo() + CommonConstant.underline + order.getNo());
+            orderDao.deleteFromRedis(detail.getProductNo() + CommonConstant.underline + order.getNo());
         }
 
         order.setState(OrderConstant.order_state_paid_confirm);
         result += orderDao.updateById(order.getId(), order);
 
-        Pay pay = new Pay();
-        pay.setEntity(order.getClass().getSimpleName().toLowerCase());
-        pay.setEntityId(order.getId());
-        List<Pay> pays = writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)), new TypeToken<List<Pay>>() {}.getType());
-
-        for (Pay ele : pays) {
+        for (Pay ele : order.getPays()) {
             ele.setState(PayConstants.state_pay_success);
             result += payClient.update(ele.getClass().getSimpleName(), writer.gson.toJson(ele));
         }
 
         result += setProductsSold(order);
         result += stockOut(order);
+        sfExpressOrder(order);
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
@@ -402,27 +520,46 @@ public class OrderService {
      * @param order
      */
     public String audit(Order order) {
-        String result = CommonConstant.fail;
-
-        /**
-         * 移除订购时锁定的商品
-         */
-        for (OrderDetail detail : order.getDetails()) {
-            orderDao.deleteFromRedis(detail.getProduct().getNo() + CommonConstant.underline + order.getNo());
-        }
-
         order.setState(OrderConstant.order_state_paid_confirm);
-        result += orderDao.updateById(order.getId(), order);
-        result += setProductsSold(order);
-        result += stockOut(order);
-
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        return orderDao.updateById(order.getId(), order);
     }
 
+    /**
+     * 设置商品为已售状态
+     * @param order
+     * @return
+     */
     private String setProductsSold(Order order) {
         List<Product> products = new ArrayList<>();
         for (OrderDetail detail : order.getDetails()) {
-            products.add(detail.getProduct());
+            for (OrderDetailProduct detailProduct : detail.getOrderDetailProducts()) {
+                /**
+                 * size > 1 表示商品是按件数卖，<= 1 表示商品是按件数或者重量或者其他不可数单位卖
+                 */
+                detailProduct.getProduct().setSoldQuantity(detail.getOrderDetailProducts().size() > 1 ? 1 : detail.getQuantity());
+                detailProduct.getProduct().setSoldUnit(detail.getUnit());
+                products.add(detailProduct.getProduct());
+            }
+
+            if (order.getType().compareTo(OrderConstant.order_type_private) == 0) {
+                for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
+                    for (OrderPrivateAccProduct accProduct : acc.getOrderPrivateAccProducts()) {
+                        accProduct.getProduct().setSoldQuantity(acc.getOrderPrivateAccProducts().size() > 1 ? 1 : acc.getQuantity());
+                        accProduct.getProduct().setSoldUnit(acc.getUnit());
+                        products.add(accProduct.getProduct());
+                    }
+                }
+            }
+        }
+
+        if (order.getGifts() != null) {
+            for (OrderGift gift : order.getGifts()) {
+                for (OrderGiftProduct giftProduct : gift.getOrderGiftProducts()) {
+                    giftProduct.getProduct().setSoldQuantity(gift.getOrderGiftProducts().size() > 1 ? 1 : gift.getQuantity());
+                    giftProduct.getProduct().setSoldUnit(gift.getUnit());
+                    products.add(giftProduct.getProduct());
+                }
+            }
         }
 
         return erpClient.business("setProductsSold", writer.gson.toJson(products));
@@ -440,19 +577,159 @@ public class OrderService {
         stockInOut.setDate(dateUtil.getSecondCurrentTimestamp());
         stockInOut.setInputDate(dateUtil.getSecondCurrentTimestamp());
         stockInOut.setDescribes("销售订单：" + order.getNo() + "支付完成，货品自动出库");
+        stockInOut.setWarehouse(getWarehouseByUser(order.getSaler()));
 
         Set<StockInOutDetail> stockInOutDetails = new HashSet<>();
         for (OrderDetail detail : order.getDetails()) {
             StockInOutDetail stockInOutDetail = new StockInOutDetail();
-            stockInOutDetail.setProduct(detail.getProduct());
             stockInOutDetail.setQuantity(detail.getQuantity());
             stockInOutDetail.setUnit(detail.getUnit());
+
+            Set<StockInOutDetailProduct> detailProducts = new HashSet<>();
+            for (OrderDetailProduct orderDetailProduct : detail.getOrderDetailProducts()) {
+                StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+                detailProduct.setProduct(orderDetailProduct.getProduct());
+                detailProducts.add(detailProduct);
+            }
+            stockInOutDetail.setStockInOutDetailProducts(detailProducts);
+
             stockInOutDetails.add(stockInOutDetail);
+
+
+            if (order.getType().compareTo(OrderConstant.order_type_private) == 0) {
+                for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
+                    StockInOutDetail accStockInOutDetail = new StockInOutDetail();
+                    accStockInOutDetail.setQuantity(acc.getQuantity());
+                    accStockInOutDetail.setUnit(acc.getUnit());
+
+                    Set<StockInOutDetailProduct> accDetailProducts = new HashSet<>();
+                    for (OrderPrivateAccProduct accProduct : acc.getOrderPrivateAccProducts()) {
+                        StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+                        detailProduct.setProduct(accProduct.getProduct());
+                        accDetailProducts.add(detailProduct);
+                    }
+                    accStockInOutDetail.setStockInOutDetailProducts(accDetailProducts);
+
+                    stockInOutDetails.add(accStockInOutDetail);
+                }
+            }
+        }
+
+        if (order.getGifts() != null) {
+            for (OrderGift gift : order.getGifts()) {
+                StockInOutDetail stockInOutDetail = new StockInOutDetail();
+                stockInOutDetail.setQuantity(gift.getQuantity());
+                stockInOutDetail.setUnit(gift.getUnit());
+
+                Set<StockInOutDetailProduct> detailProducts = new HashSet<>();
+                for (OrderGiftProduct giftProduct : gift.getOrderGiftProducts()) {
+                    StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+                    detailProduct.setProduct(giftProduct.getProduct());
+                    detailProducts.add(detailProduct);
+                }
+                stockInOutDetail.setStockInOutDetailProducts(detailProducts);
+
+                stockInOutDetails.add(stockInOutDetail);
+            }
         }
 
         stockInOut.setDetails(stockInOutDetails);
-
         return  erpClient.save(stockInOut.getClass().getSimpleName(), writer.gson.toJson(stockInOut));
+    }
+
+    private String sfExpressOrder(Order order) {
+        com.hzg.customer.User user = ((List<com.hzg.customer.User>)writer.gson.fromJson(
+                customerClient.query(order.getUser().getClass().getSimpleName(), writer.gson.toJson(order.getUser())), new TypeToken<List<User>>(){}.getType())).get(0);
+        OrderDetail expressDetail = (OrderDetail) order.getDetails().toArray()[0];
+        Express receiver = ((List<Express>)writer.gson.fromJson(
+                customerClient.query(expressDetail.getExpress().getClass().getSimpleName(), writer.gson.toJson(expressDetail.getExpress())),
+                new TypeToken<List<Express>>(){}.getType())).get(0);
+
+        StockInOut stockOut = writer.gson.fromJson(erpClient.getLastStockInOutByProductAndType(
+                writer.gson.toJson(((OrderDetailProduct)expressDetail.getOrderDetailProducts().toArray()[0]).getProduct()), ErpConstant.stockOut),
+                StockInOut.class);
+        Company senderInfo = ((List<Warehouse>)writer.gson.fromJson(
+                erpClient.query(stockOut.getWarehouse().getClass().getSimpleName(), writer.gson.toJson(stockOut.getWarehouse())),
+                new TypeToken<List<Warehouse>>(){}.getType())).get(0).getCompany();
+        com.hzg.sys.User sender = stockOut.getInputer();
+
+        ExpressDeliver expressDeliver = new ExpressDeliver();
+        expressDeliver.setDeliver(ErpConstant.deliver_sfExpress);
+        expressDeliver.setType(ErpConstant.deliver_sfExpress_type);
+        expressDeliver.setDate(expressDetail.getExpressDate());
+        expressDeliver.setState(ErpConstant.express_state_sending);
+
+        expressDeliver.setReceiver(receiver.getReceiver());
+        expressDeliver.setReceiverAddress(receiver.getAddress());
+        expressDeliver.setReceiverCity(receiver.getCity());
+        expressDeliver.setReceiverProvince(receiver.getProvince());
+        expressDeliver.setReceiverCountry(receiver.getCountry());
+        expressDeliver.setReceiverCompany(user.getCustomer().getHirer());
+        expressDeliver.setReceiverMobile(receiver.getPhone());
+        expressDeliver.setReceiverTel(receiver.getPhone());
+        expressDeliver.setReceiverPostCode(receiver.getPostCode());
+
+        expressDeliver.setSender(sender.getName());
+        expressDeliver.setSenderAddress(senderInfo.getAddress());
+        expressDeliver.setSenderCity(senderInfo.getCity());
+        expressDeliver.setSenderProvince(senderInfo.getProvince());
+        expressDeliver.setSenderCountry(senderInfo.getCountry());
+        expressDeliver.setSenderCompany(senderInfo.getName());
+        expressDeliver.setSenderMobile(sender.getMobile());
+        expressDeliver.setSenderTel(senderInfo.getPhone());
+        expressDeliver.setSenderPostCode(senderInfo.getPostCode());
+
+        Set<ExpressDeliverDetail> deliverDetails = new HashSet<>();
+
+        for (OrderDetail orderDetail : order.getDetails()) {
+            ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
+            expressDeliverDetail.setExpressNo(((Map<String, String>)writer.gson.fromJson(erpClient.getExpressNo(),
+                    new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.no));
+            expressDeliverDetail.setProductNo(orderDetail.getProductNo());
+            expressDeliverDetail.setQuantity(orderDetail.getQuantity());
+            expressDeliverDetail.setUnit(orderDetail.getUnit());
+            expressDeliverDetail.setPrice(orderDetail.getProductPrice());
+            expressDeliverDetail.setState(ErpConstant.express_detail_state_unReceive);
+
+            Set<ExpressDeliverDetailProduct> deliverDetailProducts = new HashSet<>();
+            for (OrderDetailProduct orderDetailProduct : orderDetail.getOrderDetailProducts()) {
+                ExpressDeliverDetailProduct deliverDetailProduct = new ExpressDeliverDetailProduct();
+                deliverDetailProduct.setProduct(orderDetailProduct.getProduct());
+                deliverDetailProducts.add(deliverDetailProduct);
+            }
+
+            expressDeliverDetail.setExpressDeliverDetailProducts(deliverDetailProducts);
+            deliverDetails.add(expressDeliverDetail);
+        }
+
+        if (order.getGifts() != null) {
+            for (OrderGift gift : order.getGifts()) {
+                ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
+                expressDeliverDetail.setExpressNo(((Map<String, String>)writer.gson.fromJson(erpClient.getExpressNo(),
+                        new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.no));
+                expressDeliverDetail.setProductNo(gift.getProductNo());
+                expressDeliverDetail.setQuantity(gift.getQuantity());
+                expressDeliverDetail.setUnit(gift.getUnit());
+                expressDeliverDetail.setState(ErpConstant.express_detail_state_unReceive);
+
+                Set<ExpressDeliverDetailProduct> deliverDetailProducts = new HashSet<>();
+                for (OrderGiftProduct giftProduct : gift.getOrderGiftProducts()) {
+                    ExpressDeliverDetailProduct deliverDetailProduct = new ExpressDeliverDetailProduct();
+                    deliverDetailProduct.setProduct(giftProduct.getProduct());
+                    deliverDetailProducts.add(deliverDetailProduct);
+                }
+
+                expressDeliverDetail.setExpressDeliverDetailProducts(deliverDetailProducts);
+                deliverDetails.add(expressDeliverDetail);
+            }
+        }
+
+        expressDeliver.setDetails(deliverDetails);
+        return erpClient.sfExpressOrder(writer.gson.toJson(order));
+    }
+
+    public Warehouse getWarehouseByUser(com.hzg.sys.User user) {
+        return writer.gson.fromJson(erpClient.getWarehouseByCompany(sysClient.getCompanyByUser(writer.gson.toJson(user))), Warehouse.class);
     }
 
     /**
@@ -552,17 +829,21 @@ public class OrderService {
             whereSql += " t2." + objectToSql.getColumn(OrderDetail.class.getDeclaredField("order")) +
                     " = t." + objectToSql.getColumn(Order.class.getDeclaredField("id"));
 
-            selectSql += ", " + orderDao.getSelectColumns("t21", Product.class);
-            fromSql += ", " + objectToSql.getTableName(Product.class) + " t21 ";
-            whereSql += " and t21." + objectToSql.getColumn(Product.class.getDeclaredField("id")) +
-                    " = t2." + objectToSql.getColumn(OrderDetail.class.getDeclaredField("product"));
+            fromSql += ", " + objectToSql.getTableName(OrderDetailProduct.class) + " t21 ";
+            whereSql += " and t21." + objectToSql.getColumn(OrderDetailProduct.class.getDeclaredField("orderDetail")) +
+                    " = t2." + objectToSql.getColumn(OrderDetail.class.getDeclaredField("id"));
+
+            selectSql += ", " + orderDao.getSelectColumns("t211", Product.class);
+            fromSql += ", " + objectToSql.getTableName(Product.class) + " t211 ";
+            whereSql += " and t211." + objectToSql.getColumn(Product.class.getDeclaredField("id")) +
+                    " = t21." + objectToSql.getColumn(OrderDetailProduct.class.getDeclaredField("product"));
 
             selectSql += ", " + orderDao.getSelectColumns("t3", OrderPrivate.class);
             fromSql += ", " + objectToSql.getTableName(OrderPrivate.class) + " t3 ";
             whereSql += " and t3." + objectToSql.getColumn(OrderPrivate.class.getDeclaredField("detail")) +
                     " = t2." + objectToSql.getColumn(OrderDetail.class.getDeclaredField("id"));
 
-            sql = "select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
+            sql = "select distinct " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
         } catch (Exception e) {
             e.printStackTrace();
         }

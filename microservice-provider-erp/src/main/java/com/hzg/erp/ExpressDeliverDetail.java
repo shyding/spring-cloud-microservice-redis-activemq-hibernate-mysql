@@ -1,7 +1,10 @@
 package com.hzg.erp;
 
+import org.hibernate.annotations.Type;
+
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.Set;
 
 @Entity(name = "hzg_express_deliver_detail")
 public class ExpressDeliverDetail implements Serializable {
@@ -17,11 +20,14 @@ public class ExpressDeliverDetail implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
-    @Column(name="productId", length = 11)
-    private Product product;
+    @Column(name="expressNo", length = 32)
+    private String expressNo;
+
+    @Column(name="productNo", length = 16)
+    private String productNo;
 
     @Column(name="quantity", length = 5)
-    private Integer quantity;
+    private Float quantity;
 
     @Column(name="unit",length=8)
     private String unit;
@@ -29,8 +35,9 @@ public class ExpressDeliverDetail implements Serializable {
     @Column(name="weight", length = 9, precision = 2)
     private String weight;
 
-    @Column(name="amount", length = 6, precision = 2)
-    private Float amount;
+    @Column(name="price", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float price;
 
     @Column(name="state",length = 1)
     private Integer state;
@@ -38,6 +45,9 @@ public class ExpressDeliverDetail implements Serializable {
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name="expressDeliverId")
     private ExpressDeliver expressDeliver;
+
+    @OneToMany(mappedBy = "expressDeliverDetail", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
+    private Set<ExpressDeliverDetailProduct> expressDeliverDetailProducts;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -51,19 +61,27 @@ public class ExpressDeliverDetail implements Serializable {
         this.id = id;
     }
 
-    public Product getProduct() {
-        return product;
+    public String getExpressNo() {
+        return expressNo;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+    public void setExpressNo(String expressNo) {
+        this.expressNo = expressNo;
     }
 
-    public Integer getQuantity() {
+    public String getProductNo() {
+        return productNo;
+    }
+
+    public void setProductNo(String productNo) {
+        this.productNo = productNo;
+    }
+
+    public Float getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(Integer quantity) {
+    public void setQuantity(Float quantity) {
         this.quantity = quantity;
     }
 
@@ -83,12 +101,12 @@ public class ExpressDeliverDetail implements Serializable {
         this.weight = weight;
     }
 
-    public Float getAmount() {
-        return amount;
+    public Float getPrice() {
+        return price;
     }
 
-    public void setAmount(Float amount) {
-        this.amount = amount;
+    public void setPrice(Float price) {
+        this.price = price;
     }
 
     public Integer getState() {
@@ -105,5 +123,29 @@ public class ExpressDeliverDetail implements Serializable {
 
     public void setExpressDeliver(ExpressDeliver expressDeliver) {
         this.expressDeliver = expressDeliver;
+    }
+
+    public Set<ExpressDeliverDetailProduct> getExpressDeliverDetailProducts() {
+        return expressDeliverDetailProducts;
+    }
+
+    public void setExpressDeliverDetailProducts(Set<ExpressDeliverDetailProduct> expressDeliverDetailProducts) {
+        this.expressDeliverDetailProducts = expressDeliverDetailProducts;
+    }
+
+    @Override
+    public String toString() {
+        return "ExpressDeliverDetail{" +
+                "id=" + id +
+                ", expressNo='" + expressNo + '\'' +
+                ", productNo='" + productNo + '\'' +
+                ", quantity=" + quantity +
+                ", unit='" + unit + '\'' +
+                ", weight='" + weight + '\'' +
+                ", price=" + price +
+                ", state=" + state +
+                ", expressDeliver=" + expressDeliver +
+                ", expressDeliverDetailProducts=" + expressDeliverDetailProducts +
+                '}';
     }
 }

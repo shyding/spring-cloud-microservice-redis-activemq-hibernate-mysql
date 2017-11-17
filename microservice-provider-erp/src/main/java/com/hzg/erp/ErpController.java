@@ -32,14 +32,6 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: SysController.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/5/25
- */
 @Controller
 @RequestMapping("/erp")
 public class ErpController {

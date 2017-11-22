@@ -1,4 +1,4 @@
-﻿var tableSheet = (function ($) {
+var tableSheet = (function ($) {
     "use strict";
 
     var contextPath = "";
@@ -189,15 +189,15 @@
                     var valueArray = inputElement.val().split("#");
                     var inputs = inputElement.parent().children('input');
 
-                    var setValues = new Array(), notSetValues = new Array();
-                    var svl = 0, nsvi = 0;
+                    var setValuesIndex = new Array(), notSetValuesIndex = new Array();
+                    var setValueIndex = 0, notSetValueIndex = 0;
                     for (var vai = 0; vai < valueArray.length; vai++) {
                         var isSet = false;
 
                         for (var ii = 1; ii < inputs.length; ii++) {
-                            if ($.trim(valueArray[vai]) != "" && $.trim(inputs[ii].value).indexOf('"' + $.trim(valueArray[vai]) + '"') != -1) {
+                            if ($.trim(valueArray[vai]) != "" && $.trim(inputs[ii].value).indexOf('"' + $.trim(valueArray[vai]) + '"') != -1  && $.trim(inputs[ii].value) != "") {
                                 isSet = true;
-                                setValues[svl++] = ii;
+                                setValuesIndex[setValueIndex++] = ii;
 
                                 break;
                             }
@@ -205,7 +205,7 @@
 
                         if (isSet == false) {
                             if ($.trim(valueArray[vai]) != "") {
-                                notSetValues[nsvi++] = vai;
+                                notSetValuesIndex[notSetValueIndex++] = vai;
                             }
                         }
                     }
@@ -213,12 +213,12 @@
                     /**
                      * 移除错误的值
                      */
-                    if (setValues.length > 0) {
+                    if (setValuesIndex.length > 0) {
                         for (ii = 1; ii < inputs.length; ii++) {
                             isSet = false;
 
-                            for (var svi = 0; svi < setValues.length; svi++) {
-                                if (ii == setValues[svi]) {
+                            for (var setValueIndex = 0; setValueIndex < setValuesIndex.length; setValueIndex++) {
+                                if (ii == setValuesIndex[setValueIndex]) {
                                     isSet = true;
                                     break;
                                 }
@@ -226,6 +226,7 @@
 
                             if (!isSet) {
                                 $(inputs[ii]).remove();
+                                ii--;
                             }
                         }
 
@@ -233,6 +234,7 @@
                         if (inputs.length > 1) {
                             for (ii = 2; ii < inputs.length; ii++) {
                                 $(inputs[ii]).remove();
+                                ii--;
                             }
 
                             inputs[1].value = "";
@@ -247,24 +249,28 @@
                     /**
                      * 添加没有设置的值
                      */
-                    for (var nsvi = 0; nsvi < notSetValues.length; nsvi++) {
+                    for (var notSetValueIndex = 0; notSetValueIndex < notSetValuesIndex.length; notSetValueIndex++) {
                         var typeSelect = inputElement.parent().parent().find("select");
                         if (inputElement.parent().parent().find("select").length == 0) {
                             typeSelect = $("#type");
                         }
 
-                        var itemValue = '{"name":"' + getChildPropertyName(propertyName, type.find("option:selected").text()) + '","value":"' + $.trim(valueArray[notSetValues[nsvi]]) + '"}';
+                        var itemValue = '{"name":"' + getChildPropertyName(propertyName, typeSelect.find("option:selected").text()) + '","value":"' + $.trim(valueArray[notSetValuesIndex[notSetValueIndex]]) + '"}';
 
                         var isSet = false;
                         for (var ii = 1; ii < inputs.length; ii++) {
-                            if (inputs[ii].value.indexOf(itemValue) != -1) {
+                            if (inputs[ii].value.indexOf(itemValue) != -1 && $.trim(inputs[ii].value) != "") {
                                 isSet = true;
                                 break
                             }
                         }
 
                         if (!isSet) {
-                            inputElement.parent().append("<input type='hidden' name='" + name + "' value='" + itemValue + "' data-skip-falsy='true'>");
+                            if ($.trim(inputs[1].value) == "") {
+                                $(inputs[1]).val(itemValue);
+                            } else {
+                                inputElement.parent().append("<input type='hidden' name='" + name + "' value='" + itemValue + "' data-skip-falsy='true'>");
+                            }
                         }
 
                     }
@@ -396,6 +402,12 @@
                 }
 
                 if (notEmptyCounts > inputsHalfCount) {
+                    console.log($(trs[i]).html());
+                }
+
+                var useType = getInputByNameInTr("details[][product[useType]]:string", trs[i]);
+
+                if (notEmptyCounts > inputsHalfCount || $(useType).val() == "acc" || $(useType).val() == "materials") {
                     for (var j = 0; j < textInputs.length; j++) {
                         if ($.trim(textInputs[j].value) == "" && $(textInputs[j]).attr("required") != undefined) {
                             alert("请输入值");
@@ -405,7 +417,8 @@
                         }
                     }
 
-                    var inputs = $(trs[i]).find(":input");
+                    var inputs = $(trs[i]).find(":input"), validInputs = new Array();
+                    var validIndex = 0;
                     var imageParentDirPath, imageTopDirPath, no;
                     for (var x = 0; x < inputs.length; x++) {
                         if ($(inputs[x]).attr("name") != undefined) {
@@ -420,18 +433,31 @@
                             if ($(inputs[x]).attr("name") == "imageTopDirPath") {
                                 imageTopDirPath = inputs[x];
                             }
+
+                            if ($(inputs[x]).attr("name") != "propertyValue") {
+                                if ($.trim($(inputs[x]).val()) != "" && $(inputs[x]).val().indexOf('"value":""') == -1) {
+                                    validInputs[validIndex++] = inputs[x];
+                                }
+                            }
                         }
                     }
 
                     imageParentDirPath.value = imageTopDirPath.value + "/" + no.value;
+                    validInputs[validIndex++] = imageParentDirPath;
 
-                    json += JSON.stringify(inputs.not('[value=""]').not('[name="propertyValue"]').serializeJSON()["details"][0]) + ",";
+                    json += JSON.stringify($(validInputs).serializeJSON()["details"][0]) + ",";
                 }
             }
 
         }
 
-        json = json.substring(0, json.length-1) + ']}';
+        if (json.substring(json.length-1) == "[") {
+            alert("请输入采购单明细");
+            return false;
+
+        } else {
+            json = json.substring(0, json.length-1) + ']}';
+        }
 
         $form.sendData(uri, json, function(result){
             if (result.result.indexOf("success") != -1) {
@@ -445,6 +471,7 @@
             }
         });
     }
+
 
     function uploadFile(theItem, uploadFilesUrl, imageServerUrl){
         var fileInfo = getUploadFileInfo(theItem.parentNode.parentNode);
@@ -500,6 +527,19 @@
         } else {
             null;
         }
+    }
+
+    function getInputByNameInTr(name, tr) {
+        var inputs = $(tr).find(":input");
+        for (var x = 0; x < inputs.length; x++) {
+            if ($(inputs[x]).attr("name") != undefined) {
+                if ($(inputs[x]).attr("name") == name) {
+                    return inputs[x];
+                }
+            }
+        }
+
+        return null;
     }
 
     function valueRepeatJudge(url, item, field, idNodeName) {

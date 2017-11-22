@@ -30,6 +30,9 @@ public class ProductCheckDetail implements Serializable {
     @Column(name="itemNo")
     private String itemNo;  //存货编码
 
+    @Column(name="itemName")
+    private String itemName;  //存货名称
+
     @Column(name="checkQuantity", length = 8, precision = 2)
     private Float checkQuantity;  //盘点数量
 
@@ -37,8 +40,19 @@ public class ProductCheckDetail implements Serializable {
     @Type(type = "com.hzg.tools.FloatDesType")
     private Float checkAmount;  //盘点金额
 
+    @Column(name="paperQuantity", length = 8, precision = 2)
+    private Float paperQuantity;  //账面数量
+
+    @Column(name="paperAmount", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float paperAmount;  //账面金额
+
     @Column(name="unit", length = 6)
     private String unit;  //计量单位
+
+    @Column(name="unitPrice", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float unitPrice;  //单价
 
     @Column(name="quantity", length = 8, precision = 2)
     private Float quantity;  //盈亏数量
@@ -83,6 +97,14 @@ public class ProductCheckDetail implements Serializable {
         this.itemNo = itemNo;
     }
 
+    public String getItemName() {
+        return itemName;
+    }
+
+    public void setItemName(String itemName) {
+        this.itemName = itemName;
+    }
+
     public Float getCheckQuantity() {
         return checkQuantity;
     }
@@ -99,12 +121,36 @@ public class ProductCheckDetail implements Serializable {
         this.checkAmount = checkAmount;
     }
 
+    public Float getPaperQuantity() {
+        return paperQuantity;
+    }
+
+    public void setPaperQuantity(Float paperQuantity) {
+        this.paperQuantity = paperQuantity;
+    }
+
+    public Float getPaperAmount() {
+        return paperAmount;
+    }
+
+    public void setPaperAmount(Float paperAmount) {
+        this.paperAmount = paperAmount;
+    }
+
     public String getUnit() {
         return unit;
     }
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public Float getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(Float unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
     public Float getQuantity() {

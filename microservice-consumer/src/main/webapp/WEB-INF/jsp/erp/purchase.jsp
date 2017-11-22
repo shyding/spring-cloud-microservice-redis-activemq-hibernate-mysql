@@ -5,6 +5,8 @@
 <%@ page import="com.hzg.erp.PurchaseDetail" %>
 <%@ page import="com.hzg.erp.ProductType" %>
 <%@ page import="java.util.List" %>
+<%@ page import="com.hzg.pay.Account" %>
+<%@ page import="com.hzg.tools.ErpConstant" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -37,9 +39,9 @@
                     </div>
                     <div class="x_content">
                         <form class="form-horizontal form-label-left" novalidate id="form">
-                        <span class="section"><c:choose><c:when test="${entity != null}">查看</c:when><c:otherwise>填写</c:otherwise></c:choose>采购单</span>
+                        <span class="section">采购单信息</span>
                         <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购单号 <span class="required">*</span>
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="no">采购单号 <span class="required">*</span>
                             </label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <input id="no" name="no" value="<c:choose><c:when test="${entity != null}">${entity.no}</c:when><c:otherwise>${no}</c:otherwise></c:choose>" data-validate-length-range="5,30" data-validate-words="1" class="form-control col-md-7 col-xs-12" readonly required>
@@ -57,11 +59,34 @@
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <select id="type" name="type:number" class="form-control col-md-7 col-xs-12" required>
                                     <option value="">请选择类型</option>
-                                    <option value="0">正常采购</option>
-                                    <option value="1">临时采购</option>
-                                    <option value="2">应急采购</option>
-                                    <option value="3">现金采购</option>
-                                    <option value="4">押金采购</option>
+                                    <option value="<%=ErpConstant.purchase_type_normal%>">正常采购</option>
+                                    <option value="<%=ErpConstant.purchase_type_temp%>">临时采购</option>
+                                    <option value="<%=ErpConstant.purchase_type_emergency%>">应急采购</option>
+                                    <option value="<%=ErpConstant.purchase_type_cash%>">现金采购</option>
+                                    <option value="<%=ErpConstant.purchase_type_deposit%>">押金采购</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="accountDiv" class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">支付账户 <span class="required">*</span>
+                            </label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <%
+                                    Integer accountId = -1;
+                                    Purchase purchase = (Purchase)request.getAttribute("entity");
+                                    if (purchase != null && (purchase.getType().compareTo(2) == 0 || purchase.getType().compareTo(3) == 0 || purchase.getType().compareTo(4) == 0)) {
+                                        accountId = purchase.getAccount().getId();
+                                    }
+                                    List<Account> accounts = (List<Account>)request.getAttribute("accounts");
+
+                                    String options = "";
+                                    for (int i  = 0; i < accounts.size(); i++) {
+                                        options += "<option value=\"" + accounts.get(i).getId() + "\"" + (accounts.get(i).getId().compareTo(accountId) == 0 ? " selected" : "") + ">" + accounts.get(i).getAccount() + "/" + accounts.get(i).getBranch() + "/" + accounts.get(i).getBank() + "</option>";
+                                    }
+                                %>
+                                <select id="account[id]" name="account[id]:number" value="${entity.amount}" data-value-type="number" data-skip-falsy="true" class="form-control col-md-7 col-xs-12">
+                                    <option value="">请选择</option>
+                                    <%=options%>
                                 </select>
                             </div>
                         </div>
@@ -76,7 +101,7 @@
                             </div>
                         </div>
                         <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购金额 <span class="required">*</span>
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" id="amountLabel" for="amount">采购金额 <span class="required">*</span>
                             </label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <input id="amount" name="amount:number" value="${entity.amount}" class="form-control col-md-7 col-xs-12" required type="number">
@@ -89,8 +114,10 @@
                                 <input type="hidden" id="charger[id]" name="charger[id]" value="${entity.charger.id}">
                             </div>
                         </div>
+                        <c:set var="supplierId" />
                         <c:set var="supplierName" />
                         <c:forEach items="${entity.details}" var="detail" end="0">
+                            <c:set var="supplierId" value="${detail.product.supplier.id}" />
                             <c:set var="supplierName" value="${detail.product.supplier.name}" />
                         </c:forEach>
                         <div class="item form-group">
@@ -100,12 +127,35 @@
                             </div>
                         </div>
                         <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购描述 <span class="required">*</span>
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="describes">采购描述 <span class="required">*</span>
                             </label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <textarea id="describes" name="describes" class="form-control col-md-7 col-xs-12" data-validate-length-range="6,256" data-validate-words="1"required>${entity.describes}</textarea>
                             </div>
                         </div>
+                        <%
+                            if (purchase != null && (purchase.getType().compareTo(2) == 0 || purchase.getType().compareTo(3) == 0 || purchase.getType().compareTo(4) == 0)) {
+                                PurchaseDetail detail = null;
+                                for (PurchaseDetail ele : purchase.getDetails()) {
+                                    detail = ele;
+                                    break;
+                                }
+                        %>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="payAccount">付款账户</label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <input id="payAccount" name="payAccount" value="<%=purchase.getAccount().getAccount()%>/<%=purchase.getAccount().getBranch()%>/<%=purchase.getAccount().getBank()%>" placeholder="供应商" class="form-control col-md-7 col-xs-12" required />
+                            </div>
+                        </div>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiptAccount">供应商收款账户</label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <input id="receiptAccount" name="receiptAccount" value="<%=detail.getProduct().getSupplier().getAccount()%>/<%=detail.getProduct().getSupplier().getBranch()%>/<%=detail.getProduct().getSupplier().getBank()%>" placeholder="供应商" class="form-control col-md-7 col-xs-12" required />
+                            </div>
+                        </div>
+                        <%
+                            }
+                        %>
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12">采购条目</label>
                         </div>
@@ -118,7 +168,7 @@
 
                     <div class="x_content" style="overflow: auto">
                         <table id="productList" class="table-sheet" width="100%">
-                            <thead><tr><c:if test="${entity.details != null}"><th>状态</th></c:if><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>制作</th>
+                            <thead><tr><c:if test="${entity.details != null}"><th>状态</th></c:if><th>商品名称</th><th>商品编号</th><th>种类</th><th>用途</th><th>数量</th><th>计量单位</th><th>制作</th>
                                 <th data-property-name="th-mountMaterial">镶嵌材质</th><th data-property-name="th-quality">特性</th>
                                 <th data-property-name="th-color">颜色</th><th data-property-name="th-type">种类</th>
                                 <th data-property-name="th-theme">题材</th><th data-property-name="th-style">款式</th>
@@ -141,73 +191,79 @@
 
                                     String typeOptions = "";
                                     for (ProductType type : types) {
-                                        typeOptions += "<option value=\"" + type.getId() + "\"" + (detail.getProduct().getType().getId() == type.getId() ? " selected" : "") + ">" + type.getName() + "</option>";
+                                        typeOptions += "<option value='" + type.getId() + "'" + (detail.getProduct().getType().getId().compareTo(type.getId()) == 0 ? " selected" : "") + ">" + type.getName() + "</option>";
                                     }
 
+                                    String useType = "<option value='product'>商品</option><option value='acc'>配饰</option><option value='materials'>加工材料</option>"
+                                                     .replace("'" + detail.getProduct().getUseType() + "'", "'" + detail.getProduct().getUseType() + "' selected");
+
                                     String unitOptions =
-                                            "<option value=\"件\">件</option>" +
-                                            "<option value=\"克\">克</option>" +
-                                            "<option value=\"克拉\">克拉</option>" +
-                                            "<option value=\"只\">只</option>" +
-                                            "<option value=\"双\">双</option>" +
-                                            "<option value=\"条\">条</option>" +
-                                            "<option value=\"枚\">枚</option>" +
-                                            "<option value=\"副\">副</option>" +
-                                            "<option value=\"其他\">其他</option>"
-                                            .replace("\"" + detail.getUnit() + "\"", "\"" + detail.getUnit() + "\" selected");
+                                            ("<option value='件'>件</option>" +
+                                            "<option value='克'>克</option>" +
+                                            "<option value='克拉'>克拉</option>" +
+                                            "<option value='只'>只</option>" +
+                                            "<option value='双'>双</option>" +
+                                            "<option value='条'>条</option>" +
+                                            "<option value='枚'>枚</option>" +
+                                            "<option value='副'>副</option>" +
+                                            "<option value='千克'>千克</option>" +
+                                            "<option value='盎司'>克拉</option>" +
+                                            "<option value='其他'>其他</option>")
+                                            .replace("'" + detail.getUnit() + "'", "'" + detail.getUnit() + "' selected");
 
                                     String featureOptions =
-                                            "<option value=\"定制\">定制</option>" +
-                                            "<option value=\"加工\">加工</option>"
-                                            .replace("\"" + detail.getProduct().getFeature() + "\"", "\"" + detail.getProduct().getFeature() + "\" selected");
+                                            "<option value='定制'>定制</option>" +
+                                            "<option value='加工'>加工</option>"
+                                            .replace("'" + detail.getProduct().getFeature() + "'", "'" + detail.getProduct().getFeature() + "' selected");
                                 %>
                                 <tr class="state${detail.product.state}">
                                     <td><input type="text" value="${detail.product.stateName}" class="readonly" readonly></td>
                                     <td><input type="text" name="details[][product[name]]:string" value="${detail.product.name}" required></td>
                                     <td><input type="text" name="details[][product[no]]:string" value="${detail.product.no}" required></td>
                                     <td><select name="details[][product[type[id]]]:number" required><%=typeOptions%></select></td>
+                                    <td><select name="details[][product[useType]]:string" required><%=useType%></select></td>
                                     <td><input type="text" name="details[][quantity]:number" value="${detail.quantity}" required></td>
                                     <td><select name="details[][unit]:string" required><%=unitOptions%></select></td>
                                     <td><select name="details[][product[feature]]:string" required><%=featureOptions%></select></td>
                                     <td>
                                         <input type="text" data-property-name="mountMaterial" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("镶嵌材质")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("镶嵌材质")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("镶嵌材质")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="quality" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("特性")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("特性")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("特性")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="color" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("颜色")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("颜色")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("颜色")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="type" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("种类")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("种类")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("种类")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="theme" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("题材")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("题材")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("题材")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="style" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("款式")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("款式")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("款式")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="transparency" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("透明度")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("透明度")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("透明度")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="flaw" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("瑕疵")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("瑕疵")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("瑕疵")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="size" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("尺寸")%>' required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("尺寸")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("尺寸")%>' required>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="weight" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("重量")%>' required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("重量")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("重量")%>' required>
                                     </td>
                                     <td>
                                         <%
@@ -218,18 +274,18 @@
                                             String[] valuesArr = values.split("#");
                                             for (String value : valuesArr) {
                                         %>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("形状", value)%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("形状", value)%>' required>
                                         <%
                                             }
                                         %>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="carver" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("雕工")%>'>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("雕工")%>'>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("雕工")%>'>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="originPlace" name="propertyValue" value='<%=detail.getProduct().getPropertyValue("产地")%>' required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" value='<%=detail.getProduct().getPropertyJson("产地")%>' required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("产地")%>' required>
                                     </td>
                                     <td><input type="text" name="details[][product[certificate]]:string" value="${detail.product.certificate}"></td>
                                     <td><input type="text" name="details[][product[costPrice]]:number" value="${detail.product.costPrice}" required></td>
@@ -240,11 +296,8 @@
                                         <input type="file" name="file">
                                         <input type="hidden" name="details[][product[describe[imageParentDirPath]]]:string" value='<%=detail.getProduct().getDescribe().getImageParentDirPath()%>'>
                                         <input type="hidden" name="imageTopDirPath" value='<%=detail.getProduct().getDescribe().getImageParentDirPath().replace("/"+detail.getProduct().getNo(), "")%>' required>
-                                        <input type="hidden" name="details[][product[id]]:number" value="${detail.product.id}" required>
-                                        <input type="hidden" name="details[][product[describe[id]]]:number" value='<%=detail.getProduct().getDescribe().getId()%>' required>
                                         <input type="hidden" name="details[][product[state]]:number" value="${detail.product.state}" required>
                                         <input type="hidden" name="details[][product[supplier[id]]]:number" value="${detail.product.supplier.id}" required>
-                                        <input type="hidden" name="details[][id]:number" value="${detail.id}" required>
                                         <input type="hidden" name="details[][purchase[id]]:number" value="${detail.purchase.id}" required>
                                         <input type="hidden" name="details[][supplier[id]]:number" value="${detail.product.supplier.id}" required>
                                     </td>
@@ -263,6 +316,11 @@
                                             </c:forEach>
                                         </select>
                                     </td>
+                                    <td>
+                                        <select name="details[][product[useType]]:string" required>
+                                            <option value="product">商品</option><option value="acc">配饰</option><option value="materials">加工材料</option>
+                                        </select>
+                                    </td>
                                     <td><input type="text" name="details[][quantity]:number" value="1" required></td>
                                     <td>
                                         <select name="details[][unit]:string" required>
@@ -274,6 +332,8 @@
                                             <option value="条">条</option>
                                             <option value="枚">枚</option>
                                             <option value="副">副</option>
+                                            <option value="千克">千克</option>
+                                            <option value="盎司">盎司</option>
                                             <option value="其他">其他</option>
                                         </select>
                                     </td>
@@ -285,55 +345,55 @@
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="mountMaterial" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="quality" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="color" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="type" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="theme" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="style" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="transparency" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="flaw" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="size" name="propertyValue" required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" required>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="weight" name="propertyValue" required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" required>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue" required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" required>
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="carver" name="propertyValue">
-                                        <input type="hidden" name="details[][product[properties[]]:object">
+                                        <input type="hidden" name="details[][product[properties[]]]:object">
                                     </td>
                                     <td>
                                         <input type="text" data-property-name="originPlace" name="propertyValue" required>
-                                        <input type="hidden" name="details[][product[properties[]]:object" required>
+                                        <input type="hidden" name="details[][product[properties[]]]:object" required>
                                     </td>
                                     <td><input type="text" name="details[][product[certificate]]:string"></td>
                                     <td><input type="text" name="details[][product[costPrice]]:number" required></td>
@@ -397,15 +457,32 @@
 
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
         $('#productList tr :input').attr("readonly",false);
-        $('.state1, .state2, .state3, .state4').find(":input").attr("readonly",true);
+        $('.state1, .state10, .state2, .state3, .state4').find(":input").attr("readonly",true);
         $('.readonly').attr("readonly",true);
         $('#send, #delete, #recover').attr("disabled", false);
         $("#editSheet").attr("disabled", "disabled");
     });
 
+    $('.state1, .state10, .state2, .state3, .state4').find(":input").attr("readonly",true);
+    $("#accountDiv").hide();
+
     $("#editState").unbind("click").click(function(){
         $('#delete, #recover').attr("disabled", false);
         $("#editState").attr("disabled", "disabled");
+    });
+
+    $("#type").change(function(){
+        var typeValue = parseInt($("#type").val());
+        if (typeValue == 2 || typeValue == 3 || typeValue == 4) {
+            $("#accountDiv").show();
+        } else {
+            $("#accountDiv").hide();
+        }
+        if (typeValue == 4) {
+            $("#amountLabel").html("押金金额");
+        } else {
+            $("#amountLabel").html("采购金额");
+        }
     });
 
     <c:if test="${entity != null}">
@@ -452,29 +529,37 @@
         showProperty: 'name',
         onSelected:function(result){
             if(result!=null){
-                var detailSuppliers = document.getElementsByName("details[][supplier[id]]:number");
-                for (var i = 0; i < detailSuppliers.length; i++) {
-                    detailSuppliers[i].value = result.id;
-                }
-
-                var suppliers = document.getElementsByName("details[][product[supplier[id]]]:number");
-                for (var i = 0; i < suppliers.length; i++) {
-                    suppliers[i].value = result.id;
-                }
+                setSupplierId(result.id);
             }
         }
     });
 
+    <c:if test="${supplierId != null}">
+    setSupplierId(${supplierId});
+    </c:if>
+
+    function setSupplierId(id) {
+        var detailSuppliers = document.getElementsByName("details[][supplier[id]]:number");
+        for (var i = 0; i < detailSuppliers.length; i++) {
+            detailSuppliers[i].value = id;
+        }
+
+        var suppliers = document.getElementsByName("details[][product[supplier[id]]]:number");
+        for (var i = 0; i < suppliers.length; i++) {
+            suppliers[i].value = id;
+        }
+    }
+
     $("#delete").click(function(){
         if (confirm("确定作废该采购单吗？")) {
-            $("#form").sendData('<%=request.getContextPath()%>/erp/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
+            $("#form").sendData('<%=request.getContextPath()%>/erp/delete/<%=Purchase.class.getSimpleName().toLowerCase()%>',
                 '{"id":${entity.id},"state":2}');
         }
     });
 
     $("#recover").click(function(){
         if (confirm("确定恢复该采购单吗？")) {
-            $("#form").sendData('<%=request.getContextPath()%>/erp/update/<%=Purchase.class.getSimpleName().toLowerCase()%>',
+            $("#form").sendData('<%=request.getContextPath()%>/erp/recover/<%=Purchase.class.getSimpleName().toLowerCase()%>',
                 '{"id":${entity.id},"state":0}');
         }
     });
@@ -488,7 +573,19 @@
     tableSheet.init("productList", 15-<%=detailsCount%>, "<%=request.getContextPath()%>");
     $('#addItem').click(function(){tableSheet.addRow("productList");});
 
-    $("#send").bind("click", function(){tableSheet.addPurchase('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>', '<%=FileServerInfo.uploadFilesUrl%>', '<%=FileServerInfo.imageServerUrl%>');});
+    $("#send").bind("click", function(){
+        var typeValue = parseInt($("#type").val());
+        if (typeValue == 2 || typeValue == 3 || typeValue == 4) {
+            if($(document.getElementById("account[id]")).val() == ""){
+                alert("请选择支付账号");
+                return false;
+            }
+        } else {
+            $(document.getElementById("account[id]")).val("");
+        }
+
+        tableSheet.addPurchase('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Purchase.class.getSimpleName().toLowerCase()%>', '<%=FileServerInfo.uploadFilesUrl%>', '<%=FileServerInfo.imageServerUrl%>');
+    });
 
     <c:choose><c:when test="${entity != null}">document.title = "采购单查看";</c:when><c:otherwise> document.title = "采购单填写";</c:otherwise></c:choose>
 </script>

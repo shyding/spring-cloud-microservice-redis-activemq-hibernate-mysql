@@ -1,4 +1,4 @@
-﻿var dataList = (function ($) {
+var dataList = (function ($) {
     "use strict";
 
     var titles = {
@@ -66,7 +66,7 @@
         "productDescribe": "date",
         "productType": "inputDate",
         "productPriceChange": "inputDate",
-        "productCheck": "checkDate",
+        "productCheck": "productCheck[checkDate]",
         "supplier": "inputDate",
         "purchase": "date",
         "stockInOut": "date",
@@ -328,7 +328,7 @@
         "product": "product[describe[imageParentDirPath]]"
     };
 
-    var showTitleNames = {
+    var entityStateNames = {
         "user": {"state": {0: "使用", 1: "注销"}},
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
@@ -348,9 +348,11 @@
                 5: "修补入库",
                 6: "调仓入库",
                 10: "虚拟出库",
-                11: "正常出库",
+                11: "系统自动出库",
                 12: "报损出库",
-                13: "调仓出库"
+                13: "调仓出库",
+                14: "内购出库",
+                15: "正常出库"
             },
             "actions[][type]": {0: "打印商品条码", 1: "打印出库单", 2: "打印快递单", 3: "打印入库单"}
         },
@@ -490,9 +492,9 @@
 
             if (entity == "productCheck") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checkNo">盘点单据编号</label>' +
-                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="checkNo" name="checkNo" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>'+
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="productCheck[checkNo]" name="productCheck[checkNo]" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>'+
                     '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checker">盘点人</label>' +
-                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="checker" name="checker" class="form-control col-md-7 col-xs-12" placeholder="输入名字" /></div></div>');
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="chartMaker[name]" name="chartMaker[name]" class="form-control col-md-7 col-xs-12" placeholder="输入名字" /></div></div>');
             }
 
         } else if (modules[entity] == "/pay") {
@@ -536,7 +538,11 @@
 
         } else {
             $("#add").html(urlTitles[entity]).unbind().click(function () {
-                render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
+                if (entity=="productCheck"){
+                    render(rootPath + modules[entity] + addActions[entity] + "/productCheckInput/-1")
+                } else {
+                    render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
+                }
             });
             $("#add").show();
         }
@@ -597,11 +603,11 @@
             queryJson,
             "<thead><tr>" + tHeaders[entity] + "</tr></thead><tbody></tbody>",
             typeof(propertiesShowSequences[entity]) == "undefined" ? [] : propertiesShowSequences[entity],
-            typeof(showTitleNames[entity]) == "undefined" ? {} : showTitleNames[entity],
+            typeof(entityStateNames[entity]) == "undefined" ? {} : entityStateNames[entity],
             entity);
     }
 
-    $.fn.initDataTable = function (url, queryJson, header, propertiesShowSequence, showTitleName, entity) {
+    $.fn.initDataTable = function (url, queryJson, header, propertiesShowSequence, entityStateName, entity) {
         this.empty().html(header);
 
         this.DataTable({
@@ -707,8 +713,8 @@
                                                     var childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
 
                                                     if (dataList[key][parentArrayProperty][ii] != undefined) {
-                                                        if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                            tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
+                                                        if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                            tdData += entityStateName[propertiesShowSequence[i]][childElementValue] + " ";
                                                         } else {
                                                             tdData += childElementValue + " ";
                                                         }
@@ -731,8 +737,8 @@
                                                     var childElementValue = dataList[key][parentArrayProperty][ii];
 
                                                     if (dataList[key][parentArrayProperty] != undefined) {
-                                                        if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                            tdData += showTitleName[propertiesShowSequence[i]][childElementValue] + " ";
+                                                        if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                            tdData += entityStateName[propertiesShowSequence[i]][childElementValue] + " ";
                                                         } else {
                                                             tdData += childElementValue + " ";
                                                         }
@@ -755,8 +761,8 @@
                                         if (pos != -1) {
                                             var childValue = getPropertiesValue(dataList[key], propertiesShowSequence[i]);
                                             if (childValue != null) {
-                                                if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                    tdData = showTitleName[propertiesShowSequence[i]][childValue];
+                                                if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                    tdData = entityStateName[propertiesShowSequence[i]][childValue];
                                                 } else {
                                                     tdData = childValue;
                                                 }
@@ -770,8 +776,8 @@
                                              */
                                             var value = dataList[key][propertiesShowSequence[i]];
 
-                                            if (showTitleName[propertiesShowSequence[i]] != undefined) {
-                                                tdData = showTitleName[propertiesShowSequence[i]][value];
+                                            if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                tdData = entityStateName[propertiesShowSequence[i]][value];
                                             } else {
                                                 if (typeof(value) == "undefined") {
                                                     tdData = "";
@@ -902,7 +908,8 @@
         query: query,
         modules: modules,
         viewActions: viewActions,
-        entityRelations: entityRelations
+        entityRelations: entityRelations,
+        entityStateNames: entityStateNames
     }
 
 })(jQuery);

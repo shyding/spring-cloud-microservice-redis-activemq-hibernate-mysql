@@ -1,9 +1,12 @@
-﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.StockInOut" %>
 <%@ page import="com.hzg.tools.ErpConstant" %>
 <%@ page import="com.hzg.erp.Warehouse" %>
+<%@ page import="com.hzg.erp.StockInOutDetail" %>
+<%@ page import="com.hzg.tools.Writer" %>
+<%@ page import="com.hzg.erp.StockInOutDetailProduct" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -50,7 +53,7 @@
                             <label class="control-label col-md-3 col-sm-3 col-xs-12" for="type">类型 <span class="required">*</span></label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <select id="type" name="type" class="form-control col-md-7 col-xs-12" required>
-                                    <option value="">请选择类型</option>
+                                    <option value="">请选择入库/出库类型</option>
                                     <option value="<%=ErpConstant.stockInOut_type_cash%>">现金入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_consignment%>">代销入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_increment%>">增量入库</option>
@@ -59,10 +62,14 @@
                                     <option value="<%=ErpConstant.stockInOut_type_repair%>">修补入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_changeWarehouse%>">调仓入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_virtual_outWarehouse%>">虚拟出库</option>
-                                    <option value="<%=ErpConstant.stockInOut_type_normal_outWarehouse%>">正常出库</option>
+                                    <c:if test="${entity != null && entity.type == 11}">
+                                        <option value="<%=ErpConstant.stockInOut_type_normal_outWarehouse%>">系统自动出库</option>
+                                    </c:if>
+                                    <option value="<%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>">正常出库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_breakage_outWarehouse%>">报损出库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_changeWarehouse_outWarehouse%>">调仓出库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_innerBuy_outWarehouse%>">内购出库</option>
+
                                 </select>
                             </div>
                         </div>
@@ -94,10 +101,10 @@
 
                         <div id="processRepair">
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="type">类型 <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="type">加工类型 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <select id="processRepairType" name="processRepair[type]" class="form-control col-md-7 col-xs-12" data-value-type="number" data-skip-falsy="true" required>
-                                        <option value="">请选择类型</option>
+                                        <option value="">请选择加工类型</option>
                                         <option value="0">自己加工</option>
                                         <option value="1">第三方加工</option>
                                         <option value="10">修补</option>
@@ -148,8 +155,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div id="warehouse" class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">入库仓库<span class="required">*</span></label>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" id="warehouseTitle">入库仓库<span class="required">*</span></label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <input type="text" id="text2" name="text2" value="${entity.warehouse.name}" class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="选择仓库" required />
                                 <input type="hidden" id="warehouse[id]" name="warehouse[id]" value="${entity.warehouse.id}">
@@ -187,20 +194,33 @@
                     </div>
 
                     <div class="x_content" style="overflow: auto;margin-top: 30px">
-                        <table id="productList" class="table-sheet" width="100%">
-                            <thead><tr><th>商品名称</th><th>商品编号</th><th>种类</th><th>数量</th><th>计量单位</th><th>采购价</th><th>图片</th></tr></thead>
+                        <table id="stockInOutProductList" class="table-sheet" width="100%">
+                            <thead><tr><th>商品名称</th><th>编号</th><th>状态</th><th>种类</th><th>数量</th><th>计量单位</th><th>采购价</th><th>图片</th></tr></thead>
                             <tbody id="tbody">
                             <c:forEach items="${entity.details}" var="detail">
                                 <tr id="tr${detail.product.no}">
                                     <td>${detail.product.name}
-                                        <c:forEach items="${detail.stockInOutDetailProducts}" var="detailProduct">
-                                            <input type='hidden' name='details[][stockInOutDetailProducts[][product[id]]]:number' value='${detailProduct.product.id}'>
-                                        </c:forEach>
+                                        <%
+                                            StockInOutDetail detail = (StockInOutDetail)pageContext.getAttribute("detail");
+                                            String detailProducts = "[";
+                                            Object[] detailProductsArr = detail.getStockInOutDetailProducts().toArray();
+
+                                            for (int i = 0; i < detailProductsArr.length; i++) {
+                                                detailProducts += "{\"product\":{\"id\":" + ((StockInOutDetailProduct)detailProductsArr[i]).getProduct().getId() + "}}";
+                                                if (i < detailProductsArr.length-1) {
+                                                    detailProducts += ",";
+                                                }
+                                            }
+
+                                            detailProducts += "]";
+                                         %>
+                                        <input type='hidden' name='details[][stockInOutDetailProducts]:array' value='<%=detailProducts%>'>
                                     </td>
-                                    <td>${detail.product.no}</td>
+                                    <td><input type="text" name='details[][productNo]:string' value='${detail.productNo}' readonly></td>
+                                    <td>${detail.product.stateName}</td>
                                     <td>${detail.product.type.name}</td>
-                                    <td><input name='details[][quantity]:number' value='${detail.quantity}'></td>
-                                    <td><input name="details[][unit]:string" value="${detail.unit}"></td>
+                                    <td><input type="text" name='details[][quantity]:number' value='${detail.quantity}'></td>
+                                    <td><input type="text" name="details[][unit]:string" value="${detail.unit}"></td>
                                     <td>${detail.product.unitPrice}</td>
                                     <td><a id="${detail.product.no}" href="<%=FileServerInfo.imageServerUrl%>/${detail.product.describe.imageParentDirPath}/snapshoot.jpg" class="lightbox">查看图片</a></td>
                                 </tr>
@@ -242,14 +262,6 @@
                                     <button class="btn btn-default" id="printBarcodeBtn"><i class="fa fa-print"></i> 打印商品条码</button>
                                     <button class="btn btn-default" id="printStockOutBtn"><i class="fa fa-print"></i> 打印出库单</button>
                                     <button class="btn btn-default" id="printExpressBtn"><i class="fa fa-print"></i> 打印快递单</button>
-                                    <form id="printDataForm" style="display: none">
-                                        <input type="hidden" id="stockInOutId" name="stockInOut[id]:number" value="${entity.id}">
-                                        <input type="hidden" name="inputer[id]:number" value="${userId}">
-                                        <input type="hidden" id="printContent" name="printContent">
-                                    </form>
-                                    <form id="printForm" method="post" style="display: none" target="_blank">
-                                        <input type="hidden" id="jsonn" name="json">
-                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -259,6 +271,100 @@
         </div>
     </div>
 </div>
+
+<div class="right_col" role="dialog">
+    <div class="row">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="x_panel">
+                <div class="x_content">
+                    <div id="expressReceiverInfoDiv">
+                        <form id="expressReceiverInfoForm">
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="receiver">收件人 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiver" name="receiver" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,20" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="date">发送时间 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="expressDate" name="date" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,20" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverMobile">手机 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverMobile" name="receiverMobile" class="form-control col-md-7 col-xs-12" data-validate-length-range="11,20" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverTel">电话 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverTel" name="receiverTel" class="form-control col-md-7 col-xs-12" data-validate-length-range="7,20" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverAddress">地址 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverAddress" name="receiverAddress" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,60" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverCity">城市 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverCity" name="receiverCity" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,16" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverProvince">省份 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverProvince" name="receiverProvince" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,16" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverCountry">国家 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverCountry" name="receiverCountry" value="中国" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,16" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverPostCode">邮编 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverPostCode" name="receiverPostCode" class="form-control col-md-7 col-xs-12" data-validate-length-range="4,7" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                            <div class="clearfix" style="margin-bottom: 15px"></div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiverCompany">公司 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="receiverCompany" name="receiverCompany" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,30" data-validate-words="1" required type="text">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="printDataForm" style="display: none">
+    <input type="hidden" id="stockInOutId" name="stockInOut[id]:number" value="${entity.id}">
+    <input type="hidden" name="inputer[id]:number" value="${userId}">
+    <input type="hidden" id="expressReceiverInfo" name="expressReceiverInfo">
+    <input type="hidden" id="printContent" name="printContent">
+</form>
+<form id="printForm" method="post" style="display: none" target="_blank">
+    <input type="hidden" id="jsonn" name="json">
+</form>
 <script type="text/javascript">
     init(<c:out value="${entity == null}"/>);
 
@@ -346,8 +452,6 @@
         console.log(start.toISOString(), end.toISOString(), label);
     });
 
-
-    $("#warehouse").hide();
     $("#deposit").hide();
     $("#processRepair").hide();
     $("#changeWarehouse").hide();
@@ -367,25 +471,22 @@
             $("#smallTitle").html("入库单");
             $("#sectionTitle").html("入库信息");
             $("#labelDate").html("入库时间");
+            $("#warehouseTitle").html("入库仓库");
             $("#labelNo").html("采购单编号、商品编号");
 
             $("#send").show();
             $("#doBusiness").show();
-            $("#warehouse").show();
-            setDisabled($("#warehouse").find(":input"), false);
-
-
             $("#doBusinessOut").hide();
 
         } else {
             $("#smallTitle").html("出库单");
             $("#sectionTitle").html("出库信息");
             $("#labelDate").html("出库时间");
+            $("#warehouseTitle").html("出库仓库");
             $("#labelNo").html("商品编号");
 
             $("#send").hide();
             $("#doBusiness").hide();
-
             $("#doBusinessOut").show();
         }
 
@@ -424,36 +525,21 @@
                 $("#printStockOutBtn").show();
             </c:if>
 
-            <c:if test="${entity.type == 11}">
+        /**
+         * 自动正常出库和人工正常出库，都显示打印快递单按钮
+          */
+        <c:if test="${entity.type == 11 || entity.type == 15}">
                 $("#printExpressBtn").show();
             </c:if>
 
         </c:if>
     </c:if>
 
-    $("#printBarcodeBtn").click(function(){
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
-        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/barcode").submit();
-    });
-
-    $("#printStockOutBtn").click(function(){
-        $("#printContent").val($("#main").html().replace('id="tail"', 'style="display:none"').replace('id="search"', 'style="display:none"'));
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
-        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/stockOutBills").submit();
-    });
-
-    $("#printExpressBtn").click(function(){
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
-        $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
-    });
-
     $("#type").change(function(){
-        $("#warehouse").hide();
         $("#deposit").hide();
         $("#processRepair").hide();
         $("#changeWarehouse").hide();
 
-        setDisabled($("#warehouse").find(":input"), true);
         setDisabled($("#deposit").find(":input"), true);
         setDisabled($("#processRepair").find(":input"), true);
         setDisabled($("#changeWarehouse").find(":input"), true);
@@ -481,25 +567,28 @@
            $("#smallTitle").html("入库单");
            $("#sectionTitle").html("入库信息");
            $("#labelDate").html("入库时间");
+           $("#warehouseTitle").html("入库仓库");
            $("#labelNo").html("采购单编号、商品编号");
+
+           $("#text2").val("");
+           document.getElementById("warehouse[id]").value = "";
 
            $("#send").show();
            $("#doBusiness").show();
-           $("#warehouse").show();
-           setDisabled($("#warehouse").find(":input"), false);
-
-
            $("#doBusinessOut").hide();
 
        } else {
            $("#smallTitle").html("出库单");
            $("#sectionTitle").html("出库信息");
            $("#labelDate").html("出库时间");
+           $("#warehouseTitle").html("出库仓库");
            $("#labelNo").html("商品编号");
+
+           $("#text2").val("");
+           document.getElementById("warehouse[id]").value = "";
 
            $("#send").hide();
            $("#doBusiness").hide();
-
            $("#doBusinessOut").show();
        }
 
@@ -524,11 +613,19 @@
         }
     }
 
+    $("#text1").focus(function(){
+        if ($("#type").val() >= <%=ErpConstant.stockInOut_type_virtual_outWarehouse%> && $.trim(document.getElementById("warehouse[id]").value) == "") {
+            alert("请选择出库出库");
+            $("#text2").focus();
+            return false;
+        }
+    });
+
     $("#text1").coolautosuggestm({
         url:"<%=request.getContextPath()%>/erp/entitiesSuggest/" + encodeURIComponent('purchase#purchaseDetail') + "/" +  encodeURIComponent('purchase#product'),
         marginTop: "margin-top:34px",
         width: 312,
-        showProperty: "no",
+        showProperty: "no#productNo",
 
         getQueryData: function(paramName){
             var queryJson = {};
@@ -547,6 +644,7 @@
             } else {
                 queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于出库单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
                 queryJson["product"]["state"] = <%=ErpConstant.product_state_stockIn%>;
+                queryJson["product"]["stockInOut"] = '{"warehouse":{"id":' + parseInt(document.getElementById("warehouse[id]").value) + '}}';
             }
 
             return queryJson;
@@ -561,7 +659,7 @@
                  */
                 if (result.details != undefined) {
                     for (var i = 0; i < result.details.length; i++) {
-                        addItem(tbody, result.details[i]);
+                        addItem(tbody, result.details[i], "products");
                     }
 
                     $("#purchaseId").val(result.id);
@@ -573,7 +671,7 @@
                  * item is purchaseDetail
                  */
                 if (result.price != undefined) {
-                    addItem(tbody, result);
+                    addItem(tbody, result, "product");
 
                     $("#purchaseId").val("");
                     $("#purchaseNo").val("");
@@ -583,10 +681,10 @@
         }
     });
 
-    function addItem(tbody, item) {
-        if (document.getElementById("tr" + item["product"]["no"]) == null) {
+    function addItem(tbody, item, productFlag) {
+        if (document.getElementById("tr" + item["product"]["no"] + item["product"]["id"]) == null) {
             if ($("#type").val() != <%=ErpConstant.stockInOut_type_changeWarehouse%>) {
-                setStockInOut(tbody, item);
+                setStockInOut(tbody, item, productFlag);
 
             } else {
                 /**
@@ -600,7 +698,7 @@
                             $("#text2").val(stockOut["changeWarehouse"]["targetWarehouse"]["name"]);
                             document.getElementById("warehouse[id]").value = stockOut["changeWarehouse"]["targetWarehouse"]["id"];
 
-                            setStockInOut(tbody, item);
+                            setStockInOut(tbody, item, productFlag);
                         }
                     }
                 );
@@ -608,26 +706,57 @@
         }
     }
 
-    function setStockInOut(tbody, item){
+    function setStockInOut(tbody, item, productFlag){
         var detailProducts = "[";
-        for (var i = 0; i < item["purchaseDetailProducts"].length; i++) {
-            detailProducts += '{"product":{"id":' + item["purchaseDetailProducts"][i]["product"]["id"] + "}}";
-            if (i < item["purchaseDetailProducts"].length-1) {
-                detailProducts += ",";
+
+        if (productFlag == "product") {
+            var setProducts = document.getElementsByName("details[][stockInOutDetailProducts]:array");
+            var isCurrentProductSet = false;
+            for (var i = 0; i < item["purchaseDetailProducts"].length; i++) {
+
+                for (var j = 0; j < setProducts.length; j++) {
+                    if (setProducts[j].value.indexOf('{"id":' + item["purchaseDetailProducts"][i]["product"]["id"] + "}") != -1) {
+                        isCurrentProductSet = true;
+                        break;
+                    }
+                }
+
+                if (!isCurrentProductSet) {
+                    detailProducts += '{"product":{"id":' + item["purchaseDetailProducts"][i]["product"]["id"] + "}}";
+                    break;
+                }
+
+                isCurrentProductSet = false;
+            }
+
+        } else if (productFlag == "products") {
+            for (var i = 0; i < item["purchaseDetailProducts"].length; i++) {
+                detailProducts += '{"product":{"id":' + item["purchaseDetailProducts"][i]["product"]["id"] + "}}";
+                if (i < item["purchaseDetailProducts"].length-1) {
+                    detailProducts += ",";
+                }
             }
         }
+
+
         detailProducts += "]";
 
-        tbody.append("<tr id='tr" + item["product"]["no"] + "'>" +
-            "<td>" + item.productName + "<input type='hidden' name='details[][stockInOutDetailProducts]:array' value='" + detailProducts + "'>" + "</td>" +
-            "<td>" + item["product"]["no"] + "</td>" +
-            "<td>" + item["product"]["type"]["name"] + "</td>" +
-            "<td><input name='details[][quantity]:number' value='" + item.quantity + "'></td>" +
-            "<td><input name='details[][unit]:string' value='" + item.unit + "'></td>" +
-            "<td>" + item.price + "</td><td>" +
-            "<a id='" + item["product"]["no"] + "' href='<%=FileServerInfo.imageServerUrl%>/" + item["product"]["describe"]["imageParentDirPath"] + "/snapshoot.jpg'>图片</a></td></tr>");
+        var quantity = item.quantity;
+        if (productFlag == "product") {
+            quantity = 1;
+        }
 
-        $(document.getElementById(item.no)).lightbox({
+        tbody.append("<tr id='tr" + item["product"]["no"] + item["product"]["id"] + "'>" +
+            "<td>" + item.productName + "<input type='hidden' name='details[][stockInOutDetailProducts]:array' value='" + detailProducts + "'>" + "</td>" +
+            "<td><input type='text' name='details[][productNo]:string' value='" + item["product"]["no"] + "' readonly></td>" +
+            "<td>" + dataList.entityStateNames["product"]["product[state]"][item["product"]["state"]] + "</td>" +
+            "<td>" + item["product"]["type"]["name"] + "</td>" +
+            "<td><input type='text' name='details[][quantity]:number' value='" + quantity + "'></td>" +
+            "<td><input type='text' name='details[][unit]:string' value='" + item.unit + "'></td>" +
+            "<td>" + item.price + "</td><td>" +
+            "<a id='" + item["product"]["no"] + item["product"]["id"] + "' href='<%=FileServerInfo.imageServerUrl%>/" + item["product"]["describe"]["imageParentDirPath"] + "/snapshoot.jpg'>图片</a></td></tr>");
+
+        $(document.getElementById(item["product"]["no"] + item["product"]["id"])).lightbox({
             fitToScreen: true,
             imageClickClose: false
         });
@@ -663,8 +792,57 @@
         }
     });
 
+    $("#expressReceiverInfoDiv").dialog({
+        title: "请输入收件人及其他信息",
+        autoOpen: false,
+        width: 370,
+        height:640,
+        buttons: {
+            "确定": function () {
+                var expressReceiverInfoForm = $("#expressReceiverInfoForm");
+                if (!validator.checkAll(expressReceiverInfoForm)) {
+                    return;
+                }
+
+                var expressReceiverInfo = $("#expressReceiverInfo");
+                var expressReceiverInfoJson = JSON.stringify(expressReceiverInfoForm.serializeJSON());
+                if (expressReceiverInfo.val() == expressReceiverInfoJson) {
+                    alert("不能重复提交");
+                    return false;
+                }
+                expressReceiverInfo.val(expressReceiverInfoJson);
+
+                $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+                $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
+                $(this).dialog("close");
+            },
+
+            "取消": function () {
+                $(this).dialog("close");
+            }
+        }
+    });
+
+    $('#expressDate').daterangepicker({
+        locale: {
+            format: 'YYYY-MM-DD',
+            applyLabel : '确定',
+            cancelLabel : '取消',
+            fromLabel : '起始时间',
+            toLabel : '结束时间',
+            customRangeLabel : '自定义',
+            daysOfWeek : [ '日', '一', '二', '三', '四', '五', '六' ],
+            monthNames : [ '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月' ],
+            firstDay : 1
+        },
+        singleDatePicker: true,
+        singleClasses: "picker_3"
+    }, function(start, end, label) {
+        console.log(start.toISOString(), end.toISOString(), label);
+    });
+
     $("#delItem").click(function(){
-        var lastTr = $("#productList tbody tr:last-child");
+        var lastTr = $("#stockInOutProductList tbody tr:last-child");
 
         if (lastTr.html().indexOf('<td>') != -1) {
             var productNo = lastTr.attr("id").substring(2);
@@ -688,6 +866,30 @@
         }
     });
 
+    $("#printBarcodeBtn").click(function(){
+        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/barcode").submit();
+    });
+
+    $("#printStockOutBtn").click(function(){
+        $("#printContent").val($("#main").html()
+            .replace('id="tail"', 'style="display:none"')
+            .replace('id="search"', 'style="display:none"')
+            .replace(/\r/ig,"").replace(/\n/ig,"")
+            .replace('请选择入库/出库类型', $("#type  option:selected").text()));
+        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/stockOutBills").submit();
+    });
+
+    $("#printExpressBtn").click(function(){
+        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+        if ($("#type").val() == "<%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>") {
+            $('#expressReceiverInfoDiv').dialog('open');
+        } else if($("#type").val() == "<%=ErpConstant.stockInOut_type_normal_outWarehouse%>") {
+            $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
+        }
+    });
+
     $("#send").bind("click", function(){
         if(checkStockIn()){
             $("#form").submitForms('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=StockInOut.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)%>',
@@ -695,15 +897,18 @@
                     if (result.result.indexOf("success") != -1) {
                         $("#stockInOutId").val(result.id);
 
-                        if (parseInt($("#type").val()) < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%> &&
-                            parseInt($("#state").val()) == <%=ErpConstant.stockInOut_state_finished%>) {
-                            $("#printBarcodeBtn").show();
-                        }
+                        if (parseInt(result.state) == <%=ErpConstant.stockInOut_state_finished%>) {
+                            if (parseInt(result.type) < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+                                $("#printBarcodeBtn").show();
+                            }
 
-                        if (parseInt($("#type").val()) >= <%=ErpConstant.stockInOut_type_virtual_outWarehouse%> &&
-                            parseInt($("#state").val()) == <%=ErpConstant.stockInOut_state_finished%>) {
-                            $("#printStockOutBtn").show();
-                            $("#printExpressBtn").show();
+                            if (parseInt(result.type) >= <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+                                $("#printStockOutBtn").show();
+
+                                if (parseInt(result.type) == <%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>) {
+                                    $("#printExpressBtn").show();
+                                }
+                            }
                         }
                     }
                 }
@@ -742,9 +947,16 @@
             }
         }
         if (parseInt($("#type").val()) == <%=ErpConstant.stockInOut_type_repair%>) {
-            if (document.getElementsByName("details[][product[id]]:number").length > 1) {
+            var stockInOutDetailProducts = document.getElementsByName("details[][stockInOutDetailProducts]:array");
+            if (stockInOutDetailProducts.length > 1) {
                 alert("修补入库是对单件商品做入库");
                 return false;
+
+            } else if (stockInOutDetailProducts.length == 1) {
+                if (stockInOutDetailProducts[0].value.indexOf(",") != -1) {
+                    alert("修补入库是对单件商品做入库");
+                    return false;
+                }
             }
         }
 

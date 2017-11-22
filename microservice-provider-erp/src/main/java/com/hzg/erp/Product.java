@@ -52,7 +52,7 @@ public class Product implements Serializable {
     @JoinColumn(name = "supplierId")
     private Supplier supplier;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
+    @ManyToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "describeId")
     private ProductDescribe describe;
 
@@ -69,6 +69,12 @@ public class Product implements Serializable {
 
     @OneToMany(mappedBy = "product", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<ProductOwnProperty> properties;
+
+    @Transient
+    private Float soldQuantity;
+
+    @Transient
+    private String soldUnit;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -192,6 +198,22 @@ public class Product implements Serializable {
 
     public void setProperties(Set<ProductOwnProperty> properties) {
         this.properties = properties;
+    }
+
+    public Float getSoldQuantity() {
+        return soldQuantity;
+    }
+
+    public void setSoldQuantity(Float soldQuantity) {
+        this.soldQuantity = soldQuantity;
+    }
+
+    public String getSoldUnit() {
+        return soldUnit;
+    }
+
+    public void setSoldUnit(String soldUnit) {
+        this.soldUnit = soldUnit;
     }
 
     public String getStateName() {

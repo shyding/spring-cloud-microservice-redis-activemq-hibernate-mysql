@@ -22,6 +22,9 @@ public class StockInOutDetail implements Serializable {
     @JoinColumn(name = "stockInOutId")
     private StockInOut stockInOut;
 
+    @Column(name="productNo",length=16)
+    private String productNo;
+
     @Column(name="quantity", length = 8, precision = 2)
     private Float quantity;
 
@@ -52,6 +55,14 @@ public class StockInOutDetail implements Serializable {
 
     public void setStockInOut(StockInOut stockInOut) {
         this.stockInOut = stockInOut;
+    }
+
+    public String getProductNo() {
+        return productNo;
+    }
+
+    public void setProductNo(String productNo) {
+        this.productNo = productNo;
     }
 
     public Float getQuantity() {

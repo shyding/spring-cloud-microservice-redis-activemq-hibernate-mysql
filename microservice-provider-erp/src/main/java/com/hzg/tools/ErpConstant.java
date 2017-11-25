@@ -1,4 +1,4 @@
-﻿package com.hzg.tools;
+package com.hzg.tools;
 
 public class ErpConstant {
 
@@ -28,6 +28,7 @@ public class ErpConstant {
     public final static String no_stock_perfix = "KC";
     public final static String no_warehouse_perfix = "CK";
     public final static String no_expressDelivery_perfix = "ED";
+    public final static String no_productCheck_perfix = "PD";
 
     public final static Integer stockInOut_type_cash = 0;
     public final static Integer stockInOut_type_consignment = 1;
@@ -41,6 +42,7 @@ public class ErpConstant {
     public final static Integer stockInOut_type_breakage_outWarehouse = 12;
     public final static Integer stockInOut_type_changeWarehouse_outWarehouse = 13;
     public final static Integer stockInOut_type_innerBuy_outWarehouse = 14;
+    public final static Integer stockInOut_type_normal_outWarehouse_manual = 15;
 
     public final static Integer stockInOut_state_apply = 0;
     public final static Integer stockInOut_state_finished = 1;
@@ -64,6 +66,15 @@ public class ErpConstant {
 
     public final static String stockIn = "stockIn";
     public final static String stockOut = "stockOut";
+    public final static String stockInOut = "stockInOut";
+
+    public final static String product = "product";
+    public final static String product_property_name_weight = "重量";
+
+    // 商品计量单位
+    public final static String productUnit = "productUnit";
+    // 商品盘点录入
+    public final static String productCheckInput = "productCheckInput";
 
     public final static String price = "price";
     public final static String price_change = "price_change";
@@ -95,12 +106,6 @@ public class ErpConstant {
 
     public final static String privilege_resource_uri_print_expressWaybill = "/erp/print/expressWaybill";
 
-    public final static Integer stockInOut_action_print_barcode = 0;
-    public final static Integer stockInOut_action_print_stockOutBills = 1;
-    public final static Integer stockInOut_action_print_expressWaybill = 2;
-
-    public final static String product_property_name_weight = "重量";
-
     public final static String sf_response_code_success = "EX_CODE_OPENAPI_0200";
     public final static String sf_response_code_refresh_token_unExist = "EX_CODE_OPENAPI_0104";
     public final static String sf_response_code_refresh_token_timeout = "EX_CODE_OPENAPI_0106";
@@ -110,6 +115,7 @@ public class ErpConstant {
 
 
     public final static String deliver_sfExpress = "顺丰快递";
+    public final static String deliver_sfExpress_type = "顺丰标快";
 
     public final static Integer sf_action_code_order = 200;
     public final static Integer sf_action_code_access_token = 301;
@@ -129,4 +135,24 @@ public class ErpConstant {
     public final static String unit_ct = "克拉";
     public final static String unit_oz = "盎司";
 
+    public final static String stockInOut_action_name_print_barcode = "barcode";
+    public final static String stockInOut_action_name_print_stockOutBills = "stockOutBills";
+    public final static String stockInOut_action_name_print_expressWaybill = "expressWaybill";
+    public final static String stockInOut_action_name_inProduct = "stockInProduct";
+    public final static String stockInOut_action_name_outProduct = "stockOutProduct";
+
+    public final static Integer stockInOut_action_print_barcode = 0;
+    public final static Integer stockInOut_action_print_stockOutBills = 1;
+    public final static Integer stockInOut_action_print_expressWaybill = 2;
+    public final static Integer stockInOut_action_print_stockInBills = 3;
+    public final static Integer stockInOut_action_inProduct = 4;
+    public final static Integer stockInOut_action_outProduct = 5;
+
+    public final static Integer product_action_upShelf = 0;
+    public final static Integer product_action_downShelf = 1;
+
+    public final static String product_action_name_updateUploadMediaFilesInfo = "updateUploadMediaFilesInfo";
+    public final static String product_action_name_setProductsSold = "setProductsSold";
+    public final static String product_action_name_upShelf = "upShelfProduct";
+    public final static String product_action_name_downShelf = "downShelfProduct";
 }

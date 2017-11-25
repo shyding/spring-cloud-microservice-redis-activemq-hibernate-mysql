@@ -343,28 +343,31 @@ public class ErpService {
     }
 
     /**
-     * 设置入库库存，商品入库状态
-     * @param stockInOut
+     * 设置入库
+     * @param stockIn
      * @return
      */
-    public String stockIn(StockInOut stockInOut){
+    public String stockIn(StockInOut stockIn){
         String result = CommonConstant.fail;
 
-        result += setStockProductIn(stockInOut);
+        result += isCanStockIn(stockIn);
+        if (!result.contains(CommonConstant.fail+CommonConstant.fail)) {
+            result += setStockProductIn(stockIn);
 
-        /**
-         * 押金入库后通知仓储预计退还货物时间，财务人员预计退还押金时间
-         */
-        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
-            result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_cangchu, stockInOut.getId(),
-                    "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnGoodsDate() + "退货",
-                    "请注意退货时间：" + stockInOut.getDeposit().getReturnGoodsDate(),
-                    stockInOut.getInputer());
+            /**
+             * 押金入库后通知仓储预计退还货物时间，财务人员预计退还押金时间
+             */
+            if (stockIn.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+                result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_cangchu, stockIn.getId(),
+                        "押金入库单 " + stockIn.getNo() + ", 预计" + stockIn.getDeposit().getReturnGoodsDate() + "退货",
+                        "请注意退货时间：" + stockIn.getDeposit().getReturnGoodsDate(),
+                        stockIn.getInputer());
 
-            result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_caiwu, stockInOut.getId(),
-                    "押金入库单 " + stockInOut.getNo() + ", 预计" + stockInOut.getDeposit().getReturnDepositDate() + "退押金",
-                    "请注意退押金时间：" + stockInOut.getDeposit().getReturnDepositDate(),
-                    stockInOut.getInputer());
+                result += launchAuditFlow(AuditFlowConstant.business_stockIn_deposit_caiwu, stockIn.getId(),
+                        "押金入库单 " + stockIn.getNo() + ", 预计" + stockIn.getDeposit().getReturnDepositDate() + "退押金",
+                        "请注意退押金时间：" + stockIn.getDeposit().getReturnDepositDate(),
+                        stockIn.getInputer());
+            }
         }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
@@ -372,14 +375,14 @@ public class ErpService {
 
     /**
      * 设置入库库存，商品入库状态
-     * @param stockInOut
+     * @param stockIn
      * @return
      */
-    public String setStockProductIn(StockInOut stockInOut) {
+    public String setStockProductIn(StockInOut stockIn) {
         String result = CommonConstant.fail;
 
-        for (StockInOutDetail detail : stockInOut.getDetails()) {
-            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockInOut.getId());
+        for (StockInOutDetail detail : stockIn.getDetails()) {
+            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockIn.getId());
 
             /**
              * 修改商品为入库
@@ -394,7 +397,7 @@ public class ErpService {
             /**
              * 调仓入库，设置调仓出库为完成状态
              */
-            if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) == 0) {
+            if (stockIn.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) == 0) {
                 StockInOut stockOutChangeWarehouse = getLastStockInOutByProductAndType(dbProduct, ErpConstant.stockOut);
                 stockOutChangeWarehouse.getChangeWarehouse().setState(ErpConstant.stockInOut_state_changeWarehouse_finished);
                 result += erpDao.updateById(stockOutChangeWarehouse.getChangeWarehouse().getId(), stockOutChangeWarehouse.getChangeWarehouse());
@@ -405,24 +408,24 @@ public class ErpService {
              */
             Stock tempStock = new Stock();
             tempStock.setProductNo(dbProduct.getNo());
-            tempStock.setWarehouse(stockInOut.getWarehouse());
+            tempStock.setWarehouse(stockIn.getWarehouse());
 
             /**
              * 在同一个仓库的同类商品做增量入库，才修改商品数量
              */
-            if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_increment) == 0) {
+            if (stockIn.getType().compareTo(ErpConstant.stockInOut_type_increment) == 0) {
                 List<Stock> dbStocks = erpDao.query(tempStock);
 
                 if (!dbStocks.isEmpty()) {
-                    dbStocks.get(0).setDate(stockInOut.getDate());
+                    dbStocks.get(0).setDate(stockIn.getDate());
                     result += setStockQuantity(dbStocks.get(0), detail.getQuantity(), CommonConstant.add);
 
                 } else {
-                    result += saveStock(tempStock, detail.getQuantity(), detail.getUnit(), stockInOut.getDate());
+                    result += saveStock(tempStock, detail.getQuantity(), detail.getUnit(), stockIn.getDate());
                 }
 
             } else {
-                result += saveStock(tempStock, detail.getQuantity(), detail.getUnit(), stockInOut.getDate());
+                result += saveStock(tempStock, detail.getQuantity(), detail.getUnit(), stockIn.getDate());
             }
 
             /**
@@ -435,16 +438,62 @@ public class ErpService {
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
+
     /**
-     * 设置出库库存，商品出库状态
-     * @param stockInOut
+     * 出库
+     * @param stockOut
      * @return
      */
-    public String stockOut(StockInOut stockInOut) {
+    public String stockOut(StockInOut stockOut){
         String result = CommonConstant.fail;
 
-        for (StockInOutDetail detail : stockInOut.getDetails()) {
-            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockInOut.getId());
+        result += isCanStockOut(stockOut);
+        if (!result.contains(CommonConstant.fail+CommonConstant.fail)) {
+            if (stockOut.getType().compareTo(ErpConstant.stockInOut_type_normal_outWarehouse) == 0) {
+                /**
+                 * 确认订单支付完成后，系统会自动出库商品，即系统自动出库，这时没有出库人员，因此随机设置出库人员
+                 */
+                stockOut.setInputer(getRandomStockOutUser());
+
+                /**
+                 * 设置出库库存,商品出库状态, 提醒出库人员打印快递单
+                 */
+                result += setStockProductOut(stockOut);
+                result += launchAuditFlow(AuditFlowConstant.business_stockOut_print_expressWaybill_notify, stockOut.getId(),
+                        "打印出库单:" + stockOut.getNo() + " 里商品的快递单", "打印出库单:" + stockOut.getNo() + " 里商品的快递单",
+                        stockOut.getInputer());
+
+
+            } else if (stockOut.getType().compareTo(ErpConstant.stockInOut_type_breakage_outWarehouse) == 0) {
+                /**
+                 * 报损出库进入报损出库审批流程
+                 */
+                result += launchAuditFlow(AuditFlowConstant.business_stockOut_breakage, stockOut.getId(),
+                        "出库单:" + stockOut.getNo() + " 商品报损出库", "请报损出库出库单" + stockOut.getNo() + " 的商品",
+                        stockOut.getInputer());
+
+
+            } else {
+                /**
+                 * 设置出库库存,商品出库状态
+                 */
+                result += setStockProductOut(stockOut);
+            }
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    /**
+     * 设置出库库存，商品出库状态
+     * @param stockOut
+     * @return
+     */
+    public String setStockProductOut(StockInOut stockOut) {
+        String result = CommonConstant.fail;
+
+        for (StockInOutDetail detail : stockOut.getDetails()) {
+            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), stockOut.getId());
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
                 detailProduct.getProduct().setState(ErpConstant.product_state_stockOut);
@@ -562,6 +611,20 @@ public class ErpService {
 
     public String saveStockInOut(StockInOut stockInOut) {
         String result = CommonConstant.fail;
+
+        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_deposit) == 0) {
+            result += erpDao.save(stockInOut.getDeposit());
+        }
+
+        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_process) == 0 ||
+                stockInOut.getType().compareTo(ErpConstant.stockInOut_type_repair) == 0) {
+            result += erpDao.save(stockInOut.getProcessRepair());
+        }
+
+        if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse_outWarehouse) == 0) {
+            stockInOut.getChangeWarehouse().setState(ErpConstant.stockInOut_state_changeWarehouse_unfinished);
+            result += erpDao.save(stockInOut.getChangeWarehouse());
+        }
 
         result += erpDao.save(stockInOut);
         result += saveStockInOutDetails(stockInOut);
@@ -1562,5 +1625,82 @@ public class ErpService {
         }
 
         return canSellQuantity.floatValue();
+    }
+
+    public String changeProductState(List<Integer> productIds, Integer allowState, Integer toState) {
+        String result = CommonConstant.fail;
+
+        for (Integer id : productIds) {
+            Product stateProduct = (Product) erpDao.queryById(id, Product.class);
+            if (stateProduct.getState().compareTo(allowState) != 0) {
+                result += CommonConstant.fail;
+
+                if (allowState.compareTo(ErpConstant.product_state_edit) == 0) {
+                    result += ", 商品 " + stateProduct.getNo() + "不是编辑状态，不能上架商品";
+
+                } else if (allowState.compareTo(ErpConstant.product_state_onSale) == 0) {
+                    result += ", 商品 " + stateProduct.getNo() + "不是在售状态，不能下架商品";
+                }
+
+                break;
+            }
+        }
+
+        if (!result.contains(CommonConstant.fail+CommonConstant.fail)) {
+            Product product = new Product();
+            for (Integer id : productIds) {
+                product.setState(toState);
+                result += erpDao.updateById(id, product);
+            }
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public StockInOut queryStockInOut(Integer id) {
+        StockInOut stockInOut = (StockInOut) erpDao.queryById(id, StockInOut.class);
+
+        return stockInOut;
+    }
+
+    public String isCanStockIn(StockInOut stockIn) {
+        String result = null;
+
+        for (StockInOutDetail detail : stockIn.getDetails()) {
+            for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
+                Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
+
+                if (dbProduct.getState().compareTo(ErpConstant.product_state_purchase_close) != 0 &&
+                        dbProduct.getState().compareTo(ErpConstant.product_state_stockOut) != 0) {
+                    result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的商品不是采购完成或出库状态，不能入库";
+
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public String isCanStockOut(StockInOut stockOut) {
+        String result = null;
+
+        for (StockInOutDetail detail : stockOut.getDetails()) {
+            for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
+                Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
+
+                if (dbProduct.getState().compareTo(ErpConstant.product_state_stockIn) != 0 &&
+                        dbProduct.getState().compareTo(ErpConstant.product_state_onSale) != 0) {
+                    result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的商品不是入库或在售状态，不能出库";
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public User getUserBySessionId(String sessionId){
+        return (User)erpDao.getFromRedis((String)erpDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + sessionId));
     }
 }

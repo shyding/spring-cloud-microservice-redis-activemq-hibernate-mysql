@@ -356,9 +356,9 @@
     </div>
 </div>
 
-<form id="printDataForm" style="display: none">
-    <input type="hidden" id="stockInOutId" name="stockInOut[id]:number" value="${entity.id}">
-    <input type="hidden" name="inputer[id]:number" value="${userId}">
+<form id="actionForm" style="display: none">
+    <input type="hidden" id="entityId" name="entityId:number" value="${entity.id}">
+    <input type="hidden" name="sessionId" value="${sessionId}">
     <input type="hidden" id="expressReceiverInfo" name="expressReceiverInfo">
     <input type="hidden" id="printContent" name="printContent">
 </form>
@@ -812,7 +812,7 @@
                 }
                 expressReceiverInfo.val(expressReceiverInfoJson);
 
-                $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+                $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
                 $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
                 $(this).dialog("close");
             },
@@ -867,8 +867,8 @@
     });
 
     $("#printBarcodeBtn").click(function(){
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
-        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/barcode").submit();
+        $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
+        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/<%=ErpConstant.stockInOut_action_name_print_barcode%>").submit();
     });
 
     $("#printStockOutBtn").click(function(){
@@ -877,12 +877,14 @@
             .replace('id="search"', 'style="display:none"')
             .replace(/\r/ig,"").replace(/\n/ig,"")
             .replace('请选择入库/出库类型', $("#type  option:selected").text()));
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
-        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/stockOutBills").submit();
+
+        $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
+        $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/<%=ErpConstant.stockInOut_action_name_print_stockOutBills%>").submit();
     });
 
     $("#printExpressBtn").click(function(){
-        $("#jsonn").val(JSON.stringify($("#printDataForm").serializeJSON()));
+        $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
+
         if ($("#type").val() == "<%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>") {
             $('#expressReceiverInfoDiv').dialog('open');
         } else if($("#type").val() == "<%=ErpConstant.stockInOut_type_normal_outWarehouse%>") {
@@ -891,48 +893,61 @@
     });
 
     $("#send").bind("click", function(){
-        if(checkStockIn()){
-            $("#form").submitForms('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=StockInOut.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)%>',
-                function(result) {
-                    if (result.result.indexOf("success") != -1) {
-                        $("#stockInOutId").val(result.id);
-
-                        if (parseInt(result.state) == <%=ErpConstant.stockInOut_state_finished%>) {
-                            if (parseInt(result.type) < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
-                                $("#printBarcodeBtn").show();
-                            }
-
-                            if (parseInt(result.type) >= <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
-                                $("#printStockOutBtn").show();
-
-                                if (parseInt(result.type) == <%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>) {
-                                    $("#printExpressBtn").show();
-                                }
-                            }
-                        }
-                    }
-                }
-            );
-        }
+        saveOrUpdateStockInOut();
     });
 
     $("#doBusiness").click(function(){
         if (confirm("入库后，入库单信息将不再可以编辑，确定入库吗？")) {
-            if (checkStockIn()) {
-                $("#state").val("<%=ErpConstant.stockInOut_state_finished%>");
-                $("#send").click();
+            if ($.trim($("#entityId").val()) == "") {
+                saveOrUpdateStockInOut(stockIn());
+            } else {
+                stockIn();
             }
         }
     });
 
     $("#doBusinessOut").click(function(){
         if (confirm("确定出库吗？")) {
-            if (checkStockIn()) {
-                $("#state").val("<%=ErpConstant.stockInOut_state_finished%>");
-                $("#send").click();
-            }
+            saveOrUpdateStockInOut(stockOut());
         }
     });
+
+    function saveOrUpdateStockInOut(callBack) {
+        if(checkStockIn()){
+            $("#form").submitForms('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=StockInOut.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)%>',
+                function(result) {
+                    if (result.result.indexOf("success") != -1) {
+                        $("#entityId").val(result.id);
+                    }
+                    callBack();
+                }
+            );
+        }
+    }
+
+    function stockIn() {
+        $('#actionForm').submitForm('<%=request.getContextPath()%>/erp/doBusiness/<%=ErpConstant.stockInOut_action_name_inProduct%>', function(result){
+            if (result.result.indexOf("success") != -1 && parseInt(result.state) == <%=ErpConstant.stockInOut_state_finished%>) {
+                if (parseInt(result.type) < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+                    $("#printBarcodeBtn").show();
+                }
+            }
+        });
+    }
+
+    function stockOut() {
+        $('#actionForm').submitForm('<%=request.getContextPath()%>/erp/doBusiness/<%=ErpConstant.stockInOut_action_name_outProduct%>', function(result){
+            if (result.result.indexOf("success") != -1 && parseInt(result.state) == <%=ErpConstant.stockInOut_state_finished%>) {
+                if (parseInt(result.type) >= <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+                    $("#printStockOutBtn").show();
+
+                    if (parseInt(result.type) == <%=ErpConstant.stockInOut_type_normal_outWarehouse_manual%>) {
+                        $("#printExpressBtn").show();
+                    }
+                }
+            }
+        });
+    }
 
     function checkStockIn() {
         if ($("#tbody").find("td").length == 0) {

@@ -95,34 +95,8 @@ public class ErpController {
                     auditEntity = AuditFlowConstant.business_purchaseEmergency;
                 }
 
-                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getName(),
+                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getNo(), purchase.getName(),
                         "请审核采购单：" + purchase.getNo() ,purchase.getInputer());
-
-            }else if(entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())){
-                ProductCheck productCheck = writer.gson.fromJson(json, ProductCheck.class);
-                ProductCheck productCheck1 = new ProductCheck();
-                productCheck1.setCheckNo(productCheck.getCheckNo());
-                if (erpDao.query(productCheck1) == null || erpDao.query(productCheck1).isEmpty()){
-                    // 设置盘点日期
-                    productCheck.setCheckDate(inputDate);
-                    com.hzg.sys.User user = productCheck.getChartMaker();
-                    user = (com.hzg.sys.User)(erpDao.query(user).get(0));
-                    Set<Post> posts = user.getPosts();
-                    Post post = posts.iterator().next();
-                    Dept dept = post.getDept();
-                    Company company = dept.getCompany();
-                    // 设置盘点部门
-                    productCheck.setDept(dept);
-                    // 设置盘点公司
-                    productCheck.setCompany(company);
-                    // 保存商品盘点单
-                    result += erpDao.save(productCheck);
-                } else {
-                    productCheck1 = (ProductCheck) (erpDao.query(productCheck1).get(0));
-                    productCheck.setId(productCheck1.getId());
-                }
-                // 保存商品盘点单详细条目
-                result += erpService.saveProductsCheckDetail(productCheck);
 
             } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
                 Supplier supplier = writer.gson.fromJson(json, Supplier.class);
@@ -145,27 +119,11 @@ public class ErpController {
                 StockInOut stockInOut = writer.gson.fromJson(json, StockInOut.class);
                 stockInOut.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
-                /**
-                 * 保存入库数据
-                 */
-                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
-                    String msg = erpService.isCanStockIn(stockInOut);
-                    if (msg == null) {
-                        result += erpService.saveStockInOut(stockInOut);
-                    } else {
-                        result += msg;
-                    }
-
-                /**
-                 * 保存出库数据
-                  */
+                String msg = erpService.isCanSaveStockInOut(stockInOut);
+                if (msg == null) {
+                    result += erpService.saveStockInOut(stockInOut);
                 } else {
-                    String msg = erpService.isCanStockOut(stockInOut);
-                    if (msg == null) {
-                        result += erpService.saveStockInOut(stockInOut);
-                    } else {
-                        result += msg;
-                    }
+                    result += msg;
                 }
 
                 result = "{\"" + CommonConstant.result + "\":\"" + transcation.dealResult(result) + "\"" +
@@ -371,13 +329,6 @@ public class ErpController {
                     result += CommonConstant.fail + ",已在用或申请状态的变动价格不能修改";
                 }
 
-            } else if (entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())) {
-                ProductCheck productCheck = writer.gson.fromJson(json, ProductCheck.class);
-                result += erpDao.updateById(productCheck.getId(), productCheck);
-                Set<ProductCheckDetail> productCheckDetails = productCheck.getDetails();
-                for (ProductCheckDetail productCheckDetail : productCheckDetails) {
-                    result += erpDao.updateById(productCheckDetail.getId(), productCheckDetail);
-                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -408,18 +359,11 @@ public class ErpController {
                 result += erpDao.updateById(product.getId(), product);
                 result += erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
 
-
-                Audit queryAudit = new Audit();
-                queryAudit.setEntity(AuditFlowConstant.business_product);
-                queryAudit.setEntityId(product.getId());
-                List<Audit> audits = writer.gson.fromJson(sysClient.query(queryAudit.getClass().getSimpleName(), writer.gson.toJson(queryAudit)),
-                        new TypeToken<List<Audit>>(){}.getType());
-
-                if (audits.isEmpty()) {
+                if (erpService.queryProductAudit(product).isEmpty()) {
                     /**
                      * 上传完商品多媒体图片后，发起商品上架审核流程
                      */
-                    result += erpService.launchAuditFlowByPost(AuditFlowConstant.business_product, product.getId(),
+                    result += erpService.launchAuditFlowByPost(AuditFlowConstant.business_product, product.getId(), product.getNo(),
                             "编辑、审核及上架编号为:" + product.getNo() + "的商品",
                             writer.gson.fromJson(writer.gson.toJson(queryParameters.get("post")), Post.class),
                             erpService.queryProductOnSalePreFlowAuditNo(product));
@@ -713,7 +657,7 @@ public class ErpController {
                             auditEntity = AuditFlowConstant.business_purchaseEmergency;
                             break;
                     }
-                    result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getName(),
+                    result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getNo(), dbPurchase.getName(),
                             "请审核采购单：" + purchase.getNo() ,dbPurchase.getInputer());
 
 
@@ -851,40 +795,6 @@ public class ErpController {
             }
 
             writer.writeObjectToJson(response, priceChanges);
-
-        } else if (entity.equalsIgnoreCase(ProductCheck.class.getSimpleName()) || entity.equalsIgnoreCase(ErpConstant.productCheckInput)) {
-            List<ProductCheck> productChecks = erpDao.query(writer.gson.fromJson(json, ProductCheck.class));
-            for (ProductCheck productCheck : productChecks) {
-                Float amount = 0.0f;
-                Set<ProductCheckDetail> productCheckDetails = productCheck.getDetails();
-                String remark = "";
-                for (ProductCheckDetail productCheckDetail : productCheckDetails) {
-                    // 盘点数量为0，说明该条形码对应的商品编码之前已经扫过，即为同一种商品
-                    if (productCheckDetail.getCheckQuantity() == 0.00f) {
-                        continue;
-                    }
-                    // 盘点金额为0，说明该商品不存在
-                    if (productCheckDetail.getCheckAmount() == null) {
-                        remark += "条形码为" + productCheckDetail.getProduct().getId() + "，即商品编码为" + productCheckDetail.getItemNo() + "的商品不存在，盈亏总金额不包含该条形码的！";
-                        continue;
-                    }
-                    // 存在该商品，但没有入库，即库存数量为null
-                    if (productCheckDetail.getPaperQuantity() == null) {
-                        productCheckDetail.setQuantity(productCheckDetail.getCheckQuantity());
-                        productCheckDetail.setAmount(productCheckDetail.getCheckAmount());
-                        amount += productCheckDetail.getAmount();
-                    } else {
-                        productCheckDetail.setQuantity(productCheckDetail.getCheckQuantity() - productCheckDetail.getPaperQuantity());
-                        productCheckDetail.setAmount(productCheckDetail.getCheckAmount() - productCheckDetail.getPaperAmount());
-                        amount += productCheckDetail.getAmount();
-                    }
-                }
-                if (productCheck.getRemark() == null || productCheck.getRemark() == ""){
-                    productCheck.setRemark(remark);
-                }
-                productCheck.setAmount(amount);
-            }
-            writer.writeObjectToJson(response, productChecks);
 
         }
 
@@ -1024,7 +934,7 @@ public class ErpController {
 
             if (partResult != null) {
                 if (!partResult.equals("[]") && !partResult.trim().equals("")) {
-                    result += partResult.substring(1, partResult.length()-1) + ",";
+                    result += partResult.substring(1, partResult.length() - 1) + ",";
                 }
             }
         }
@@ -1115,8 +1025,6 @@ public class ErpController {
         } else if (entity.equalsIgnoreCase(ProductPriceChange.class.getSimpleName())) {
             writer.writeObjectToJson(response, erpDao.complexQuery(ProductPriceChange.class, queryParameters, position, rowNum));
 
-        }else if (entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())) {
-            writer.writeObjectToJson(response, erpService.privateQuery(entity, json, position, rowNum));
         }
 
         logger.info("complexQuery end");

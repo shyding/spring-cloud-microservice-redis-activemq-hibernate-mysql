@@ -275,7 +275,7 @@
 <div class="right_col" role="dialog">
     <div class="row">
         <div class="col-md-12 col-sm-12 col-xs-12">
-            <div class="x_panel">
+            <div class="x_panel" style="border: 0px">
                 <div class="x_content">
                     <div id="expressReceiverInfoDiv">
                         <form id="expressReceiverInfoForm">
@@ -371,6 +371,7 @@
     $("#edit").unbind("click").click(function(){
         editable = true;
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
+        $('#stockInOutProductList :input').css("border", "1px");
         $('#send, #delete, #doBusiness, #recover').attr("disabled", false);
         $("#delDiv").show();
     });
@@ -872,11 +873,14 @@
     });
 
     $("#printStockOutBtn").click(function(){
+        $('[type=text], textarea').each(function(){ this.defaultValue = this.value; });
+        $('[type=checkbox], [type=radio]').each(function(){ this.defaultChecked = this.checked; });
+        $('select option').each(function(){ this.defaultSelected = this.selected; });
+
         $("#printContent").val($("#main").html()
             .replace('id="tail"', 'style="display:none"')
             .replace('id="search"', 'style="display:none"')
-            .replace(/\r/ig,"").replace(/\n/ig,"")
-            .replace('请选择入库/出库类型', $("#type  option:selected").text()));
+            .replace(/\r/ig,"").replace(/\n/ig,""));
 
         $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
         $("#printForm").attr("action", "<%=request.getContextPath()%>/erp/print/<%=ErpConstant.stockInOut_action_name_print_stockOutBills%>").submit();
@@ -899,29 +903,33 @@
     $("#doBusiness").click(function(){
         if (confirm("入库后，入库单信息将不再可以编辑，确定入库吗？")) {
             if ($.trim($("#entityId").val()) == "") {
-                saveOrUpdateStockInOut(stockIn());
+                saveOrUpdateStockInOut(function(){stockIn();}, false);
             } else {
-                stockIn();
+                stockIn(true);
             }
         }
     });
 
     $("#doBusinessOut").click(function(){
         if (confirm("确定出库吗？")) {
-            saveOrUpdateStockInOut(stockOut());
+            saveOrUpdateStockInOut(function(){stockOut();}, false);
         }
     });
 
-    function saveOrUpdateStockInOut(callBack) {
+    function saveOrUpdateStockInOut(callBack, isShowResult) {
         if(checkStockIn()){
-            $("#form").submitForms('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=StockInOut.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)%>',
+            $("#form").submitForm('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=StockInOut.class.getSimpleName().toLowerCase().substring(0,1).toLowerCase()+StockInOut.class.getSimpleName().substring(1)%>',
                 function(result) {
                     if (result.result.indexOf("success") != -1) {
                         $("#entityId").val(result.id);
+                        console.log($("#entityId").val());
+
+                        if (callBack != undefined) {
+                            callBack();
+                        }
                     }
-                    callBack();
                 }
-            );
+            , isShowResult);
         }
     }
 

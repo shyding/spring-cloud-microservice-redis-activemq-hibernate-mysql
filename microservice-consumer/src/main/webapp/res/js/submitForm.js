@@ -8,7 +8,7 @@
             return;
         }
         var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
-        var mac = faultylabs.MD5(formJson + localStorage.getItem("pin"));
+        var mac = faultylabs.MD5(formJson + localStorage.getItem("hzg_sys_user_pin"));
         $.ajax({
             type: "post",
             url: url,
@@ -36,9 +36,62 @@
 
         preFormJson = formJson;
     },
+    $.fn.submitForm = function (url, callBack, isShowResult) {
+        if (!validator.checkAll(this)) {
+            return;
+        }
+        var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
+        var mac = faultylabs.MD5(formJson + localStorage.getItem("hzg_sys_user_pin"));
+        $.ajax({
+            type: "post",
+            url: url,
+            contentType: "application/x-www-form-urlencoded; charset=utf-8",
+            data: {json: formJson, mac: mac},
+            dataType: "json",
+
+            beforeSend: function(){
+                if (preFormJson == formJson && submitSucc) {
+                    alert("不能重复提交");
+                    return false;
+                }
+            },
+
+            success: function(result){
+                if (callBack != undefined) {
+                    callBack(result);
+                }
+
+                var msg = "";
+
+                if (result.result.indexOf("success") != -1) {
+                    submitSucc = true;
+                    $("#send").attr("disabled","disabled");
+                    msg = "提交成功";
+
+                } else {
+                    submitSucc = false;
+                    msg = result.result;
+                }
+
+                if (isShowResult != undefined) {
+                    if (isShowResult == true) {
+                        alert(msg);
+                    } else {
+                        if (msg != "提交成功") {
+                            alert(msg);
+                        }
+                    }
+                } else {
+                    alert(msg);
+                }
+            }
+        });
+
+        preFormJson = formJson;
+    },
 
     $.fn.sendData = function (url, json, callBack) {
-        var mac = faultylabs.MD5(json + localStorage.getItem("pin"));
+        var mac = faultylabs.MD5(json + localStorage.getItem("hzg_sys_user_pin"));
         $.ajax({
             type: "post",
             url: url,
@@ -69,6 +122,23 @@
         });
 
         preJson = json;
+    },
+
+    $.fn.ajaxPost = function (url, json, callback) {
+        var mac = faultylabs.MD5(json + localStorage.getItem("hzg_sys_user_pin"));
+        $.ajax({
+            type: "post",
+            url: url+"?"+Math.random(),
+            contentType: "application/x-www-form-urlencoded; charset=utf-8",
+            data: {json: json, mac: mac},
+            dataType: "json",
+
+            success: function(result){
+                if (callback != undefined) {
+                    callback(result);
+                }
+            }
+        });
     },
 
      //jQuery 方式发送 FormData 请求

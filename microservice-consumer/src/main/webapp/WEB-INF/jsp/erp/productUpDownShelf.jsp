@@ -1,4 +1,4 @@
-﻿<%@ page import="com.hzg.tools.FileServerInfo" %>
+<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.tools.ErpConstant" %>
 <%@ page import="com.hzg.erp.Product" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>

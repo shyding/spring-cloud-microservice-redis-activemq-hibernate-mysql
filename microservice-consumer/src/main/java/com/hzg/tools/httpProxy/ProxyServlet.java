@@ -115,17 +115,21 @@ public class ProxyServlet extends HttpServlet {
   static {
      srcToTargetUriMap.put("/httpProxy/gateway.do", "https://mapi.alipay.com/gateway.do");
 
-     srcToTargetUriMap.put("/httpProxy/pay/unifiedorder", "https://api.mch.weixin.qq.com/pay/unifiedorder");
-     srcToTargetUriMap.put("/httpProxy/pay/micropay", "https://api.mch.weixin.qq.com/pay/micropay");
-     srcToTargetUriMap.put("/httpProxy/pay/orderquery", "https://api.mch.weixin.qq.com/pay/orderquery");
-     srcToTargetUriMap.put("/httpProxy/secapi/pay/refund", "https://api.mch.weixin.qq.com/secapi/pay/refund");
-     srcToTargetUriMap.put("/httpProxy/pay/refundquery", "https://api.mch.weixin.qq.com/pay/refundquery");
-     srcToTargetUriMap.put("/httpProxy/secapi/pay/reverse", "https://api.mch.weixin.qq.com/secapi/pay/reverse");
-     srcToTargetUriMap.put("/httpProxy/pay/downloadbill", "https://api.mch.weixin.qq.com/pay/downloadbill");
-     srcToTargetUriMap.put("/httpProxy/payitil/report", "https://api.mch.weixin.qq.com/payitil/report");
+     srcToTargetUriMap.put("/httpProxy/pay/unifiedorder", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/pay/micropay", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/pay/orderquery", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/secapi/pay/refund", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/pay/refundquery", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/secapi/pay/reverse", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/pay/downloadbill", "https://api.mch.weixin.qq.com");
+     srcToTargetUriMap.put("/httpProxy/payitil/report", "https://api.mch.weixin.qq.com");
   }
 
-  protected static String sfExpressHost = "http://open-prod.sf-express.com"; //测试host：http://open-sbox.sf-express.com
+  /**
+   * 生产host：https://open-prod.sf-express.com，
+   * 测试host：https://open-sbox.sf-express.com
+   */
+  protected static String sfExpressHost = "https://open-sbox.sf-express.com";
 
   private HttpClient proxyClient;
 
@@ -220,17 +224,17 @@ public class ProxyServlet extends HttpServlet {
 
   protected void initTarget(String uri) throws ServletException {
     targetUri = srcToTargetUriMap.get(uri);
-    if (targetUri == null)
-    /**
-     * add sf-express target uri set, sf-express default uri like :
-     * https://{domain}/{type}/{version}/order/access_token/{access_token}/sf_appid/{sf_appid}/sf_appkey/{sf_appkey}
-     */
+    if (targetUri == null) {
+      /**
+       * add sf-express target uri set, sf-express default uri like :
+       * https://{domain}/{type}/{version}/order/access_token/{access_token}/sf_appid/{sf_appid}/sf_appkey/{sf_appkey}
+       */
       if (uri.contains("access_token") && uri.contains("sf_appid") && uri.contains("sf_appkey")) {
-         targetUri = sfExpressHost + uri.replace("/httpProxy", "");
+        targetUri = sfExpressHost;
       } else {
-         throw new ServletException(P_TARGET_URI+" is required.");
+        throw new ServletException(P_TARGET_URI + " is required.");
       }
-
+    }
     try {
       targetUriObj = new URI(targetUri);
     } catch (Exception e) {

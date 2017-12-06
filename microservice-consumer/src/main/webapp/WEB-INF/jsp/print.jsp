@@ -46,7 +46,7 @@
         setTimeout(function(){
             window.print(); // blocking - so close will not
             //   window.close(); // execute until this is done
-        }, 250);
+        }, 50);
     };
 </script>
 </html>

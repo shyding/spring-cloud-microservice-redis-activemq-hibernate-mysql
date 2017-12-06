@@ -1,4 +1,4 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.StockInOut" %>
@@ -361,6 +361,7 @@
     <input type="hidden" name="sessionId" value="${sessionId}">
     <input type="hidden" id="expressReceiverInfo" name="expressReceiverInfo">
     <input type="hidden" id="printContent" name="printContent">
+    <input type="hidden" id="random" name="random">
 </form>
 <form id="printForm" method="post" style="display: none" target="_blank">
     <input type="hidden" id="jsonn" name="json">
@@ -802,7 +803,20 @@
             "确定": function () {
                 var expressReceiverInfoForm = $("#expressReceiverInfoForm");
                 if (!validator.checkAll(expressReceiverInfoForm)) {
-                    return;
+                    return false;
+                }
+
+                var receiverCity = $.trim($("#receiverCity").val()), receiverProvince = $.trim($("#receiverProvince").val());
+                if ((receiverCity.substring(receiverCity.length-2)) != "市") {
+                    $("#receiverCity").val(receiverCity + "市");
+                }
+
+                if (receiverProvince == "北京" || receiverProvince == "上海" || receiverProvince == "天津" || receiverProvince == "重庆") {
+                    $("#receiverProvince").val(receiverProvince + "市")
+                } else {
+                    if ((receiverProvince.substring(receiverProvince.length-2)) != "省") {
+                        $("#receiverProvince").val(receiverProvince + "省");
+                    }
                 }
 
                 var expressReceiverInfo = $("#expressReceiverInfo");
@@ -812,10 +826,32 @@
                     return false;
                 }
                 expressReceiverInfo.val(expressReceiverInfoJson);
+                /**
+                 * 设置随机数使得 actionForm 可以随机提交
+                 */
+                $("#random").val(Math.random());
 
-                $("#jsonn").val(JSON.stringify($("#actionForm").serializeJSON()));
-                $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
-                $(this).dialog("close");
+                /**
+                 * 人工正常出库打印顺丰快递单，先生成顺丰快递单，再下载快递单图片
+                 */
+                var json = JSON.stringify($("#actionForm").serializeJSON());
+                var isSuccess = false;
+                $("#printForm").ajaxPost("<%=request.getContextPath()%>/erp/doBusiness/<%=ErpConstant.product_action_name_generateSfExpressOrderByReceiverAndStockOut%>", json,
+                function(result){
+                    if (result.result.indexOf("success") != -1) {
+                        isSuccess = true;
+                    }
+                });
+
+                var timeoutPrintExpressWaybill = setTimeout(function(){
+                    if (isSuccess) {
+                        $("#jsonn").val(json);
+                        $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
+                        $("#expressReceiverInfoDiv").dialog("close");
+
+                        clearTimeout(timeoutPrintExpressWaybill);
+                    }
+                }, 5000);
             },
 
             "取消": function () {

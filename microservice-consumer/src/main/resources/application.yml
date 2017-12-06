@@ -60,11 +60,30 @@ eureka:
 ribbon:
   eureka:
     enabled: true         # 默认为true。如果设置为false，Ribbon将不会从Eureka中获得服务列表，而是使用静态配置的服务列表。静态服务列表可使用：<client>.ribbon.listOfServers来指定。参考：http://projects.spring.io/spring-cloud/docs/1.0.3/spring-cloud.html#spring-cloud-ribbon-without-eureka
+hystrix:
+  command:
+    "SysClient#signIn(String)":
+       execution:
+          isolation:
+            thread:
+              timeoutInMilliseconds: 5000 # 系统第一次启动时（登录是第一次去调用 Eureka 等 spring cloud 组件），由于spring cloud 是延迟加载组件（用到才加载），导致响应会比较慢，而 hystrix 默认超时时间是 1 秒，这样就有可能会出现超时错误，所以这里重新设置超时
+    "ErpClient#business(String,String)":
+       execution:
+          isolation:
+            thread:
+              timeoutInMilliseconds: 5000
+    "ErpClient#print(String,String)":
+       execution:
+          isolation:
+            thread:
+              timeoutInMilliseconds: 10000
+
+
 
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
 visitInterceptor:
-  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/
+  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/,/print
   noAuthUrisAfterSignIn: /list/,/privateQuery/audit,/view/audit,/sys/audit,/customer/,/order/
   macValidateUris: /save/,/update/,/sys/audit
 

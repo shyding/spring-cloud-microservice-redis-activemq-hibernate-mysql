@@ -1,5 +1,6 @@
 package com.hzg.tools;
 
+
 public class ErpConstant {
 
     public final static Integer purchase_state_apply = 0;
@@ -57,8 +58,6 @@ public class ErpConstant {
 
     public final static String return_purchase = "purchase";
     public final static String return_purchase_deposit = "purchaseDeposit";
-    public final static String return_product = "returnProduct";
-    public final static String change_product = "changeProduct:";
 
     public final static String no = "no";
     public final static String stock = "stock";
@@ -110,14 +109,16 @@ public class ErpConstant {
     public final static String sf_response_code_refresh_token_unExist = "EX_CODE_OPENAPI_0104";
     public final static String sf_response_code_refresh_token_timeout = "EX_CODE_OPENAPI_0106";
     public final static String sf_access_token_key = "sf_access_token_key";
-    public final static String sf_refresh_token_key = "sf_access_token_key";
-    public final static int sf_token_time = 60 * 60 * 24;
+    public final static String sf_refresh_token_key = "sf_refresh_token_key";
+    public final static int sf_token_time = 60 * 60;
+    public final static int sf_refresh_token_time = 60 * 60 * 24;
 
 
     public final static String deliver_sfExpress = "顺丰快递";
     public final static String deliver_sfExpress_type = "顺丰标快";
 
     public final static Integer sf_action_code_order = 200;
+    public final static Integer sf_action_code_query_order = 203;
     public final static Integer sf_action_code_access_token = 301;
     public final static Integer sf_action_code_refresh_Token = 302;
     public final static Integer sf_action_code_download_waybill = 205;
@@ -126,9 +127,10 @@ public class ErpConstant {
     public final static Integer express_state_sended = 1;
     public final static Integer express_state_send_fail = 2;
 
-    public final static Integer express_detail_state_unReceive = 0;
-    public final static Integer express_detail_state_received = 1;
-    public final static Integer express_detail_state_receive_fail = 2;
+    public final static Integer express_detail_state_unSend = 0;
+    public final static Integer express_detail_state_sended = 1;
+    public final static Integer express_detail_state_received = 2;
+    public final static Integer express_detail_state_receive_fail = 3;
 
     public final static String unit_g = "克";
     public final static String unit_kg = "千克";
@@ -147,6 +149,7 @@ public class ErpConstant {
     public final static Integer stockInOut_action_print_stockInBills = 3;
     public final static Integer stockInOut_action_inProduct = 4;
     public final static Integer stockInOut_action_outProduct = 5;
+    public final static Integer stockInOut_action_generateSfExpressOrderByReceiverAndStockOut = 21;
 
     public final static Integer product_action_upShelf = 0;
     public final static Integer product_action_downShelf = 1;
@@ -155,4 +158,5 @@ public class ErpConstant {
     public final static String product_action_name_setProductsSold = "setProductsSold";
     public final static String product_action_name_upShelf = "upShelfProduct";
     public final static String product_action_name_downShelf = "downShelfProduct";
+    public final static String product_action_name_generateSfExpressOrderByReceiverAndStockOut = "generateSfExpressOrderByReceiverAndStockOut";
 }

@@ -1,4 +1,4 @@
-﻿package com.hzg.tools;
+package com.hzg.tools;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -14,6 +14,7 @@ public class SfExpress {
     private String tokenUri;
     private String tokenRefreshUri;
     private String orderUri;
+    private String orderQueryUri;
     private String imageUri;
 
     public String getAppId() {
@@ -70,6 +71,14 @@ public class SfExpress {
 
     public void setOrderUri(String orderUri) {
         this.orderUri = orderUri;
+    }
+
+    public String getOrderQueryUri() {
+        return orderQueryUri;
+    }
+
+    public void setOrderQueryUri(String orderQueryUri) {
+        this.orderQueryUri = orderQueryUri;
     }
 
     public String getImageUri() {

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Map;
@@ -247,6 +248,14 @@ public class ErpController extends com.hzg.base.Controller {
         logger.info("print " + name + " end");
 
         return  CommonConstant.print;
+    }
+
+    @RequestMapping(value = "/sfExpress/order/notify", method = {RequestMethod.POST})
+    public void sfExpressOrderNotify(HttpServletResponse response, HttpServletRequest request) {
+        String json = writer.gson.toJson(request.getParameterMap());
+        logger.info("sfExpressOrderNotify start, json:" + json);
+        writer.writeStringToJsonAccessAllow(response, erpClient.sfExpressOrderNotify(json));
+        logger.info("sfExpressOrderNotify end");
     }
 
     @PostMapping("/entitiesSuggest/{targetEntities}/{entities}")

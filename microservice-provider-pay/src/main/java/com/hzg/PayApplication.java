@@ -43,7 +43,7 @@ import java.util.*;
 @EnableTransactionManagement
 @EnableFeignClients
 @EnableCircuitBreaker
-@ComponentScan({"com.hzg", "com.boyuanitsm.pay"})
+@ComponentScan({"com.hzg", "com.boyuanitsm.pay", "net.coupirum.io.httprequest"})
 public class PayApplication {
     @Autowired
     private DataSource dataSource;

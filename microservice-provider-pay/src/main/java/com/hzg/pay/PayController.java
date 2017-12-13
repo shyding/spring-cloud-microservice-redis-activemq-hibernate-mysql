@@ -37,6 +37,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
@@ -196,6 +197,103 @@ public class PayController {
         logger.info("recordsSum end");
     }
 
+    /**
+     * 退款
+     *
+     * 退款记录生成逻辑：
+     * 1.如果支付是通过网上支付的（一条支付记录的支付金额为总金额），该支付记录对应的退款记录可以有多条，这多条退款
+     * 记录的退款金额总和 <= 对应支付记录的支付金额；退款状态为退款申请状态
+     * 2.如果支付是通过线下支付的（即全部支付记录的支付金额为总金额。代下单时客户支付属于这一类），每条支付记录对应
+     * 的退款记录可以有多条，这多条退款记录的退款金额总和 <= 对应支付记录的支付金额;退款状态为已退款
+     *
+     * @param response
+     * @param entity
+     * @param entityId
+     * @param amount
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/refund")
+    public void refund(HttpServletResponse response, String entity, Integer entityId, Float amount, @RequestBody String json){
+        logger.info("refund start, parameter:" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            String processKey = PayConstants.process_notify + entity + entityId;
+            if (payDao.getFromRedis(processKey) == null) {
+                payDao.storeToRedis(processKey, entityId, PayConstants.process_time_refund);
+
+                List<Pay> pays = payService.queryBalancePay(writer.gson.fromJson(json, Pay.class));
+
+                for (Pay pay : pays) {
+                    Refund refund = new Refund();
+                    refund.setNo(payDao.getNo(PayConstants.no_prefix_refund));
+                    refund.setPay(pay);
+                    refund.setPayBank(pay.getPayBank());
+
+                    refund.setBankBillNo(pay.getBankBillNo());
+                    refund.setEntity(entity);
+                    refund.setEntityId(entityId);
+                    refund.setInputDate(dateUtil.getSecondCurrentTimestamp());
+
+                    if (pay.getAmount().compareTo(amount) >= 0) {
+                        refund.setAmount(amount);
+                    } else {
+                        refund.setAmount(pay.getAmount());
+                    }
+
+                    if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
+                            pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
+                        refund.setState(PayConstants.refund_state_apply);
+                    } else {
+                        refund.setState(PayConstants.pay_state_success);
+                    }
+
+                    result += payDao.save(refund);
+
+                    /**
+                     * 网上支付调用网上银行退款接口退款
+                     */
+                    if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
+                            pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
+
+                        if (refund.getPayBank().equals(PayConstants.bank_alipay)) {
+                            result += alipaySubmit.httpRequestRefund(refund.getNo(), "1",
+                                    refund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
+                                            PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+
+                        } else if (refund.getPayBank().equals(PayConstants.bank_wechat)) {
+                            result += refundService.refund(new RefundReqData(refund.getPay().getBankBillNo(),
+                                    refund.getPay().getNo(), refund.getNo(), (int)(refund.getAmount()*100F), (int)(refund.getAmount()*100F)));
+                        }
+                    }
+
+                    amount = new BigDecimal(Float.toString(amount)).
+                            subtract(new BigDecimal(Float.toString(pay.getAmount()))).floatValue();
+                    if (amount.compareTo(0f) <= 0) {
+                        break;
+                    }
+                }
+
+                payDao.deleteFromRedis(processKey);
+
+            } else {
+                result += CommonConstant.fail + "," + entity + ":" + entityId + "正在退款，不能同时重复执行退款";
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("refund end");
+    }
+
+
 
 
 
@@ -232,7 +330,7 @@ public class PayController {
         pay.setNo(no);
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
-        if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+        if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
             payHtml = alipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), payType);
         } else {
             payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
@@ -428,7 +526,7 @@ public class PayController {
         refund.setNo(no);
         Refund dbRefund = (Refund)payDao.query(refund).get(0);
 
-        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+        if (dbRefund.getState().compareTo(PayConstants.refund_state_apply) == 0) {
             refundHtml = alipaySubmit.buildRequest(dbRefund.getNo(), "1",
                     dbRefund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
                             PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
@@ -531,7 +629,7 @@ public class PayController {
             pay.setNo(no);
             Pay dbPay = (Pay)payDao.query(pay).get(0);
 
-            if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
                 UnifiedOrderResData resData = unifiedOrderBusiness.run(new UnifiedOrderReqData
                         (new SimpleOrder("hzg wechat qrcode pay", dbPay.getNo(), (int)(dbPay.getAmount()*100f), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), "2")));
                 logger.info("订单信息: {}" + resData.toString());
@@ -627,7 +725,7 @@ public class PayController {
         refund.setNo(no);
         Refund dbRefund = (Refund)payDao.query(refund).get(0);
 
-        if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+        if (dbRefund.getState().compareTo(PayConstants.refund_state_apply) == 0) {
             RefundResData refundResData = null;
             try {
                 refundResData = refundService.refund(new RefundReqData(dbRefund.getPay().getBankBillNo(),
@@ -848,7 +946,7 @@ public class PayController {
         pay.setNo(no);
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
-        if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+        if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
             payHtml = frontConsume.consume(dbPay.getNo(), ((int)(dbPay.getAmount()*100f)+""));
         } else {
             payHtml = "支付记录：" + no + "不是未支付状态，不能支付";

@@ -6,19 +6,24 @@ import java.util.Map;
 public class PayConstants {
     public final static String no_prefix_pay = "PA";
     public final static String no_prefix_trade = "TN";
+    public final static String no_prefix_refund = "RE";
 
-    public final static int state_pay_apply = 0;
-    public final static int state_pay_success = 1;
-    public final static int state_pay_fail = 2;
+    public final static int pay_state_apply = 0;
+    public final static int pay_state_success = 1;
+    public final static int pay_state_fail = 2;
 
-    public final static int type_pay_cash = 0;
-    public final static int type_pay_net = 1;
-    public final static int type_pay_qrcode = 2;
-    public final static int type_pay_remit = 3;
+    public final static int pay_type_cash = 0;
+    public final static int pay_type_net = 1;
+    public final static int pay_type_qrcode = 2;
+    public final static int pay_type_remit = 3;
+    public final static int pay_type_transfer_accounts = 4;
+    public final static int pay_type_other = 5;
+    public final static int pay_type_transfer_accounts_alipay = 6;
+    public final static int pay_type_transfer_accounts_weixin = 7;
 
-    public final static int state_refund_apply = 0;
-    public final static int state_refund_success = 1;
-    public final static int state_refund_fail = 2;
+    public final static int refund_state_apply = 0;
+    public final static int refund_state_success = 1;
+    public final static int refund_state_fail = 2;
 
     public final static String process_notify = "process_notify";
 
@@ -37,4 +42,7 @@ public class PayConstants {
     public final static String unionpay_trade_success_defect = "A6"; //A6有缺陷的交易成功，参与清算
 
     public final static int process_time = 15;
+    public final static int process_time_refund = 30;
+
+    public final static String balancePay = "balancePay";
 }

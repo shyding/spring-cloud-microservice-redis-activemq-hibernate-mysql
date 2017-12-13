@@ -20,6 +20,8 @@ import sun.misc.BASE64Decoder;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class PayService {
@@ -47,9 +49,9 @@ public class PayService {
         if (dbPay.getAmount().compareTo(ayncNotify.getTotal_fee()) == 0 &&
                 AlipayConfig.seller_id.equals(ayncNotify.getSeller_id())) {
 
-            if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
                 pay.setId(dbPay.getId());
-                pay.setState(PayConstants.state_pay_success);
+                pay.setState(PayConstants.pay_state_success);
 
                 pay.setPayType(Integer.parseInt(ayncNotify.getBody()));
                 pay.setPayDate(Timestamp.valueOf(ayncNotify.getGmt_payment()));
@@ -65,7 +67,7 @@ public class PayService {
                 result += setAccountAmount(dbPay.getReceiptBank(), dbPay.getReceiptAccount(), dbPay.getAmount());
                 result += doBusinessAfterPay(dbPay.getEntity(), dbPay.getEntityId());
 
-            } else if(dbPay.getState().compareTo(PayConstants.state_pay_success) == 0) {
+            } else if(dbPay.getState().compareTo(PayConstants.pay_state_success) == 0) {
                 result += CommonConstant.success;
             }
 
@@ -84,9 +86,9 @@ public class PayService {
         if (dbPay.getAmount().compareTo(syncReturn.getTotal_fee()) == 0 &&
                 AlipayConfig.seller_id.equals(syncReturn.getSeller_id())) {
 
-            if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
                 pay.setId(dbPay.getId());
-                pay.setState(PayConstants.state_pay_success);
+                pay.setState(PayConstants.pay_state_success);
 
                 pay.setPayType(Integer.parseInt(syncReturn.getBody()));
                 pay.setPayDate(Timestamp.valueOf(syncReturn.getNotify_time()));
@@ -117,9 +119,9 @@ public class PayService {
             Refund dbRefund = (Refund) payDao.query(refund).get(0);
 
             if (dbRefund != null) {
-                if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+                if (dbRefund.getState().compareTo(PayConstants.refund_state_apply) == 0) {
                     refund.setId(dbRefund.getId());
-                    refund.setState(PayConstants.state_refund_success);
+                    refund.setState(PayConstants.refund_state_success);
                     refund.setRefundDate(Timestamp.valueOf(refundAyncNotify.getNotify_time()));
 
                     result += payDao.updateById(refund.getId(), refund);
@@ -127,7 +129,7 @@ public class PayService {
                     result += setAccountAmount(dbRefund.getPay().getReceiptBank(), dbRefund.getPay().getReceiptAccount(), -dbRefund.getAmount());
                     result += doBusinessAfterRefund(dbRefund.getPay().getEntity(), dbRefund.getPay().getEntityId());
 
-                } else if (dbRefund.getState().compareTo(PayConstants.state_refund_success) == 0) {
+                } else if (dbRefund.getState().compareTo(PayConstants.refund_state_success) == 0) {
                     result += CommonConstant.success;
                 }
             }
@@ -146,9 +148,9 @@ public class PayService {
         if (dbPay.getAmount().toString().equals(resultCallback.getTotal_fee()) &&
                 Configure.getMchid().equals(resultCallback.getMch_id())) {
 
-            if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+            if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
                 pay.setId(dbPay.getId());
-                pay.setState(PayConstants.state_pay_success);
+                pay.setState(PayConstants.pay_state_success);
 
                 pay.setPayType(Integer.valueOf(resultCallback.getAttach()));
                 pay.setPayDate(Timestamp.valueOf(dateUtil.getSimpleDateFormat().format(
@@ -165,7 +167,7 @@ public class PayService {
                 result += setAccountAmount(dbPay.getReceiptBank(), dbPay.getReceiptAccount(), dbPay.getAmount());
                 result += doBusinessAfterPay(dbPay.getEntity(), dbPay.getEntityId());
 
-            } else if(dbPay.getState().compareTo(PayConstants.state_pay_success) == 0) {
+            } else if(dbPay.getState().compareTo(PayConstants.pay_state_success) == 0) {
                 result += CommonConstant.success;
             }
         }
@@ -182,9 +184,9 @@ public class PayService {
             Refund dbRefund = (Refund) payDao.query(refund).get(0);
 
             if (dbRefund != null) {
-                if (dbRefund.getState().compareTo(PayConstants.state_refund_apply) == 0) {
+                if (dbRefund.getState().compareTo(PayConstants.refund_state_apply) == 0) {
                     refund.setId(dbRefund.getId());
-                    refund.setState(PayConstants.state_refund_success);
+                    refund.setState(PayConstants.refund_state_success);
                     refund.setRefundDate(Timestamp.valueOf(dateUtil.getSimpleDateFormat().format(
                             dateUtil.getDate(PayConstants.wechat_pay_date_fromate, resultCallback.getSuccess_time()))));
 
@@ -193,7 +195,7 @@ public class PayService {
                     result += setAccountAmount(dbRefund.getPay().getReceiptBank(), dbRefund.getPay().getReceiptAccount(), -dbRefund.getAmount());
                     result += doBusinessAfterRefund(dbRefund.getPay().getEntity(), dbRefund.getPay().getEntityId());
 
-                } else if (dbRefund.getState().compareTo(PayConstants.state_refund_success) == 0) {
+                } else if (dbRefund.getState().compareTo(PayConstants.refund_state_success) == 0) {
                     result += CommonConstant.success;
                 }
             }
@@ -209,9 +211,9 @@ public class PayService {
         pay.setNo(payNotify.getOrderId());
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
-        if (dbPay.getState().compareTo(PayConstants.state_pay_apply) == 0) {
+        if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
             pay.setId(dbPay.getId());
-            pay.setState(PayConstants.state_pay_success);
+            pay.setState(PayConstants.pay_state_success);
 
             pay.setPayType(1);
             pay.setPayDate(new java.sql.Timestamp(dateUtil.getDate("yyyyMMddHHmmss",
@@ -228,7 +230,7 @@ public class PayService {
             result += setAccountAmount(dbPay.getReceiptBank(), dbPay.getReceiptAccount(), dbPay.getAmount());
             result += doBusinessAfterPay(dbPay.getEntity(), dbPay.getEntityId());
 
-        } else if(dbPay.getState().compareTo(PayConstants.state_pay_success) == 0) {
+        } else if(dbPay.getState().compareTo(PayConstants.pay_state_success) == 0) {
             result += CommonConstant.success;
         }
 
@@ -255,7 +257,7 @@ public class PayService {
         String result = "";
 
         if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-            result += orderClient.business("paidOrder", "{\"" + CommonConstant.id +"\":" + entityId + "}");
+            result += orderClient.business(OrderConstant.order_action_name_paidOrder, "{\"" + CommonConstant.id +"\":" + entityId + "}");
         }
 
         return result;
@@ -275,4 +277,57 @@ public class PayService {
 
         return (RefundResultCallback) XMLParser.getObjectFromXML(responseString.replace("</xml>", decodeStr+"</xml>"), RefundResultCallback.class);
     }
+
+    /**
+     * 查询支付记录可退余额
+     * @param pay
+     * @return
+     */
+    public List<Pay> queryBalancePay(Pay pay) {
+        List<Pay> balancePays = new ArrayList<>();
+
+        List<Pay> pays = payDao.query(pay);
+        Refund queryRefund = new Refund();
+        queryRefund.setState(PayConstants.refund_state_success);
+
+        for (Pay ele : pays) {
+            queryRefund.setPay(ele);
+            List<Refund> refunds = payDao.query(queryRefund);
+
+            for (Refund refund : refunds) {
+                ele.setAmount(new BigDecimal(Float.toString(ele.getAmount())).
+                        subtract(new BigDecimal(Float.toString(refund.getAmount()))).floatValue());
+            }
+
+            if (ele.getAmount().compareTo(0f) > 0) {
+                balancePays.add(ele);
+            }
+        }
+
+        return balancePays;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

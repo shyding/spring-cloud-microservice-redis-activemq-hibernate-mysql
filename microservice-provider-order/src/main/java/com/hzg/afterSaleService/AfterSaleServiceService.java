@@ -272,7 +272,7 @@ public class AfterSaleServiceService {
             returnProductDetail.setReturnProductDetailProducts(dbReturnProductDetail.getReturnProductDetailProducts());
         }
 
-        setProductsReturnState(ErpConstant.product_action_name_setProductsReturned, returnProduct);
+        result += setProductsReturnState(ErpConstant.product_action_name_setProductsReturned, returnProduct);
 
         if (returnProduct.getEntity().equals(OrderConstant.order)) {
             result += orderService.setOrderRefundState(new Order(returnProduct.getEntityId()));

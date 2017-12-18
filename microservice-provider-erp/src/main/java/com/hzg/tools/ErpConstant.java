@@ -1,6 +1,5 @@
 package com.hzg.tools;
 
-
 public class ErpConstant {
 
     public final static Integer purchase_state_apply = 0;
@@ -17,12 +16,26 @@ public class ErpConstant {
     public final static Integer product_state_purchase_pass = 10;
     public final static Integer product_state_purchase_close = 11;
     public final static Integer product_state_stockIn = 1;
+    public final static Integer product_state_stockIn_part = 12;
     public final static Integer product_state_stockOut = 2;
+    public final static Integer product_state_stockOut_part = 21;
     public final static Integer product_state_onSale = 3;
     public final static Integer product_state_sold = 4;
+    public final static Integer product_state_sold_part = 41;
     public final static Integer product_state_invalid = 5;
     public final static Integer product_state_edit = 6;
     public final static Integer product_state_mediaFiles_uploaded = 7;
+    public final static Integer product_state_shipped = 8;
+    public final static Integer product_state_shipped_part = 81;
+    public final static Integer product_state_onReturnProduct = 9;
+    public final static Integer product_state_onReturnProduct_part = 94;
+    public final static Integer product_state_returnedProduct = 91;
+    public final static Integer product_state_returnedProduct_part = 95;
+    public final static Integer product_state_onChangeProduct = 92;
+    public final static Integer product_state_onChangeProduct_part = 96;
+    public final static Integer product_state_onChangedProduct = 93;
+    public final static Integer product_state_onChangedProduct_part = 97;
+
 
     public final static String no_purchase_perfix = "CG";
     public final static String no_stockInOut_perfix = "RC";
@@ -37,6 +50,7 @@ public class ErpConstant {
     public final static Integer stockInOut_type_process = 3;
     public final static Integer stockInOut_type_deposit = 4;
     public final static Integer stockInOut_type_repair = 5;
+    public final static Integer stockInOut_type_returnProduct = 51;
     public final static Integer stockInOut_type_changeWarehouse = 6;
     public final static Integer stockInOut_type_virtual_outWarehouse = 10;
     public final static Integer stockInOut_type_normal_outWarehouse = 11;
@@ -48,7 +62,10 @@ public class ErpConstant {
     public final static Integer stockInOut_state_apply = 0;
     public final static Integer stockInOut_state_finished = 1;
     public final static Integer stockInOut_state_cancel = 2;
-    public final static Integer stockInOut_state_backup = 3;
+
+    public final static Integer stockInOut_detail_state_apply = 0;
+    public final static Integer stockInOut_detail_state_finished = 1;
+    public final static Integer stockInOut_detail_state_backup = 2;
 
     public final static Integer stockInOut_state_changeWarehouse_unfinished = 0;
     public final static Integer stockInOut_state_changeWarehouse_finished = 1;
@@ -62,6 +79,9 @@ public class ErpConstant {
     public final static String no = "no";
     public final static String stock = "stock";
     public final static String stock_quantity = "stockQuantity";
+    public final static String product_sold_quantity = "productSoldQuantity";
+    public final static String product_onReturn_quantity = "productOnReturnQuantity";
+    public final static String product_returned_quantity = "productReturnedQuantity";
 
     public final static String stockIn = "stockIn";
     public final static String stockOut = "stockOut";
@@ -156,6 +176,8 @@ public class ErpConstant {
 
     public final static String product_action_name_updateUploadMediaFilesInfo = "updateUploadMediaFilesInfo";
     public final static String product_action_name_setProductsSold = "setProductsSold";
+    public final static String product_action_name_setProductsOnReturn = "setProductsOnReturn";
+    public final static String product_action_name_setProductsReturned = "setProductsReturned";
     public final static String product_action_name_upShelf = "upShelfProduct";
     public final static String product_action_name_downShelf = "downShelfProduct";
     public final static String product_action_name_generateSfExpressOrderByReceiverAndStockOut = "generateSfExpressOrderByReceiverAndStockOut";

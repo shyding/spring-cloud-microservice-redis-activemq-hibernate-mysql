@@ -16,14 +16,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: AfterSaleServiceController.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/11/30
- */
 @Controller
 @RequestMapping("/returnProduct")
 public class AfterSaleServiceController {

@@ -21,10 +21,14 @@ var dataList = (function ($) {
         "stock": "库存",
         "warehouse": "仓库",
         "order": "订单",
+        "returnProduct": "退货",
         "orderPrivate": "商品加工，私人订制",
         "pay": "支付记录",
         "account": "账户",
-        "audit": "事宜"
+        "audit": "事宜",
+        "voucher":"凭证",
+        "voucherCategory":"凭证类别",
+        "subject":"科目"
     };
 
     var dateTitles = {
@@ -47,10 +51,14 @@ var dataList = (function ($) {
         "stock": "入库时间",
         "warehouse": "录入时间",
         "order": "生成时间",
+        "returnProduct": "申请时间",
         "orderPrivate": "订单时间",
         "pay": "支付时间",
         "account": "注册时间",
-        "audit": "办理时间"
+        "audit": "办理时间",
+        "voucher": "制单日期",
+        "voucherCategory": "创建时间",
+        "subject": "创建时间"
     };
 
     var dateInputName = {
@@ -73,10 +81,13 @@ var dataList = (function ($) {
         "stock": "stock[date]",
         "warehouse": "inputDate",
         "order": "date",
+        "returnProduct": "inputDate",
         "orderPrivate": "date",
         "pay": "payDate",
         "account": "inputDate",
-        "audit": "dealDate"
+        "audit": "dealDate",
+        "voucher": "voucher[makeDate]",
+        "voucherCategory": "inputDate"
     };
 
     var selectTitles = {
@@ -98,10 +109,14 @@ var dataList = (function ($) {
         "stockInOut": "类别",
         "warehouse": "类别",
         "order": "类别",
+        "returnProduct": "类别",
         "orderPrivate": "类别",
         "pay": "类别",
         "account": "类别",
-        "audit": "状态"
+        "audit": "状态",
+        "voucher": "类别",
+        "voucherCategory": "类别",
+        "subject": "类别"
     };
 
     var addActions = {
@@ -120,7 +135,9 @@ var dataList = (function ($) {
         "purchase": "/view",
         "stockInOut": "/view",
         "warehouse": "/view",
-        "account": "/view"
+        "account": "/view",
+        "voucherCategory": "/view",
+        "subject": "/view"
     };
 
     var urlTitles = {
@@ -139,7 +156,9 @@ var dataList = (function ($) {
         "purchase": "采购申请",
         "warehouse": "添加仓库",
         "account": "注册银行账户",
-        "stockInOut": "商品入库、出库"
+        "stockInOut": "商品入库、出库",
+        "voucherCategory": "添加凭证类别",
+        "subject": "添加科目"
     };
 
     var modules = {
@@ -163,9 +182,19 @@ var dataList = (function ($) {
         "stock": "/erp",
         "warehouse": "/erp",
         "order": "/orderManagement",
+        "returnProduct": "/afterSaleService",
         "orderPrivate": "/orderManagement",
         "pay": "/pay",
-        "account": "/pay"
+        "account": "/pay",
+        "voucher": "/finance",
+        "voucherCategory": "/finance",
+        "subject": "/finance"
+    };
+
+    var childModules = {
+        "voucher": "/voucher",
+        "voucherCategory": "/voucher",
+        "subject": "/subject"
     };
 
     var queryActions = {
@@ -189,9 +218,13 @@ var dataList = (function ($) {
         "stock": "/complexQuery",
         "warehouse": "/complexQuery",
         "order": "/unlimitedComplexQuery",
+        "returnProduct": "/unlimitedComplexQuery",
         "orderPrivate": "/unlimitedComplexQuery",
         "pay": "/complexQuery",
-        "account": "/complexQuery"
+        "account": "/complexQuery",
+        "voucher": "/complexQuery",
+        "voucherCategory": "/complexQuery",
+        "subject": "/complexQuery"
     };
 
     var viewActions = {
@@ -215,9 +248,13 @@ var dataList = (function ($) {
         "stock": "/view",
         "warehouse": "/view",
         "order": "/view",
+        "returnProduct": "/view",
         "orderPrivate": "/view",
         "pay": "/view",
-        "account": "/view"
+        "account": "/view",
+        "voucher": "/view",
+        "voucherCategory": "/view",
+        "subject": "/view"
     };
 
     var tHeaders = {
@@ -241,9 +278,13 @@ var dataList = (function ($) {
         "stock": "<th>库存编号</th><th>商品名称</th><th>商品编号</th><th>商品数量</th><th>商品单位</th><th>入库时间</th><th>仓库</th>",
         "warehouse": "<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
         "order": "<th>订单编号</th><th>状态</th><th>类型</th><th>金额</th><th>实际支付金额</th><th>折扣</th><th>创建时间</th><th>订单所有人</th><th>销售人</th>",
+        "returnProduct": "<th>退货单编号</th><th>状态</th><th>金额</th><th>退货人</th><th>申请时间</th><th>退款时间</th>",
         "orderPrivate": "<th>商品名称</th><th>商品编号</th><th>订单编号</th><th>类型</th><th>加工、订制描述</th><th>加工、订制核定金额</th><th>核定描述</th><th>核定时间</th><th>核定人</th>",
-        "pay": "<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付开户行</th><th>支付银行</th><th>收款账户</th><th>订单类型</th><th>订单编号</th>",
-        "account": "<th>账户</th><th>所属银行</th><th>开户人</th><th>开户行</th><th>账户金额</th><th>创建时间</th>"
+        "pay": "<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付银行</th><th>收款账户</th><th>单号</th>",
+        "account": "<th>账户</th><th>所属银行</th><th>开户人</th><th>开户行</th><th>账户金额</th><th>创建时间</th>",
+        "voucher": "<th>凭证编号</th><th>凭证类别</th><th>制单日期</th><th>制单人</th><th>借方合计</th><th>贷方合计</th>",
+        "voucherCategory": "<th>凭证类别</th><th>凭证字</th><th>创建时间</th>",
+        "subject": "<th>科目编码</th><th>编码规则</th><th>科目名称</th><th>科目类型</th><th>余额方向</th><th>辅助核算项</th><th>停用</th><th>账面格式</th><th>创建时间</th>"
     };
 
     var propertiesShowSequences = {
@@ -267,9 +308,13 @@ var dataList = (function ($) {
         "stock": ["no", "product[name]", "productNo", "quantity", "unit", "date", "warehouse[name]"],
         "warehouse": ["name", "charger[name]", "address", "company[name]"],
         "order": ["no", "state", "type", "amount", "payAmount", "discount", "date", "user[username]", "saler[name]"],
+        "returnProduct": ["no", "state", "amount", "user[username]", "inputDate", "date"],
         "orderPrivate": ["product[name]", "product[no]", "order[no]", "orderPrivate[type]", "orderPrivate[describes]", "orderPrivate[authorize[amount]]", "orderPrivate[authorize[describes]]", "orderPrivate[authorize[date]]", "orderPrivate[authorize[user[name]]]"],
-        "pay": ["no", "state", "amount", "payDate", "payType", "payAccount", "payBranch", "payBank", "receiptAccount", "entity", "entityNo"],
-        "account": ["account", "bank", "owner[name]", "branch", "amount", "inputDate"]
+        "pay": ["no", "state", "amount", "payDate", "payType", "payAccount", "payBank", "receiptAccount", "entityNo"],
+        "account": ["account", "bank", "owner[name]", "branch", "amount", "inputDate"],
+        "voucher": ["no", "voucherCategory[name]", "makeDate", "chartMaker[name]", "debit", "credit"],
+        "voucherCategory": ["name", "voucherWord","inputDate"],
+        "subject": ["no","codeRule", "name", "type", "direction", "accountItems[]", "state","paperFormat","inputDate"]
     };
 
     var linkTitles = {
@@ -293,9 +338,13 @@ var dataList = (function ($) {
         "stock": "no",
         "warehouse": "name",
         "order": "no",
+        "returnProduct": "no",
         "pay": "no",
         "orderPrivate": "product[name]",
-        "account": "account"
+        "account": "account",
+        "voucher": "no",
+        "voucherCategory": "name",
+        "subject": "no"
     };
 
     var idColumns = {
@@ -319,9 +368,13 @@ var dataList = (function ($) {
         "stock": "id",
         "warehouse": "id",
         "order": "id",
+        "returnProduct": "id",
         "orderPrivate": "orderPrivate[id]",
         "pay": "id",
-        "account": "id"
+        "account": "id",
+        "voucher": "id",
+        "voucherCategory": "id",
+        "subject": "id"
     };
 
     var imageTitles = {
@@ -333,12 +386,12 @@ var dataList = (function ($) {
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
         "article": {"state": {0: "保存", 1: "发布",2:"删除"}},
-        "product": {"product[state]": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 2: "出库", 3: "在售", 4: "售完", 5: "无效", 6: "编辑", 7: "多媒体文件已上传"}},
+        "product": {"product[state]": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货"}},
         "productPriceChange": {"state": {0: "申请", 1: "在用", 2: "保存"}},
         "productCheck": {"state": {0: "保存", 1: "盘点"}},
         "purchase": {"state": {0: "正常", 1: "关闭", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
         "stockInOut": {
-            "state": {0: "申请", 1: "完成", 2: "作废", 3: "归档"},
+            "state": {0: "申请", 1: "完成", 2: "作废"},
             "type": {
                 0: "现金入库",
                 1: "代销入库",
@@ -346,6 +399,7 @@ var dataList = (function ($) {
                 3: "加工入库",
                 4: "押金入库",
                 5: "修补入库",
+                51: "退货入库",
                 6: "调仓入库",
                 10: "虚拟出库",
                 11: "系统自动出库",
@@ -354,10 +408,10 @@ var dataList = (function ($) {
                 14: "内购出库",
                 15: "正常出库"
             },
-            "actions[][type]": {0: "打印商品条码", 1: "打印出库单", 2: "打印快递单", 3: "打印入库单", 4: "入库", 5: "出库"}
+            "actions[][type]": {0: "打印商品条码", 1: "打印出库单", 2: "打印快递单", 21: "生成快递单", 3: "打印入库单", 4: "入库", 5: "出库"}
         },
         "order": {
-            "state": {0: "未支付", 1: "已支付", 2: "取消", 3: "已退款", 4:"财务确认已支付"},
+            "state": {0: "未支付", 1: "已支付", 2: "取消", 3: "已退款", 4:"财务确认已支付", 5:"部分退款"},
             "type": {
                 0: "自助下单",
                 1: "代下单",
@@ -366,12 +420,34 @@ var dataList = (function ($) {
                 4: "代下单加工"
             }
         },
+        "returnProduct": {"state": {0: "申请", 1: "已退款", 2:"取消", 3:"销售确认可退", 31:"销售确认不可退", 4:"销售总监确认可退", 41:"销售总监确认不可退", 5:"仓储确认可退", 51:"仓储确认不可退"}},
         "orderPrivate": {"orderPrivate[type]": { 0: "商品加工", 1: "私人订制"}},
         "supplier": {
             "level": {"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
             "types[]": {0: "供应商", 1: "加工商"}
         },
-        "pay": {"state": {0: "未支付", 1: "已支付", 2: "支付失败"}, "entity": {"purchase": "采购单", "order": "销售订单"}}
+        "pay": {
+            "state": {0: "未支付", 1: "已支付", 2: "支付失败"},
+            "entity": {"purchase": "采购单", "order": "销售订单"},
+            "payType":{
+                0:"现金",
+                1:"网上支付",
+                2:"扫码支付",
+                3:"汇款",
+                4:"转账",
+                5:"其他",
+                6:"付宝转账",
+                7:"微信转账"
+            }
+        },
+        "voucher": {"state": {0: "保存", 1: "审核"}},
+        "subject": {
+            "state": {0: "否", 1: "是"},
+            "type":{1:"资产",2:"负债",3:"所有者权益",4:"成本",5:"损益",6:"共同"},
+            "direction":{1:"借方",2:"贷方"},
+            "accountItems[]":{1:"部门",2:"个人",3:"往来单位",4:"存货",5:"项目"},
+            "paperFormat":{1:"金额式",2:"数量金额式"}
+        }
     };
 
     var entityRelations = {
@@ -405,8 +481,12 @@ var dataList = (function ($) {
         "printExpressWaybillNotify": "stockInOut",
         "stock": "stock",
         "order": "order",
+        "returnProduct": "returnProduct",
         "orderPrivate": "orderPrivate",
-        "pay": "pay"
+        "pay": "pay",
+        "voucher": "voucher",
+        "voucherCategory": "voucherCategory",
+        "subject": "voucherCategory"
     };
 
     var totalTableData = [];
@@ -493,7 +573,7 @@ var dataList = (function ($) {
             if (entity == "productCheck") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checkNo">盘点单据编号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="productCheck[checkNo]" name="productCheck[checkNo]" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>'+
-                    '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="checker">盘点人</label>' +
+                    '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="chartMaker">盘点人</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="chartMaker[name]" name="chartMaker[name]" class="form-control col-md-7 col-xs-12" placeholder="输入名字" /></div></div>');
             }
 
@@ -525,6 +605,35 @@ var dataList = (function ($) {
             if (entity == "orderPrivate") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="account">订单编号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入订单号" /></div></div>');
+            }
+
+        } else if (modules[entity] == "/afterSaleService") {
+            $("#entity").empty()
+                .append(visitEntitiesOptions["returnProduct"]);
+
+            if (entity == "returnProduct") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">退货单编号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入退货单编号" /></div></div>');
+            }
+
+        } else if (childModules[entity] == "/voucher"){
+            $("#entity").empty()
+                .append(visitEntitiesOptions["voucher"])
+                .append(visitEntitiesOptions["voucherCategory"]);
+            if (entity == "voucher") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">凭证编号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="voucher[no]" name="voucher[no]" class="form-control col-md-7 col-xs-12" placeholder="输入编号" /></div></div>'+
+                    '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="chartMaker">制单人</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="chartMaker[name]" name="chartMaker[name]" class="form-control col-md-7 col-xs-12" placeholder="输入名字" /></div></div>');
+            }
+        } else if (childModules[entity] == "/subject"){
+            $("#entity").empty()
+                .append(visitEntitiesOptions["subject"]);
+            if (entity == "subject") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">科目编码</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入编码" /></div></div>'+
+                    '<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">科目名称</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" /></div></div>');
             }
         }
 
@@ -710,10 +819,15 @@ var dataList = (function ($) {
 
                                             if (dataList[key][parentArrayProperty] != undefined) {
                                                 for (var ii in dataList[key][parentArrayProperty]) {
-                                                    var childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
 
-                                                    if (dataList[key][parentArrayProperty][ii] != undefined) {
-                                                        if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                    var childElementValue = null;
+                                                    if (dataList[key][parentArrayProperty][ii][childElementProperty] != undefined) {
+                                                        childElementValue = dataList[key][parentArrayProperty][ii][childElementProperty];
+                                                    }
+
+                                                    if (childElementValue != null) {
+                                                        if (entityStateName[propertiesShowSequence[i]] != undefined &&
+                                                            entityStateName[propertiesShowSequence[i]][childElementValue] != undefined) {
                                                             tdData += entityStateName[propertiesShowSequence[i]][childElementValue] + " ";
                                                         } else {
                                                             tdData += childElementValue + " ";
@@ -723,6 +837,8 @@ var dataList = (function ($) {
                                                             tdData = $.trim(tdData) + "..";
                                                             break;
                                                         }
+                                                    } else {
+                                                        tdData += "";
                                                     }
                                                 }
                                             }
@@ -734,10 +850,15 @@ var dataList = (function ($) {
 
                                             if (dataList[key][parentArrayProperty] != undefined) {
                                                 for (var ii in dataList[key][parentArrayProperty]) {
-                                                    var childElementValue = dataList[key][parentArrayProperty][ii];
 
-                                                    if (dataList[key][parentArrayProperty] != undefined) {
-                                                        if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                    var childElementValue = null;
+                                                    if (dataList[key][parentArrayProperty][ii] != undefined) {
+                                                        childElementValue = dataList[key][parentArrayProperty][ii];
+                                                    }
+
+                                                    if (childElementValue != null) {
+                                                        if (entityStateName[propertiesShowSequence[i]] != undefined &&
+                                                            entityStateName[propertiesShowSequence[i]][childElementValue] != undefined) {
                                                             tdData += entityStateName[propertiesShowSequence[i]][childElementValue] + " ";
                                                         } else {
                                                             tdData += childElementValue + " ";
@@ -747,6 +868,8 @@ var dataList = (function ($) {
                                                             tdData = $.trim(tdData) + "..";
                                                             break;
                                                         }
+                                                    } else {
+                                                        tdData += "";
                                                     }
                                                 }
                                             }
@@ -761,7 +884,8 @@ var dataList = (function ($) {
                                         if (pos != -1) {
                                             var childValue = getPropertiesValue(dataList[key], propertiesShowSequence[i]);
                                             if (childValue != null) {
-                                                if (entityStateName[propertiesShowSequence[i]] != undefined) {
+                                                if (entityStateName[propertiesShowSequence[i]] != undefined &&
+                                                    entityStateName[propertiesShowSequence[i]][childValue] != undefined) {
                                                     tdData = entityStateName[propertiesShowSequence[i]][childValue];
                                                 } else {
                                                     tdData = childValue;
@@ -774,16 +898,20 @@ var dataList = (function ($) {
                                             /**
                                              * dataList[key][propertiesShowSequence[i]] 是属性,propertiesShowSequence[i]值如：name
                                              */
-                                            var value = dataList[key][propertiesShowSequence[i]];
+                                            var value = null;
+                                            if(dataList[key][propertiesShowSequence[i]] != undefined) {
+                                                value = dataList[key][propertiesShowSequence[i]];
+                                            }
 
-                                            if (entityStateName[propertiesShowSequence[i]] != undefined) {
-                                                tdData = entityStateName[propertiesShowSequence[i]][value];
-                                            } else {
-                                                if (typeof(value) == "undefined") {
-                                                    tdData = "";
+                                            if (value != null) {
+                                                if (entityStateName[propertiesShowSequence[i]] != undefined &&
+                                                    entityStateName[propertiesShowSequence[i]][value] != undefined) {
+                                                    tdData = entityStateName[propertiesShowSequence[i]][value];
                                                 } else {
                                                     tdData = value;
                                                 }
+                                            } else {
+                                                tdData = "";
                                             }
                                         }
                                     }

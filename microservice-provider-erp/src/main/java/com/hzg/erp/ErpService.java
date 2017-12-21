@@ -48,6 +48,9 @@ public class ErpService {
     private OrderClient orderClient;
 
     @Autowired
+    private AfterSaleServiceClient afterSaleServiceClient;
+
+    @Autowired
     private Writer writer;
 
     @Autowired
@@ -532,6 +535,7 @@ public class ErpService {
                  * 确认订单支付完成后，系统会自动出库商品，即系统自动出库，这时没有出库人员，因此随机设置出库人员
                  */
                 stockOut.setInputer(getRandomStockOutUser());
+                result += erpDao.updateById(stockOut.getId(), stockOut);
 
                 /**
                  * 设置出库库存,商品出库状态, 提醒出库人员打印快递单
@@ -1589,11 +1593,16 @@ public class ErpService {
     }
 
     public com.hzg.sys.User getRandomStockOutUser() {
+        logger.info("getRandomStockOutUser start:");
+
         PrivilegeResource privilegeResource = new PrivilegeResource();
         privilegeResource.setUri(ErpConstant.privilege_resource_uri_print_expressWaybill);
         List<com.hzg.sys.User> users = writer.gson.fromJson(sysClient.getUsersByUri(writer.gson.toJson(privilegeResource)),
                 new com.google.gson.reflect.TypeToken<List<User>>(){}.getType());
-        return users.get((int)System.currentTimeMillis()%users.size());
+
+        User user = users.get((int)System.currentTimeMillis()%users.size());
+        logger.info("getRandomStockOutUser end, user:" + user.getUsername());
+        return user;
     }
 
     public Integer getStockInProductState(Product product) {
@@ -1724,13 +1733,13 @@ public class ErpService {
     }
 
     public Float getProductOnReturnQuantity(Product product) {
-        Map<String, Float> productSoldQuantity = writer.gson.fromJson(orderClient.getProductOnReturnQuantity(writer.gson.toJson(product)),
+        Map<String, Float> productSoldQuantity = writer.gson.fromJson(afterSaleServiceClient.getProductOnReturnQuantity(writer.gson.toJson(product)),
                 new com.google.gson.reflect.TypeToken<Map<String, Float>>() {}.getType());
         return productSoldQuantity.get(ErpConstant.product_onReturn_quantity);
     }
 
     public Float getProductReturnedQuantity(Product product) {
-        Map<String, Float> productSoldQuantity = writer.gson.fromJson(orderClient.getProductReturnedQuantity(writer.gson.toJson(product)),
+        Map<String, Float> productSoldQuantity = writer.gson.fromJson(afterSaleServiceClient.getProductReturnedQuantity(writer.gson.toJson(product)),
                 new com.google.gson.reflect.TypeToken<Map<String, Float>>() {}.getType());
         return productSoldQuantity.get(ErpConstant.product_returned_quantity);
     }
@@ -1839,8 +1848,9 @@ public class ErpService {
 
                 if (dbProduct.getState().compareTo(ErpConstant.product_state_stockIn) != 0 &&
                         dbProduct.getState().compareTo(ErpConstant.product_state_stockIn_part) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_onSale) != 0) {
-                    result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的商品不是入库或在售状态，不能出库";
+                        dbProduct.getState().compareTo(ErpConstant.product_state_sold) != 0 &&
+                        dbProduct.getState().compareTo(ErpConstant.product_state_sold_part) != 0) {
+                    result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的商品不是入库或已售状态，不能出库";
                     break;
                 }
             }
@@ -2317,6 +2327,17 @@ public class ErpService {
             orderReqDto.setDeliverInfo(deliverInfoDto);
             orderReqDto.setConsigneeInfo(consigneeInfoDto);
             orderReqDto.setCargoInfo(cargoInfoDto);
+
+            //增值服务，商品保价
+            if (expressDeliverDetail.getInsure() != null && expressDeliverDetail.getInsure().compareTo(0f) > 0) {
+                AddedServiceDto insureServiceDto = new AddedServiceDto();
+                insureServiceDto.setName(ErpConstant.sf_added_service_name_insure);
+                insureServiceDto.setValue(Integer.toString((int)Math.rint(expressDeliverDetail.getInsure().doubleValue())));
+
+                orderReqDto.setAddedServices(new ArrayList());
+                orderReqDto.getAddedServices().add(insureServiceDto);
+            }
+
             req.setBody(orderReqDto);
 
             System.out.println("传入参数" + ToStringBuilder.reflectionToString(req));

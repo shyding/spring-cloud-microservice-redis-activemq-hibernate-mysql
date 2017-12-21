@@ -6,6 +6,7 @@ import com.hzg.customer.User;
 import com.hzg.erp.Product;
 import com.hzg.erp.ProductPriceChange;
 import com.hzg.pay.Pay;
+import com.hzg.sys.Action;
 import com.hzg.tools.*;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,7 @@ public class OrderController {
      * 订单消息队列里一有消息，就会把消息自动发送至该方法，该方法然后保存订单信息
      * @param json
      */
+    @Transactional
     @JmsListener(destination = OrderConstant.queue_order)
     public void saveQueueOrder(String json) {
         logger.info("saveQueueOrder start, parameter:" + json);
@@ -66,6 +68,7 @@ public class OrderController {
      * @param entity
      * @param json
      */
+    @Transactional
     @PostMapping("/save")
     public void save(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("save start, parameter:" + entity + ":" + json);
@@ -86,7 +89,6 @@ public class OrderController {
      * @param order
      * @return
      */
-    @Transactional
     private String saveOrder(Order order) {
         String result = CommonConstant.fail;
 
@@ -110,29 +112,31 @@ public class OrderController {
         return saveInfo;
     }
 
+    @Transactional
     @PostMapping("/cancel")
     public void cancel(HttpServletResponse response, @RequestBody String json){
         logger.info("cancel start, parameter:" + json);
-        orderOperation(response, json, OrderConstant.order_operate_type_cancel);
+        orderOperation(response, json, OrderConstant.order_action_cancel);
         logger.info("cancel end");
     }
 
+    @Transactional
     @PostMapping("/paid")
     public void paid(HttpServletResponse response, @RequestBody String json){
         logger.info("paid start, parameter:" + json);
-        orderOperation(response, json, OrderConstant.order_operate_type_paid);
+        orderOperation(response, json, OrderConstant.order_action_paid);
         logger.info("paid end");
     }
 
+    @Transactional
     @PostMapping("/audit")
     public void audit(HttpServletResponse response, @RequestBody String json){
         logger.info("audit start, parameter:" + json);
-        orderOperation(response, json, OrderConstant.order_operate_type_audit);
+        orderOperation(response, json, OrderConstant.order_action_audit);
         logger.info("audit end");
     }
 
-    @Transactional
-    private void orderOperation(HttpServletResponse response, String json, String type){
+    private void orderOperation(HttpServletResponse response, String json, Integer type){
         logger.info("orderOperation start, parameter:" + json + "," + type);
 
         String result = CommonConstant.fail;
@@ -140,29 +144,30 @@ public class OrderController {
         try {
             Order order = writer.gson.fromJson(json, Order.class);
             Order dbOrder = orderService.queryOrder(new Order(order.getId())).get(0);
+            dbOrder.setSessionId(order.getSessionId());
 
             if (dbOrder.getState().compareTo(OrderConstant.order_detail_state_unSale) == 0) {
-                if (type.equals(OrderConstant.order_operate_type_cancel)) {
+                if (type.compareTo(OrderConstant.order_action_cancel) == 0) {
                     result += orderService.cancelOrder(dbOrder);
                 }
 
-                if (type.equals(OrderConstant.order_operate_type_paid)) {
-                    dbOrder.setPays(order.getPays());
+                if (type.compareTo(OrderConstant.order_action_paid) == 0) {
+                    dbOrder.setPays(orderService.queryPayByOrder(order));
                     result += orderService.paidOrder(dbOrder);
                 }
 
-                if (type.equals(OrderConstant.order_operate_type_audit)) {
-                    dbOrder.setPays(order.getPays());
+                if (type.compareTo(OrderConstant.order_action_audit) == 0) {
                     result += orderService.audit(dbOrder);
                 }
 
-                OrderOperation operation = new OrderOperation();
-                operation.setOrder(order);
-                operation.setType(type);
-                operation.setDate(dateUtil.getSecondCurrentTimestamp());
-                operation.setUser((com.hzg.sys.User) orderDao.getFromRedis((String)orderDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + order.getSessionId())));
+                Action action = new Action();
+                action.setEntity(OrderConstant.order);
+                action.setEntityId(dbOrder.getId());
+                action.setType(type);
+                action.setInputer((com.hzg.sys.User) orderDao.getFromRedis((String)orderDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + dbOrder.getSessionId())));
+                action.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
-                orderDao.save(operation);
+                result += orderDao.save(action);
 
             } else {
                 result +=  CommonConstant.fail + ",未支付订单才可以取消或确认收款";
@@ -187,7 +192,7 @@ public class OrderController {
         String result = CommonConstant.fail;
 
         try {
-            if (name.equals("authorizeOrderPrivateAmount")) {
+            if (name.equals(OrderConstant.order_action_name_authorizeOrderPrivateAmount)) {
                 OrderPrivate orderPrivate = writer.gson.fromJson(json, OrderPrivate.class);
 
                 com.hzg.sys.User user = (com.hzg.sys.User)orderDao.getFromRedis(
@@ -225,7 +230,7 @@ public class OrderController {
                     result += CommonConstant.fail + ",查询不到核定金额的用户，核定金额失败";
                 }
 
-            } else if (name.equals("paidOrder")) {
+            } else if (name.equals(OrderConstant.order_action_name_paidOrder)) {
                 result += orderService.paidOrder(orderService.queryOrder(writer.gson.fromJson(json, Order.class)).get(0));
             }
         } catch (Exception e) {
@@ -398,5 +403,13 @@ public class OrderController {
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
 
         logger.info("unlimitedRecordsSum end");
+    }
+
+
+    @RequestMapping(value = "/getProductSoldQuantity", method = {RequestMethod.GET, RequestMethod.POST})
+    public void getProductSoldQuantity(HttpServletResponse response, @RequestBody String json){
+        logger.info("getProductSoldQuantity start, parameter:" + json);
+        writer.writeStringToJson(response, "{\"" + ErpConstant.product_sold_quantity +"\":\"" + orderService.getProductSoldQuantity(writer.gson.fromJson(json, Product.class)) + "\"}");
+        logger.info("getProductSoldQuantity end");
     }
 }

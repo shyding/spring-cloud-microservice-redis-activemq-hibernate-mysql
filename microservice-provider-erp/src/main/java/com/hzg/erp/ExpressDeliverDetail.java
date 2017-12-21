@@ -46,6 +46,13 @@ public class ExpressDeliverDetail implements Serializable {
     @JoinColumn(name="expressDeliverId")
     private ExpressDeliver expressDeliver;
 
+    @Column(name="mailNo",length=64)
+    private String mailNo;
+
+    @Column(name="insure", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float insure;
+
     @OneToMany(mappedBy = "expressDeliverDetail", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<ExpressDeliverDetailProduct> expressDeliverDetailProducts;
 
@@ -125,6 +132,22 @@ public class ExpressDeliverDetail implements Serializable {
         this.expressDeliver = expressDeliver;
     }
 
+    public String getMailNo() {
+        return mailNo;
+    }
+
+    public void setMailNo(String mailNo) {
+        this.mailNo = mailNo;
+    }
+
+    public Float getInsure() {
+        return insure;
+    }
+
+    public void setInsure(Float insure) {
+        this.insure = insure;
+    }
+
     public Set<ExpressDeliverDetailProduct> getExpressDeliverDetailProducts() {
         return expressDeliverDetailProducts;
     }
@@ -144,8 +167,6 @@ public class ExpressDeliverDetail implements Serializable {
                 ", weight='" + weight + '\'' +
                 ", price=" + price +
                 ", state=" + state +
-                ", expressDeliver=" + expressDeliver +
-                ", expressDeliverDetailProducts=" + expressDeliverDetailProducts +
                 '}';
     }
 }

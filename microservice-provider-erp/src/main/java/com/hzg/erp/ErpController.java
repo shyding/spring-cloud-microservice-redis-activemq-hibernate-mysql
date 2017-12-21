@@ -361,9 +361,9 @@ public class ErpController {
         String result = CommonConstant.fail;
 
         try {
-            Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
-
             if (name.equalsIgnoreCase(ErpConstant.product_action_name_updateUploadMediaFilesInfo)) {
+                Map<String, Object> queryParameters = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
+
                 Product product = writer.gson.fromJson(writer.gson.toJson(queryParameters.get("product")), Product.class);
                 product.setState(ErpConstant.product_state_mediaFiles_uploaded);
 
@@ -1350,19 +1350,23 @@ public class ErpController {
 
         Warehouse warehouse = new Warehouse();
         warehouse.setCompany(writer.gson.fromJson(json, Company.class));
-        writer.writeObjectToJson(response, erpDao.query(warehouse));
+        writer.writeObjectToJson(response, erpDao.query(warehouse).get(0));
 
         logger.info("getWarehouseByCompany end");
     }
 
     @PostMapping(value = "/getLastStockInOutByProductAndType")
     public void getLastStockInOutByProductAndType(HttpServletResponse response,  @RequestBody String json, String type){
+        logger.info("getLastStockInOutByProductAndType start, parameter:" + json + "," + type);
         writer.writeObjectToJson(response, erpService.getLastStockInOutByProductAndType(writer.gson.fromJson(json, Product.class), type));
+        logger.info("getLastStockInOutByProductAndType end");
     }
 
     @GetMapping(value = "/getExpressNo")
     public void getExpressNo(HttpServletResponse response){
-        writer.writeStringToJson(response, "{\"" + CommonConstant.no + "\":\"" + ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId() + "\"");
+        logger.info("getExpressNo start");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.no + "\":\"" + ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId() + "\"}");
+        logger.info("getExpressNo end");
     }
 
     /**
@@ -1378,7 +1382,7 @@ public class ErpController {
      */
     @Transactional
     @PostMapping(value = "/sfExpress/order")
-    public void sfExpressOrder(String json, HttpServletResponse response) {
+    public void sfExpressOrder( HttpServletResponse response, @RequestBody String json) {
         logger.info("sfExpressOrder start, json:" + json);
 
         String result = CommonConstant.fail;
@@ -1403,7 +1407,7 @@ public class ErpController {
      */
     @Transactional
     @PostMapping(value = "/sfExpress/order/query")
-    public void sfExpressOrderQuery(HttpServletResponse response, String json) {
+    public void sfExpressOrderQuery(HttpServletResponse response, @RequestBody String json) {
         logger.info("sfExpressOrderQuery start, json:" + json);
         ExpressDeliver expressDeliver = writer.gson.fromJson(json, ExpressDeliver.class);
         ExpressDeliver dbExpressDeliver = (ExpressDeliver) erpDao.queryById(expressDeliver.getId(), expressDeliver.getClass());
@@ -1419,7 +1423,7 @@ public class ErpController {
      */
     @Transactional
     @PostMapping(value = "/sfExpress/order/notify")
-    public void sfExpressOrderNotify(String json, HttpServletResponse response) {
+    public void sfExpressOrderNotify(@RequestBody String json, HttpServletResponse response) {
         logger.info("sfExpressOrderNotify start, json:" + json);
 
         String result = CommonConstant.fail;

@@ -1,10 +1,7 @@
 package com.hzg.erp;
 
 import com.google.common.reflect.TypeToken;
-import com.hzg.order.OrderClient;
-import com.hzg.pay.Account;
 import com.hzg.pay.Pay;
-import com.hzg.pay.Refund;
 import com.hzg.sys.*;
 import com.hzg.tools.*;
 import com.sf.openapi.common.entity.AppInfo;
@@ -19,9 +16,13 @@ import com.sf.openapi.express.sample.security.tools.SecurityTools;
 import com.sf.openapi.express.sample.waybill.dto.WaybillReqDto;
 import com.sf.openapi.express.sample.waybill.dto.WaybillRespDto;
 import com.sf.openapi.express.sample.waybill.tools.WaybillDownloadTools;
+import com.sf.csim.express.service.HttpClientUtil;
+import com.sf.csim.express.service.VerifyCodeUtil;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.log4j.Logger;
 import org.hibernate.SessionFactory;
+import org.json.JSONObject;
+import org.json.XML;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -74,165 +75,40 @@ public class ErpService {
     @Autowired
     private SfExpress sfExpress;
 
-    public String launchAuditFlow(String entity, Integer entityId, String entityNo, String auditName, String content, User user) {
+    @Autowired
+    private HttpClientUtil httpClientUtil;
+
+    @Autowired
+    private VerifyCodeUtil verifyCodeUtil;
+
+    public String savePurchase(Purchase purchase) {
         String result = CommonConstant.fail;
 
-        logger.info("launchAuditFlow start:" + result);
+        result += erpDao.save(purchase);
+        if (purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0 &&
+                purchase.getTemporaryPurchasePayKind().compareTo(ErpConstant.purchase_type_temp_payKind_deposit) == 0) {
+            purchase.getPurchaseBook().setPurchase(new Purchase(purchase.getId()));
+            purchase.getPurchaseBook().setState(ErpConstant.purchase_type_temp_deposit_uppay);
+            result += erpDao.save(purchase.getPurchaseBook());
+        }
+
+        result += savePurchaseProducts(purchase);
+        result += savePurchasePays(purchase);
 
         /**
-         * 创建审核流程第一个节点，发起审核流程
+         * 发起采购流程
          */
-        Audit audit = new Audit();
-        audit.setEntity(entity);
-        audit.setEntityId(entityId);
-        audit.setEntityNo(entityNo);
-        audit.setName(auditName);
-        audit.setContent(content);
-
-        Post post = (Post)(((List<User>)erpDao.query(user)).get(0)).getPosts().toArray()[0];
-        audit.setCompany(post.getDept().getCompany());
-
-        Map<String, String> result1 = writer.gson.fromJson(sysClient.launchAuditFlow(writer.gson.toJson(audit)),
-                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-
-        result = result1.get(CommonConstant.result);
-
-        logger.info("launchAuditFlow end, result:" + result);
-
-        return result;
-    }
-
-    public String launchAuditFlowByPost(String entity, Integer entityId, String entityNo, String auditName, Post post, String preFlowAuditNo) {
-        String result = CommonConstant.fail;
-
-        logger.info("launchAuditFlowByPost start:" + result);
-
-        /**
-         * 创建审核流程第一个节点，发起审核流程
-         */
-        Audit audit = new Audit();
-        audit.setEntity(entity);
-        audit.setEntityId(entityId);
-        audit.setEntityNo(entityNo);
-        audit.setName(auditName);
-        audit.setPreFlowAuditNo(preFlowAuditNo);
-
-        audit.setPost(post);
-        audit.setCompany(post.getDept().getCompany());
-
-        Map<String, String> result1 = writer.gson.fromJson(sysClient.launchAuditFlow(writer.gson.toJson(audit)),
-                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-
-        result = result1.get(CommonConstant.result);
-
-        logger.info("launchAuditFlowByPost end, audit result:" + result);
-
-        return result;
-    }
-
-    /**
-     * 查询同批次同类型商品是否已经发起审核流程
-     * @param product
-     * @return
-     */
-    public List queryProductAudit(Product product) {
-        List audits = null;
-
-        try {
-            Audit audit = new Audit();
-            audit.setEntity(AuditFlowConstant.business_product);
-            audit.setEntityNo(product.getNo());
-
-            String auditSql = objectToSql.generateSelectSqlByAnnotation(audit);
-            String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";
-
-            String[] sqlParts = erpDao.getSqlPart(auditSql, Audit.class);
-            selectSql = sqlParts[0];
-            fromSql = sqlParts[1];
-            whereSql = sqlParts[2];
-            sortNumSql = sqlParts[3];
-
-            fromSql += ", " + objectToSql.getTableName(Product.class) + " t21 ";
-            if (!whereSql.trim().equals("")) {
-                whereSql += " and ";
-            }
-            whereSql += " t21." + objectToSql.getColumn(Product.class.getDeclaredField("no")) +
-                    " = t." + objectToSql.getColumn(Audit.class.getDeclaredField("entityNo")) +
-                    " and t21." + objectToSql.getColumn(Product.class.getDeclaredField("describe")) +
-                    " = " + product.getDescribe().getId();
-
-            audits = erpDao.queryBySql("select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql, Audit.class);
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        String auditEntity = AuditFlowConstant.business_purchase;
+        if (purchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
+                purchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
+                purchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
+            auditEntity = AuditFlowConstant.business_purchaseEmergency;
         }
 
-        return audits;
-    }
+        result += launchAuditFlow(auditEntity, purchase.getId(), purchase.getNo(), purchase.getName(),
+                "请审核采购单：" + purchase.getNo() ,purchase.getInputer());
 
-    public String queryProductOnSalePreFlowAuditNo(Product product){
-        PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
-        detailProduct.setProduct(product);
-        PurchaseDetail detail = ((PurchaseDetailProduct)erpDao.query(detailProduct).get(0)).getPurchaseDetail();
-
-        Audit audit = new Audit();
-        audit.setEntity(Purchase.class.getSimpleName().toLowerCase());
-        audit.setEntityId(detail.getPurchase().getId());
-
-        List<Audit> dbAudits = writer.gson.fromJson(
-                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
-                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
-
-        return dbAudits.get(0).getNo();
-    }
-
-    public String updateAudit(Integer entityId, String oldEntity, String newEntity, String newName, String newContent) {
-        String result = CommonConstant.fail;
-
-        Audit audit = new Audit();
-        audit.setEntity(oldEntity);
-        audit.setEntityId(entityId);
-
-        List<Audit> dbAudits = writer.gson.fromJson(
-                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
-                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
-
-        for (Audit audit1 : dbAudits) {
-            audit.setId(audit1.getId());
-            audit.setName(newName);
-            audit.setContent(newContent);
-            audit.setEntity(newEntity);
-
-            Map<String, String> result1 = writer.gson.fromJson(sysClient.update(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
-                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-
-            result = result1.get(CommonConstant.result);
-        }
-
-        return result;
-    }
-
-    public String deleteAudit(Integer entityId, String entity) {
-        String result = CommonConstant.fail;
-
-        Audit audit = new Audit();
-        audit.setEntity(entity);
-        audit.setEntityId(entityId);
-
-        List<Audit> dbAudits = writer.gson.fromJson(
-                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
-                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
-
-        for (Audit audit1 : dbAudits) {
-            audit.setId(audit1.getId());
-
-            Map<String, String> result1 = writer.gson.fromJson(sysClient.delete(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
-                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-
-            result = result1.get(CommonConstant.result);
-        }
-
-        return result;
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
     public String savePurchaseProducts(Purchase purchase) {
@@ -296,6 +172,39 @@ public class ErpService {
                     detailProduct.setProduct(product);
                     result += erpDao.insert(detailProduct);
                 }
+            }
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public String savePurchasePays(Purchase purchase) {
+        String result = CommonConstant.fail;
+
+        for (Pay pay : purchase.getPays()) {
+            pay.setPayDate(dateUtil.getSecondCurrentTimestamp());
+            pay.setState(PayConstants.pay_state_apply);
+            pay.setBalanceType(PayConstants.balance_type_expense);
+
+            pay.setEntity(purchase.getClass().getSimpleName().toLowerCase());
+            pay.setEntityId(purchase.getId());
+            pay.setEntityNo(purchase.getNo());
+        }
+
+        /**
+         * 保存临时采购订金支付记录
+         */
+        if (purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0 &&
+                purchase.getTemporaryPurchasePayKind().compareTo(ErpConstant.purchase_type_temp_payKind_deposit) == 0) {
+            Map<String, String> result1 = writer.gson.fromJson(payClient.saveSplitAmountPays(purchase.getPurchaseBook().getDeposit(), writer.gson.toJson(purchase.getPays())),
+                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+            result += result1.get(CommonConstant.result);
+
+        } else {
+            for (Pay pay : purchase.getPays()) {
+                Map<String, String> result1 = writer.gson.fromJson(payClient.save(Pay.class.getSimpleName(), writer.gson.toJson(pay)),
+                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+                result += result1.get(CommonConstant.result);
             }
         }
 
@@ -379,6 +288,86 @@ public class ErpService {
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
+    public String updatePurchase(Purchase purchase) {
+        String result = CommonConstant.fail;
+
+        /**
+         * 查询数据库里的采购单
+         */
+        Purchase dbPurchase = queryPurchaseWithPaysById(purchase.getId());
+        PurchaseDetail purchaseDetail = (PurchaseDetail) erpDao.queryById(((PurchaseDetail) dbPurchase.getDetails().toArray()[0]).getId(), PurchaseDetail.class);
+        Product stateProduct = (Product) erpDao.queryById(((PurchaseDetailProduct) purchaseDetail.getPurchaseDetailProducts().toArray()[0]).getProduct().getId(), Product.class);
+
+        if (stateProduct.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
+            result += erpDao.updateById(purchase.getId(), purchase);
+
+            /**
+             * 保存采购单里的新商品信息，删除旧商品信息
+             */
+            result += savePurchaseProducts(purchase);
+            result += deletePurchaseProducts(dbPurchase);
+
+            /**
+             * 保存采购单里的新支付记录，删除旧支付记录
+             */
+            result += savePurchasePays(purchase);
+            result += deletePurchasePays(dbPurchase);
+
+            /**
+             * 保存采购单里的新临时采购预订单，删除旧临时采购预订单
+             */
+            List<PurchaseBook> dbPurchaseBooks = null;
+            if (dbPurchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0) {
+                PurchaseBook queryPurchaseBook = new PurchaseBook();
+                queryPurchaseBook.setPurchase(new Purchase(purchase.getId()));
+                dbPurchaseBooks = erpDao.query(queryPurchaseBook);
+            }
+
+            if (purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0 &&
+                    purchase.getTemporaryPurchasePayKind().compareTo(ErpConstant.purchase_type_temp_payKind_deposit) == 0) {
+                purchase.getPurchaseBook().setPurchase(new Purchase(purchase.getId()));
+                purchase.getPurchaseBook().setState(ErpConstant.purchase_type_temp_deposit_uppay);
+                result += erpDao.save(purchase.getPurchaseBook());
+            }
+
+            if (dbPurchaseBooks != null) {
+                for (PurchaseBook purchaseBook : dbPurchaseBooks) {
+                    result += erpDao.delete(purchaseBook);
+                }
+            }
+
+            /**
+             * 修改事宜信息
+             */
+            String oldEntity = AuditFlowConstant.business_purchase, newEntity = AuditFlowConstant.business_purchase;
+
+            if (dbPurchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
+                    dbPurchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
+                    dbPurchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
+                oldEntity = AuditFlowConstant.business_purchaseEmergency;
+            }
+
+            if (purchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
+                    purchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
+                    purchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
+                newEntity = AuditFlowConstant.business_purchaseEmergency;
+            }
+
+            result += updateAudit(dbPurchase.getId(), oldEntity, newEntity, purchase.getName(), "请审核采购单：" + dbPurchase.getNo());
+
+        } else {
+            result += CommonConstant.fail + ", 采购单 " + purchase.getNo() + " 里的商品，已审核通过，不能修改";
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public Purchase queryPurchaseWithPaysById(Integer id) {
+        Purchase dbPurchase = (Purchase) erpDao.queryById(id, Purchase.class);
+        dbPurchase.setPays(getPaysByEntity(dbPurchase.getClass().getSimpleName().toLowerCase(), id));
+        return dbPurchase;
+    }
+
     public String deletePurchaseProducts(Purchase purchase) {
         String result = CommonConstant.fail;
 
@@ -409,6 +398,31 @@ public class ErpService {
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
+
+    public String deletePurchasePays(Purchase purchase) {
+        String result = CommonConstant.fail;
+
+        if (purchase.getPays() != null) {
+            for (Pay pay : purchase.getPays()) {
+                Map<String, String> result1 = writer.gson.fromJson(payClient.delete(Pay.class.getSimpleName(), writer.gson.toJson(pay)),
+                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+                result += result1.get(CommonConstant.result);
+            }
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    /**
+     * 确认线下支付订单已付款
+     * @param purchase
+     */
+    public String paidOfflinePurchase(Purchase purchase) {
+        return payClient.offlinePaid(writer.gson.toJson(purchase.getPays()));
+    }
+
+
+
 
     /**
      * 设置入库
@@ -457,7 +471,6 @@ public class ErpService {
         for (StockInOutDetail detail : stockIn.getDetails()) {
             detail.setState(ErpConstant.stockInOut_detail_state_finished);
             result += erpDao.updateById(detail.getId(), detail);
-            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), detail.getId());
 
             /**
              * 修改商品为入库
@@ -577,7 +590,6 @@ public class ErpService {
         for (StockInOutDetail detail : stockOut.getDetails()) {
             detail.setState(ErpConstant.stockInOut_detail_state_finished);
             result += erpDao.updateById(detail.getId(), detail);
-            result += backupPreStockInOut(((StockInOutDetailProduct)detail.getStockInOutDetailProducts().toArray()[0]).getProduct(), detail.getId());
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
                 detailProduct.getProduct().setState(getStockOutProductState(detailProduct.getProduct()));
@@ -609,34 +621,6 @@ public class ErpService {
         }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-    }
-
-    /**
-     * 设置之前的入库出库完成记录为归档状态
-     * @param product
-     * @param detailId
-     * @return
-     */
-    public String backupPreStockInOut(Product product, Integer detailId){
-        String result = "";
-
-        StockInOutDetailProduct queryDetailProduct = new StockInOutDetailProduct();
-        queryDetailProduct.setProduct(product);
-        List<StockInOutDetailProduct> StockInOutDetailProduct = erpDao.query(queryDetailProduct);
-
-        Float productQuantity = getProductQuantity(product);
-        for (StockInOutDetailProduct detailProduct : StockInOutDetailProduct) {
-            if (detailProduct.getStockInOutDetail().getState().compareTo(ErpConstant.stockInOut_detail_state_finished) == 0 &&
-                    detailProduct.getStockInOutDetail().getId().compareTo(detailId) != 0) {
-
-                if (detailProduct.getStockInOutDetail().getQuantity().compareTo(productQuantity) == 0) {
-                    detailProduct.getStockInOutDetail().setState(ErpConstant.stockInOut_detail_state_backup);
-                    result += erpDao.updateById(detailProduct.getStockInOutDetail().getId(), detailProduct.getStockInOutDetail());
-                }
-            }
-        }
-
-        return result;
     }
 
     public String saveStock(Stock stock, Float quantity, String unit, Timestamp date) {
@@ -803,52 +787,38 @@ public class ErpService {
 
 
     public String purchaseEmergencyPass(Audit audit, Integer purchaseState, Integer productState) {
-        String result = CommonConstant.fail;
-
-        result += purchaseStateModify(audit, purchaseState, productState);
-
-        if (result.contains(CommonConstant.success)) {
-            Purchase purchase = (Purchase) erpDao.queryById(audit.getEntityId(), Purchase.class);
-
-            Pay pay = new Pay();
-            pay.setAmount(-purchase.getAmount());
-            pay.setState(PayConstants.pay_state_apply);
-
-            pay.setPayAccount(purchase.getAccount().getAccount());
-            pay.setPayBranch(purchase.getAccount().getBranch());
-            pay.setPayBank(purchase.getAccount().getBank());
-
-            pay.setEntity(Purchase.class.getSimpleName().toLowerCase());
-            pay.setEntityId(purchase.getId());
-            pay.setEntityNo(purchase.getNo());
-
-            PurchaseDetail detail = null;
-            for (PurchaseDetail ele : purchase.getDetails()) {
-                detail = ele;
-                break;
-            }
-
-            if (detail != null) {
-                detail = (PurchaseDetail) erpDao.queryById(detail.getId(), PurchaseDetail.class);
-
-                pay.setReceiptAccount(detail.getSupplier().getAccount());
-                pay.setReceiptBranch(detail.getSupplier().getBranch());
-                pay.setReceiptBank(detail.getSupplier().getBank());
-            }
-
-            Map<String, String> result1 = writer.gson.fromJson(payClient.save(pay.getClass().getSimpleName(), writer.gson.toJson(pay)),
-                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-            result += result1.get(CommonConstant.result);
-        }
-
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+        return purchaseStateModify(audit, purchaseState, productState);
     }
 
-    public String purchaseEmergencyPay(Audit audit) {
+    public String purchasePay(Audit audit) {
+        String result = CommonConstant.fail;
 
         Purchase purchase = (Purchase) erpDao.queryById(audit.getEntityId(), Purchase.class);
-        return setPayAccountInfo(getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId()), purchase.getAccount(),
-                PayConstants.pay_state_success, CommonConstant.add);
+
+        List<Pay> pays = null;
+        if (purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0) {
+            PurchaseBook queryPurchaseBook = new PurchaseBook();
+            queryPurchaseBook.setPurchase(new Purchase(purchase.getId()));
+            List<PurchaseBook> dbPurchaseBooks = erpDao.query(queryPurchaseBook);
+
+            if (!dbPurchaseBooks.isEmpty()) {
+                PurchaseBook dbPurchaseBook = dbPurchaseBooks.get(0);
+                dbPurchaseBook.setState(ErpConstant.purchase_type_temp_deposit_paid);
+                result += erpDao.updateById(dbPurchaseBook.getId(), dbPurchaseBook);
+
+                purchase.setPurchaseBook(dbPurchaseBook);
+                pays = queryDepositPaysByPurchase(purchase);
+            }
+        }
+
+        if (pays == null) {
+            pays = getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId());
+        }
+
+        Map<String, String> result1 = writer.gson.fromJson(payClient.offlinePaid(writer.gson.toJson(pays)), new TypeToken<Map<String, String>>(){}.getType());
+        result += result1.get(CommonConstant.result);
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
     public String stockInReturnDeposit(Audit audit) {
@@ -856,73 +826,37 @@ public class ErpService {
 
         StockInOut stockInOut = (StockInOut) erpDao.queryById(audit.getEntityId(), StockInOut.class);
         Purchase purchase = (Purchase) erpDao.queryById(stockInOut.getDeposit().getPurchase().getId(), stockInOut.getDeposit().getPurchase().getClass());
-        Pay pay = getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId());
 
-        List<Account> accounts = writer.gson.fromJson(payClient.query(purchase.getAccount().getClass().getSimpleName(), writer.gson.toJson(purchase.getAccount())),
-                new TypeToken<List<Account>>(){}.getType());
-        result += setPayAccountInfo(pay, accounts.get(0), null, CommonConstant.subtract);
-
-        Refund refund = new Refund();
-        refund.setPay(pay);
-        refund.setState(PayConstants.state_refund_apply);
-        refund.setPayBank(pay.getPayBank());
-        refund.setRefundDate(stockInOut.getDeposit().getReturnDepositDate());
-        refund.setInputDate(dateUtil.getSecondCurrentTimestamp());
-        refund.setEntity(ErpConstant.return_purchase_deposit);
-        refund.setEntityId(purchase.getId());
-
-        Map<String, String> result1 = writer.gson.fromJson(payClient.save(refund.getClass().getSimpleName(), writer.gson.toJson(refund)),
-                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+        Map<String, String> result1 = writer.gson.fromJson(
+                payClient.refund(audit.getEntity(), audit.getEntityId(), stockInOut.getDeposit().getAmount(),
+                                 writer.gson.toJson(getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId()))),
+                new TypeToken<Map<String, String>>(){}.getType());
         result += result1.get(CommonConstant.result);
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
-    public String setPayAccountInfo(Pay pay, Account account, Integer payState, String operator) {
-        String result = CommonConstant.fail;
-
-        pay.setState(payState);
-        pay.setPayDate(dateUtil.getSecondCurrentTimestamp());
-
-        Map<String, String> result1 = writer.gson.fromJson(payClient.update(Pay.class.getSimpleName(), writer.gson.toJson(pay)),
-                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-        result += result1.get(CommonConstant.result);
-
-        if (result.contains(CommonConstant.success)) {
-            /**
-             * 使用 BigDecimal 进行精度计算
-             */
-            BigDecimal accountAmount = new BigDecimal(Float.toString(account.getAmount()));
-            BigDecimal payAmount = new BigDecimal(Float.toString(pay.getAmount()));
-
-            if (operator.equals(CommonConstant.add)) {
-                account.setAmount(accountAmount.add(payAmount).floatValue());
-            } else if (operator.equals(CommonConstant.subtract)) {
-                account.setAmount(accountAmount.subtract(payAmount).floatValue());
-            }
-
-            result1 = writer.gson.fromJson(payClient.update(Account.class.getSimpleName(), writer.gson.toJson(account)),
-                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-            result += result1.get(CommonConstant.result);
-        }
-
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-    }
-
-    public Pay getPaysByEntity(String entity, Integer entityId) {
+    public List<Pay> getPaysByEntity(String entity, Integer entityId) {
         Pay pay = new Pay();
         pay.setEntity(entity);
         pay.setEntityId(entityId);
 
-        List<Pay> pays = writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)),
-                new TypeToken<List<Pay>>(){}.getType());
+        return writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)), new TypeToken<List<Pay>>(){}.getType());
+    }
 
-        Collections.sort(pays, new Comparator<Pay>() {
+    public List<Pay> queryDepositPaysByPurchase(Purchase purchase) {
+        List<Pay> pays = getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId());
+
+        /**
+         * 采购预订单支付的记录，是按照订金支付记录，余款支付记录先后排列的，所以订金支付记录的 id 是小的。
+         * 这里设置支付记录根据 id 由小到大排序，以便找到订金支付记录
+         */
+        pays.sort(new Comparator<Pay>() {
             @Override
             public int compare(Pay o1, Pay o2) {
                 if (o1.getId().compareTo(o2.getId()) > 0) {
                     return 1;
-                } else if(o1.getId().compareTo(o2.getId()) < 0) {
+                } else if (o1.getId().compareTo(o2.getId()) < 0) {
                     return -1;
                 }
 
@@ -930,7 +864,19 @@ public class ErpService {
             }
         });
 
-        return pays.isEmpty() ? null : pays.get(0);
+        List<Pay> depositPays = new ArrayList<>();
+        Float sumAmount = 0f;
+        for (int i = 0; i < pays.size(); i++) {
+            sumAmount = new BigDecimal(Float.toString(sumAmount)).add(new BigDecimal(Float.toString(pays.get(i).getAmount()))).floatValue();
+
+            if (sumAmount.compareTo(purchase.getPurchaseBook().getDeposit()) <= 0) {
+                depositPays.add(pays.get(i));
+            } else {
+                break;
+            }
+        }
+
+        return depositPays;
     }
 
     public String productStateModify(Audit audit, Integer state) {
@@ -1075,7 +1021,7 @@ public class ErpService {
             return stocks;
 
         } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            Class[] clazzs = {Product.class, ProductType.class, Supplier.class, ProductDescribe.class, StockInOutDetailProduct.class, StockInOutDetail.class, StockInOut.class};
+            Class[] clazzs = {Product.class, ProductType.class, Supplier.class, ProductDescribe.class};
             Map<String, List<Object>> results = erpDao.queryBySql(getProductComplexSql(json, position, rowNum), clazzs);
 
             List<Object> products = results.get(Product.class.getName());
@@ -1083,23 +1029,15 @@ public class ErpService {
             List<Object> suppliers = results.get(Supplier.class.getName());
             List<Object> describes = results.get(ProductDescribe.class.getName());
 
-            List<Object> stockInOutDetails = results.get(StockInOutDetail.class.getName());
-            List<Object> stockInOuts = results.get(StockInOut.class.getName());
-
             int i = 0;
-            for (Object stockInOutDetail : stockInOutDetails) {
-                Product product = (Product) products.get(i);
-                product.setType((ProductType) types.get(i));
-                product.setSupplier((Supplier) suppliers.get(i));
-                product.setDescribe((ProductDescribe) describes.get(i));
-
-                ((StockInOutDetail)stockInOutDetail).setProduct(product);
-                ((StockInOutDetail)stockInOutDetail).setStockInOut((StockInOut) stockInOuts.get(i));
-
+            for (Object product : products) {
+                ((Product)product).setType((ProductType) types.get(i));
+                ((Product)product).setSupplier((Supplier) suppliers.get(i));
+                ((Product)product).setDescribe((ProductDescribe) describes.get(i));
                 i++;
             }
 
-            return stockInOutDetails;
+            return products;
 
         } else if (entity.equalsIgnoreCase(ProductDescribe.class.getSimpleName())) {
             return erpDao.queryBySql(getProductDescribeSql(json, position, rowNum), ProductDescribe.class);
@@ -1252,17 +1190,14 @@ public class ErpService {
                     " = t." + objectToSql.getColumn(Product.class.getDeclaredField("describe"));
 
 
-            selectSql += ", " + erpDao.getSelectColumns("t11", StockInOutDetailProduct.class);
             fromSql += ", " + objectToSql.getTableName(StockInOutDetailProduct.class) + " t11 ";
             whereSql += " and t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("product")) +
                     " = t." + objectToSql.getColumn(Product.class.getDeclaredField("id"));
 
-            selectSql += ", " + erpDao.getSelectColumns("t111", StockInOutDetail.class);
             fromSql += ", " + objectToSql.getTableName(StockInOutDetail.class) + " t111 ";
             whereSql += " and t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("id")) +
                     " = t11." + objectToSql.getColumn(StockInOutDetailProduct.class.getDeclaredField("stockInOutDetail"));
 
-            selectSql += ", " + erpDao.getSelectColumns("t22", StockInOut.class);
             fromSql += ", " + objectToSql.getTableName(StockInOut.class) + " t22 ";
             whereSql += " and t22." + objectToSql.getColumn(StockInOut.class.getDeclaredField("id")) +
                     " = t111." + objectToSql.getColumn(StockInOutDetail.class.getDeclaredField("stockInOut")) +
@@ -1293,7 +1228,7 @@ public class ErpService {
                 whereSql = whereSql.substring(" and".length());
             }
 
-            sql = "select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
+            sql = "select distinct " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1606,70 +1541,70 @@ public class ErpService {
     }
 
     public Integer getStockInProductState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductStockInQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_stockIn;
-        } else if (compare < 0) {
+        if (compare < 0) {
             state = ErpConstant.product_state_stockIn_part;
+        } else {
+            state = ErpConstant.product_state_stockIn;
         }
 
         return state;
     }
 
     public Integer getStockOutProductState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductStockOutQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_stockOut;
-        } else if (compare < 0) {
+        if (compare < 0) {
             state = ErpConstant.product_state_stockOut_part;
+        } else {
+            state = ErpConstant.product_state_stockOut;
         }
 
         return state;
     }
 
     public Integer getProductSaleState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductSoldQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_sold;
-        } else if (compare < 0) {
+         if (compare < 0) {
             state = ErpConstant.product_state_sold_part;
+        } else {
+            state = ErpConstant.product_state_sold;
         }
 
         return state;
     }
 
     public Integer getProductOnReturnState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductOnReturnQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_onReturnProduct;
-        } else if (compare < 0) {
+        if (compare < 0) {
             state = ErpConstant.product_state_onReturnProduct_part;
+        } else {
+            state = ErpConstant.product_state_onReturnProduct;
         }
 
         return state;
     }
 
     public Integer getProductReturnedState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductReturnedQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_returnedProduct;
-        } else if (compare < 0) {
+        if (compare < 0) {
             state = ErpConstant.product_state_returnedProduct_part;
+        } else {
+            state = ErpConstant.product_state_returnedProduct;
         }
 
         return state;
@@ -1694,37 +1629,107 @@ public class ErpService {
         }
     }
 
+    public Float getPurchaseQuantityByProduct(Product product) {
+        Float quantity = 0f;
+
+        PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
+        detailProduct.setProduct(product);
+        List<PurchaseDetailProduct> detailProducts = erpDao.query(detailProduct);
+
+        if (detailProducts.size() > 0) {
+            quantity = detailProducts.get(0).getPurchaseDetail().getQuantity();
+        }
+
+        return quantity;
+    }
+
+    /**
+     * 获取入库数量
+     * @param product
+     * @return
+     */
     public Float getProductStockInQuantity(Product product) {
-        List<StockInOutDetail> details = getStockInOutDetail(product);
+        List<StockInOutDetail> details = getStockInOutDetails(product);
 
         Float quantity = 0f;
         for (StockInOutDetail detail : details) {
             StockInOut stockInOut = (StockInOut) erpDao.queryById(detail.getStockInOut().getId(), detail.getStockInOut().getClass());
 
-            if (detail.getState().compareTo(ErpConstant.stockInOut_detail_state_finished) == 0 &&
-                    stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) <= 0) {
-                quantity = new BigDecimal(Float.toString(quantity)).add(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue();
+            if (detail.getState().compareTo(ErpConstant.stockInOut_detail_state_finished) == 0) {
+                Float itemQuantity;
+                if (detail.getUnit().equals(ErpConstant.unit_g) || detail.getUnit().equals(ErpConstant.unit_kg) ||
+                        detail.getUnit().equals(ErpConstant.unit_ct) || detail.getUnit().equals(ErpConstant.unit_oz)) {
+                    itemQuantity = detail.getQuantity();
+                } else {
+                    itemQuantity = 1f;
+                }
+
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) <= 0) {
+                    quantity = new BigDecimal(Float.toString(quantity)).add(new BigDecimal(Float.toString(itemQuantity))).floatValue();
+                } else {
+                    quantity = new BigDecimal(Float.toString(quantity)).subtract(new BigDecimal(Float.toString(itemQuantity))).floatValue();
+                }
             }
         }
 
         return quantity;
     }
 
+    /**
+     * 获取出库数量
+     *
+     * 出库数量计算规则：
+     * 由于入库是先入库上次出库商品，因此入库商品可能只包含上次出库商品，也可能同时包含上次出库商品及未入库的商品，
+     * 因此一次入库的入库数量 = 前次出库数量 + 未出库商品数量（可能为0）。
+     * 因此一次出库入库的实际出库数量为: 1.如果 该次出库数量 >= 该次入库数量， 则 一次出库入库的实际出库数量 = 该次出库数量 - 该次入库数量；
+     *                                   2. 如果 该次出库数量 < 该次入库数量， 则 一次出库入库的实际出库数量 = 0；
+     *
+     * @param product
+     * @return
+     */
     public Float getProductStockOutQuantity(Product product) {
-        List<StockInOutDetail> details = getStockInOutDetail(product);
+        List<StockInOutDetail> details = getStockInOutDetails(product);
+
+        int startPosition = 0;
+        for (int i = details.size()-1; i >= 0; i--) {
+            StockInOut stockInOut = (StockInOut) erpDao.queryById(details.get(i).getStockInOut().getId(), details.get(i).getStockInOut().getClass());
+            /**
+             * details 里的元素是按最新的排列在最前面,排列方式形如：出库/入库/入库/出库/入库。所以从 list 末尾找第一次出库的元素
+             */
+            if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) >= 0) {
+                startPosition = i;
+            }
+            break;
+        }
 
         Float quantity = 0f;
-        for (StockInOutDetail detail : details) {
-            StockInOut stockInOut = (StockInOut) erpDao.queryById(detail.getStockInOut().getId(), detail.getStockInOut().getClass());
+        for (int i = startPosition; i >= 0; i--) {
+            StockInOut stockInOut = (StockInOut) erpDao.queryById(details.get(i).getStockInOut().getId(), details.get(i).getStockInOut().getClass());
 
-            if (detail.getState().compareTo(ErpConstant.stockInOut_detail_state_finished) == 0 &&
-                    stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) >= 0) {
-                quantity = new BigDecimal(Float.toString(quantity)).add(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue();
+            if (details.get(i).getState().compareTo(ErpConstant.stockInOut_detail_state_finished) == 0) {
+                Float itemQuantity;
+                if (details.get(i).getUnit().equals(ErpConstant.unit_g) || details.get(i).getUnit().equals(ErpConstant.unit_kg) ||
+                        details.get(i).getUnit().equals(ErpConstant.unit_ct) || details.get(i).getUnit().equals(ErpConstant.unit_oz)) {
+                    itemQuantity = details.get(i).getQuantity();
+                } else {
+                    itemQuantity = 1f;
+                }
+
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) >= 0) {
+                    quantity = new BigDecimal(Float.toString(quantity)).add(new BigDecimal(Float.toString(itemQuantity))).floatValue();
+                } else {
+                    quantity = new BigDecimal(Float.toString(quantity)).subtract(new BigDecimal(Float.toString(itemQuantity))).floatValue();
+
+                    if (quantity.compareTo(0f) < 0) {
+                        quantity = 0f;
+                    }
+                }
             }
         }
 
         return quantity;
     }
+
 
     public Float getProductSoldQuantity(Product product) {
         Map<String, Float> productSoldQuantity = writer.gson.fromJson(orderClient.getProductSoldQuantity(writer.gson.toJson(product)),
@@ -1744,7 +1749,7 @@ public class ErpService {
         return productSoldQuantity.get(ErpConstant.product_returned_quantity);
     }
 
-    public List<StockInOutDetail> getStockInOutDetail(Product product) {
+    public List<StockInOutDetail> getStockInOutDetails(Product product) {
         StockInOutDetailProduct queryDetailProduct = new StockInOutDetailProduct();
         queryDetailProduct.setProduct(product);
         List<StockInOutDetailProduct> detailProducts = erpDao.query(queryDetailProduct);
@@ -1790,8 +1795,8 @@ public class ErpService {
         }
 
         if (!result.contains(CommonConstant.fail+CommonConstant.fail)) {
-            Product product = new Product();
             for (Integer id : productIds) {
+                Product product = (Product) erpDao.queryById(id, Product.class);
                 product.setState(toState);
                 result += erpDao.updateById(id, product);
             }
@@ -1881,7 +1886,7 @@ public class ErpService {
                     Float totalStockInQuantity = new BigDecimal(Float.toString(getProductStockInQuantity(detailProduct.getProduct()))).
                             add(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue();
 
-                    if (totalStockInQuantity.compareTo(getProductQuantity(detailProduct.getProduct())) > 0) {
+                    if (totalStockInQuantity.compareTo(getPurchaseQuantityByProduct(detailProduct.getProduct())) > 0) {
                         result += CommonConstant.fail + ",商品:" + dbProduct.getNo() + "入库数量大于商品采购数量，不能入库";
                         break;
                     }
@@ -1891,8 +1896,8 @@ public class ErpService {
                     Float totalStockOutQuantity = new BigDecimal(Float.toString(getProductStockOutQuantity(detailProduct.getProduct()))).
                             add(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue();
 
-                    if (totalStockOutQuantity.compareTo(getProductQuantity(detailProduct.getProduct())) > 0) {
-                        result += CommonConstant.fail + ",商品:" + dbProduct.getNo() + "出库数量大于商品采购数量，不能出库";
+                    if (totalStockOutQuantity.compareTo(getProductStockInQuantity(detailProduct.getProduct())) > 0) {
+                        result += CommonConstant.fail + ",商品:" + dbProduct.getNo() + "出库数量大于商品入库数量，不能出库";
                         break;
                     }
                 }
@@ -1966,6 +1971,25 @@ public class ErpService {
         return printContent;
     }
 
+    public List<ExpressDeliverDetail> getSfExpressWayBillsByStockInOut(StockInOut stockOut) {
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+
+        ExpressDeliver expressDeliver = getSfExpressOrderByStockInOut(stockOut);
+        for (ExpressDeliverDetail dbDetail : expressDeliver.getDetails()) {
+            dbDetail = getSfWaybillInfo(dbDetail);
+
+            if (!dbDetail.getResult().equals("3")) {
+                dbDetail.setExpressDeliver(expressDeliver);
+                //防止嵌套
+                dbDetail.getExpressDeliver().setDetails(null);
+
+                details.add(dbDetail);
+            }
+        }
+
+        return details;
+    }
+
     /**
      * 根据收件人及出库单产生顺丰快递单
      * @param receiverInfo
@@ -1974,15 +1998,20 @@ public class ErpService {
      */
     public String generateSfExpressOrderByReceiverAndStockOut(ExpressDeliver receiverInfo, StockInOut stockOut){
         logger.info("generateSfExpressOrderByReceiverAndStockOut start: receiverInfo:" + receiverInfo.toString() + ", stockOut:" + stockOut.getId());
-        String result;
+        String result = "";
 
         /**
          * 重复打印时，由于第一次已经生成快递单，不再需要生成顺丰快递单
          */
         ExpressDeliver expressDeliver = getSfExpressOrderByStockInOut(stockOut);
         if (!isReceiverInfoSame(receiverInfo, expressDeliver)) {
-            expressDeliver = generateExpressDeliver(receiverInfo, stockOut);
-            result = expressDeliverOrder(expressDeliver);
+            List<ExpressDeliverDetail> details = expressDeliverOrder(generateExpressDeliver(receiverInfo, stockOut));
+
+            if (!details.isEmpty()) {
+                result += CommonConstant.success;
+            } else {
+                result += CommonConstant.fail;
+            }
 
         } else {
             result = CommonConstant.success;
@@ -2002,7 +2031,6 @@ public class ErpService {
         expressDeliver.setDeliver(ErpConstant.deliver_sfExpress);
         expressDeliver.setType(ErpConstant.deliver_sfExpress_type);
         expressDeliver.setDate(receiverInfo.getDate());
-        expressDeliver.setState(ErpConstant.express_state_sending);
 
         expressDeliver.setReceiver(receiverInfo.getReceiver());
         expressDeliver.setReceiverAddress(receiverInfo.getReceiverAddress());
@@ -2034,12 +2062,10 @@ public class ErpService {
             Product product = (Product) erpDao.queryById(detailProducts.get(0).getProduct().getId(), detailProducts.get(0).getProduct().getClass());
 
             ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
-            expressDeliverDetail.setExpressNo(ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId());
             expressDeliverDetail.setProductNo(product.getNo());
             expressDeliverDetail.setQuantity(detail.getQuantity());
             expressDeliverDetail.setUnit(detail.getUnit());
             expressDeliverDetail.setPrice(product.getFatePrice());
-            expressDeliverDetail.setState(ErpConstant.express_detail_state_unSend);
 
             Set<ExpressDeliverDetailProduct> deliverDetailProducts = new HashSet<>();
             for (StockInOutDetailProduct ele : detailProducts) {
@@ -2086,17 +2112,69 @@ public class ErpService {
         return false;
     }
 
-    public String expressDeliverOrder(ExpressDeliver expressDeliver) {
-        String result = CommonConstant.fail;
 
-        result += erpDao.save(expressDeliver);
+    public List<ExpressDeliverDetail> expressDeliverOrders(List<ExpressDeliver> expressDelivers) {
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+        for (ExpressDeliver expressDeliver : expressDelivers) {
+            details.addAll(expressDeliverOrder(expressDeliver));
+        }
+        return details;
+    }
+
+    public List<ExpressDeliverDetail> expressDeliverOrder(ExpressDeliver expressDeliver) {
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+
+        expressDeliver.setState(ErpConstant.express_state_sending);
+        expressDeliver.setInputDate(dateUtil.getSecondCurrentTimestamp());
+        String result = erpDao.save(expressDeliver);
 
         for (ExpressDeliverDetail expressDeliverDetail : expressDeliver.getDetails()) {
+            expressDeliverDetail.setExpressNo(ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId());
+            expressDeliverDetail.setState(ErpConstant.express_detail_state_unSend);
             expressDeliverDetail.setExpressDeliver(expressDeliver);
+            expressDeliverDetail.setWeight(getExpressDeliverDetailWeight(expressDeliverDetail));
             result += erpDao.save(expressDeliverDetail);
 
-            for (ExpressDeliverDetailProduct expressDeliverDetailProduct : expressDeliverDetail.getExpressDeliverDetailProducts()) {
-                expressDeliverDetailProduct.setExpressDeliverDetail(expressDeliverDetail);
+            for (ExpressDeliverDetailProduct detailProduct : expressDeliverDetail.getExpressDeliverDetailProducts()) {
+                detailProduct.setExpressDeliverDetail(expressDeliverDetail);
+                result += erpDao.save(detailProduct);
+            }
+        }
+
+        if (!result.contains(CommonConstant.fail)) {
+            details.addAll(sfBspOrder(expressDeliver));
+        }
+
+        /**
+         * 防止循环嵌套
+         */
+        for (ExpressDeliverDetail detail : details) {
+            detail.getExpressDeliver().setDetails(null);
+
+            for (ExpressDeliverDetailProduct detailProduct : detail.getExpressDeliverDetailProducts()) {
+                detailProduct.getExpressDeliverDetail().setExpressDeliverDetailProducts(null);
+            }
+        }
+
+        return details;
+    }
+
+/*    public String expressDeliverOrder(ExpressDeliver expressDeliver) {
+        String result = CommonConstant.fail;
+
+        expressDeliver.setState(ErpConstant.express_state_sending);
+        expressDeliver.setInputDate(dateUtil.getSecondCurrentTimestamp());
+        result += erpDao.save(expressDeliver);
+
+        for (ExpressDeliverDetail detail : expressDeliver.getDetails()) {
+            detail.setExpressNo(ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId());
+            detail.setState(ErpConstant.express_detail_state_unSend);
+            detail.setExpressDeliver(expressDeliver);
+            detail.setWeight(getExpressDeliverDetailWeight(detail));
+            result += erpDao.save(detail);
+
+            for (ExpressDeliverDetailProduct expressDeliverDetailProduct : detail.getExpressDeliverDetailProducts()) {
+                expressDeliverDetailProduct.setExpressDeliverDetail(detail);
                 result += erpDao.save(expressDeliverDetailProduct);
             }
         }
@@ -2104,181 +2182,330 @@ public class ErpService {
         result += sfExpressOrder(expressDeliver);
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }*/
+
+    public List<OrderQueryRespDto> sfExpressOrderQuery(ExpressDeliver expressDeliver) {
+        logger.info("sfExpressOrderQuery start");
+
+        List<OrderQueryRespDto> orderQueryRespDtos = new ArrayList<>();
+        for (ExpressDeliverDetail detail : expressDeliver.getDetails()) {
+            OrderQueryRespDto orderQueryRespDto = sfExpressOrderQuery(detail.getExpressNo());
+
+            if (orderQueryRespDto != null) {
+                orderQueryRespDtos.add(orderQueryRespDto);
+            }
+        }
+
+        logger.info("sfExpressOrderQuery end");
+        return  orderQueryRespDtos;
     }
 
     /**
-     * 调用顺丰快递单接口，在顺丰系统生成快递单
+     * 下载出库商品快递单
      * @param expressDeliver
+     * @return
+     */
+    public String downloadSfWaybill(ExpressDeliver expressDeliver) {
+        logger.info("downloadSfWaybill start:" + expressDeliver.getId());
+        String sfWaybills = "";
+
+        List<OrderQueryRespDto> orderQueryRespDtos = sfExpressOrderQuery(expressDeliver);
+        if (!orderQueryRespDtos.isEmpty()){
+            for (OrderQueryRespDto orderQueryRespDto : orderQueryRespDtos) {
+
+                if (orderQueryRespDto.getMailNo() != null) {
+                    String sfWaybill = downloadSfWaybill(orderQueryRespDto.getOrderId());
+                    if (sfWaybill.contains("<img")) {
+                        sfWaybills += sfWaybill;
+
+                        ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
+                        expressDeliverDetail.setExpressNo(orderQueryRespDto.getOrderId());
+                        ExpressDeliverDetail dbExpressDeliverDetail = (ExpressDeliverDetail) erpDao.query(expressDeliverDetail).get(0);
+                        expressDeliverDetail.setState(ErpConstant.express_detail_state_sended);
+                        expressDeliverDetail.setId(dbExpressDeliverDetail.getId());
+                        erpDao.updateById(expressDeliverDetail.getId(), expressDeliverDetail);
+                    }
+                }
+            }
+        }
+
+        logger.info("downloadSfWaybill end");
+        return sfWaybills;
+    }
+
+    /**
      *
-     *  快递单内容
-     *
-     *  请求报文内容
-    字段名称 类型 是否
-    必须
-    描述
-    orderId  String(56)  是  客户订单号，最大长度限于 56 位，该字段客户
-    可自行定义，请尽量命名的规范有意义，如
-    SFAPI20160830001，订单号作为客户下单的凭
-    证， 不允许重复提交 订单号。
-    expressType  String(5)  是  常用快件产品类别：
-    类别 描述
-    1  顺丰标快
-    2  顺丰特惠
-    3  电商特惠
-    5  顺丰次晨
-    6  顺丰即日
-    7  电商速配
-    15  生鲜速配
-    payMethod  Number(1)  是  付款方式：
-    类别 描述
-    1  寄付现结（可不传 custId）
-    /寄付月结 【默认值】 (必传
-    custId)
-    2  收方付
-    3  第三方月结卡号支付
-    isDoCall  Number(1)  否  是否下 call（通知收派员上门取件）
-    类别 描述
-    1  下 call
-    0  不下 call【默认值】
-    isGenBillno  Number(1)  否  是否申请运单号
-    类别 描述
-    1  申请【默认值】
-    0  不申请
-    isGenEletricPic  Number(1)  否  是否生成电子运单图片
-    类别 描述
-    1  生成【默认值】
-    0  不生成
-    custId  String(20)  是  顺丰月结卡号
-    顺丰开放平台接口接入规范 V1.0
-    12  顺丰科技
-    2016 年 08 月 30 日
-    payArea  String(20)  否  月结卡号对应的网点，如果付款方式为第三方月
-    结卡号支付，则必填
-    sendStartTime  String(18)
-    否  要求上门取件开始时间，格式：YYYY-MM-DD
-    HH24:MM:SS，示例：2016-8-30 09:30:00，
-    默认值为系统收到订单的系统时间
-    needReturnTrackingNo String(2)  否  是否需要签回单号
-    类别 描述
-    1  需要
-    0  不需要【默认值】
-    remark String(100) 否 备注，最大长度 30 个汉字
-    deliverInfo  否  寄件方信息
-    company  String(100)  否  寄件方公司名称
-    如果不提供，将从系统默认配置获取
-    contact  String(100)  否  寄件方联系人
-    如果不提供，将从系统默认配置获取
-    tel  String(20)  否  寄件方联系电话
-    如果不提供，将从系统默认配置获取
-    province  String(30)  否  寄件方所在省份，必须是标准的省名称称谓
-    如： 广东省（省字不要省略）
-    如果是直辖市，请直接传北京市、上海市等
-    如果不提供，将从系统默认配置获取
-    city  String(100)  否  寄件方所属城市名称，必须是标准的城市称谓
-    如： 深圳市（市字不要省略）
-    如果是直辖市，请直接传北京市、上海市等
-    如果不提供，将从系统默认配置获取
-    county  String(30)  否
-    寄件人所在县/区，必须是标准的县/区称谓
-    示例： 福田区（区字不要省略）
-    如果不提供，将从系统默认配置获取
-    address  String(200)  否  寄件方详细地址
-    如：“福田区新洲十一街万基商务大厦 10 楼”
-    如果不提供，将从系统默认配置获取
-    shipperCode  String(30)  否  寄件方邮编代码
-    mobile String(20) 否 寄件方手机
-    consignee Info  收件方信息
-    company  String(100)  是  到件方公司名称
-    contact  String(100)  是  到件方联系人
-    tel  String(20)  是  到件方联系电话
-    province  String(30)  是  到件方所在省份，必须是标准的省名称称谓
-    如：广东省（省字不要省略）
-    如果是直辖市，请直接传北京市、上海市等
-    city  String(100)  是  到件方所属城市名称，必须是标准的城市称谓
-    如：深圳市（市字不要省略）
-    如果是直辖市，请直接传北京市、上海市等
-    county  String(30)  是
-    到件人所在县/区，必须是标准的县/区称谓
-    如：福田区（区字不要省略）
-    address  String(200)  是  到件方详细地址
-    如：“新洲十一街万基商务大厦 10 楼”
-    shipperCode  String(30)  否  到件方邮编代码
-    mobile String(20) 否 到件方手机
-    顺丰开放平台接口接入规范 V1.0
-    13  顺丰科技
-    2016 年 08 月 30 日
-    cargoInfo  货物信息
-    parcelQuantity  Number(5)  否  包裹数，一个包裹对应一个运单号，如果是大于
-    1 个包裹，则返回按照子母件的方式返回母运单
-    号和子运单号。默认为 1
-    cargo  String(4000)  是  货物名称，如果有多个货物，以英文逗号分隔，
-    如：“手机,IPAD,充电器”
-    cargoCount  String(4000)  否  货物数量，多个货物时以英文逗号分隔，且与货
-    物名称一一对应
-    如：2,1,3
-    cargoUnit  String(4000)  否  货物单位，多个货物时以英文逗号分隔，且与货
-    物名称一一对应
-    如：个,台,本
-    cargoWeight  String(4000)  否  货物重量，多个货物时以英文逗号分隔，且与货
-    物名称一一对应
-    如：1.0035,1.0,3.0
-    cargoAmount  String(4000)  否  货物单价，多个货物时以英文逗号分隔，且与货
-    物名称一一对应
-    如：1000,2000,1500
-    cargoTotalWeight Number(10,2) 否 订单货物总重量， 单位 KG， 如果提供此值， 必须>0
-    addedServices  增值服务 （注意字段名称必须为英文字母大写 ）
-    CUSTID  String(30)  否  代收货款月结卡号，如果选择 COD 增值服务-代
-    收货款， 必填， 该项为代送货款使用的月结卡号，
-    该项值必须在，COD 前设置（即先传 CUSTID 值再
-    传 COD 值） 否则无效
-    COD  String(20)  否  代收货款，value代收货款值，上限为20000，以
-    原寄地所在区域币种为准，如中国大陆为人民
-    币，香港为港币，保留1位小数，如 99.9 。
-    value1为代收货款协议卡号（可能与月结卡号相
-    同），
-    如选择此服务，须增加CUSTID字段
-    INSURE  String(30)  否  保价，value为声明价值(即该包裹的价值)
-    MSG  String(30)  否  签收短信通知，value 为手机号码
-    PKFREE  String(30)  否  包装费，value 为包装费费用.
-    SINSURE String(30)  否  特殊保价，value 为服务费.
-    SDELIVERY  String(30)  否  特殊配送，value为服务特殊配送服务费.
-    SADDSERVICE  String(30)  否  特殊增值服务，value 特殊增值服务费
-    5.1.1.2.1.2  响应 报文内容
-    字段名称  类型  是否
-    必须
-    描述
-    orderId  String  是  客户订单号
-    filterLevel  String  否  筛单级别 0：不筛单 4：四级筛单
-    orderTriggerCondi
-    tion
-    String  否  订单触发条件 1：上门收件 2 电子称 3：
-    收件入仓 4：大客户装包 5：大客户装车
-    remarkCode  String  否  01 ：下单操作成功 02：下单操作失败 03：
-    订单号重复
+     *  ========================= 顺丰丰桥 bsp 接口 =======================
      *
      */
-    public String sfExpressOrder(ExpressDeliver expressDeliver) {
+
+    /**
+     * sf bsp 下单
+     * @param expressDeliver
+     * @return
+     */
+    public List<ExpressDeliverDetail> sfBspOrder(ExpressDeliver expressDeliver) {
+        logger.info("bspOrder start, expressDeliver:" + expressDeliver.toString());
+
+        ExpressDeliverDetail[] detailsArr = new ExpressDeliverDetail[expressDeliver.getDetails().size()];
+        expressDeliver.getDetails().toArray(detailsArr);
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+
+        int i = 0;
+        int tryCount = 0;
+        while(i < detailsArr.length){
+            String result = sfBspOrder(setSfBspOrderXml(expressDeliver, detailsArr[i]));
+
+            if (result.contains("<Head>OK</Head>")) {
+                JSONObject orderResponse = XML.toJSONObject(result).getJSONObject("Response").getJSONObject("Body").getJSONObject("OrderResponse");
+
+                detailsArr[i].setExpressNo(orderResponse.get("orderid").toString());
+                detailsArr[i].setMailNo(orderResponse.get("mailno").toString());
+                if (result.contains("origincode")) {
+                    detailsArr[i].setOrigin(orderResponse.get("origincode").toString());
+                }
+                if (result.contains("destcode")) {
+                    detailsArr[i].setDest(orderResponse.get("destcode").toString());
+
+                }
+                detailsArr[i].setResult(orderResponse.get("filter_result").toString());
+
+                details.add(detailsArr[i]);
+
+                ++i;
+                tryCount = 0;
+
+            } else {
+                ++tryCount;
+
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            /**
+             * 重试次数为 3 次
+             */
+            if (tryCount == 3) {
+                ++i;
+                tryCount = 0;
+            }
+        }
+
+        logger.info("bspOrder end ");
+        return details;
+    }
+
+    public String setSfBspOrderXml(ExpressDeliver expressInfo, ExpressDeliverDetail detail) {
+        String orderXml = "<Request service='" + ErpConstant.sf_bsp_orderService + "' lang='zh-CN'>" +
+                "<Head>" + sfExpress.getCustCode() + "</Head>" +
+                "<Body>" +
+                "<Order orderid ='" + detail.getExpressNo() + "' " +
+                "j_company='" + expressInfo.getSenderCompany() + "' " +
+                "j_contact='" + expressInfo.getSender() + "' " +
+                "j_tel='" + expressInfo.getSenderTel() + "' " +
+                "j_mobile='" + expressInfo.getSenderMobile() + "' " +
+                "j_province='" + expressInfo.getSenderProvince() + "' " +
+                "j_city='" + expressInfo.getSenderCity() + "' " +
+                "j_address='" + expressInfo.getSenderAddress() + "' " +
+                "d_company='" + expressInfo.getReceiverCompany() + "' " +
+                "d_contact='" + expressInfo.getReceiver() + "' " +
+                "d_tel='" + expressInfo.getReceiverTel() + "' " +
+                "d_mobile='" + expressInfo.getReceiverMobile() + "' ";
+
+        if (expressInfo.getReceiverProvince() != null) {
+            orderXml += "d_province='" + expressInfo.getReceiverProvince() + "' ";
+        }
+        if (expressInfo.getReceiverCity() != null) {
+            orderXml += "d_city='" + expressInfo.getReceiverCity() + "' ";
+        }
+
+        orderXml += "d_address='" + expressInfo.getReceiverAddress() + "' " +
+                "express_type='1' " +
+                "pay_method='" + ErpConstant.sf_bsp_payMethod + "' " +
+                "custid='" + sfExpress.getCustId() + "' " +
+                "parcel_quantity='1' " +
+                "sendstarttime='" + dateUtil.getSimpleDateFormat().format(expressInfo.getDate()) + "'>" +
+                "<Cargo Name='" + detail.getProductNo() + "' " +
+                "count='" + getExpressDeliverDetailCount(detail) + "' " +
+                "unit='" + getExpressDeliverDetailUnit(detail) + "' ";
+
+        if (detail.getWeight() != null) {
+            orderXml += "weight='" + detail.getWeight() + "' ";
+        }
+
+        orderXml += "amount='" + detail.getPrice() + "' " +
+                "currency='CNY' " +
+                "source_area='中国'></Cargo>";
+
+        if (detail.getInsure() != null) {
+            orderXml += "<AddedService name='INSURE' value='" + Integer.toString((int)Math.rint(detail.getInsure().doubleValue())) + "'></AddedService>";
+        }
+
+        orderXml += "</Order></Body></Request>";
+
+        return orderXml;
+    }
+
+    public String sfBspOrder(String orderXml) {
+        logger.info("bspOrder start, orderXml:" + orderXml);
+        String result = sfBspHttpRequest(orderXml);
+        logger.info("bspOrder end, result:" + result);
+        return result;
+    }
+
+
+    /**
+     * sf bsp 查询订单
+     * @param detail
+     * @return
+     */
+    public ExpressDeliverDetail sfBspOrderQuery(ExpressDeliverDetail detail) {
+        String result = sfBspOrderQuery(setSfBspOrderQueryXml(detail));
+
+//        String result = result = "<?xml version='1.0' encoding='UTF-8'?><Response service=\"OrderService\"><Head>OK</Head><Body><OrderResponse filter_result=\"2\" destcode=\"010\" mailno=\"444000094285\" origincode=\"871\" orderid=\"ED201801051134280001\"/></Body></Response>";
+
+        if (result.contains("<Head>OK</Head>")) {
+            JSONObject orderResponse = XML.toJSONObject(result).getJSONObject("Response").getJSONObject("Body").getJSONObject("OrderResponse");
+
+            detail.setExpressNo(orderResponse.get("orderid").toString());
+            detail.setMailNo(orderResponse.get("mailno").toString());
+            detail.setOrigin(orderResponse.get("origincode").toString());
+            detail.setDest(orderResponse.get("destcode").toString());
+            detail.setResult(orderResponse.get("filter_result").toString());
+        }
+
+        return detail;
+    }
+
+    public String setSfBspOrderQueryXml(ExpressDeliverDetail detail) {
+        return  "<Request service='" + ErpConstant.sf_bsp_OrderSearchService + "' lang='zh-CN'>" +
+                "<Head>" + sfExpress.getCustCode() + "</Head>" +
+                "<Body>" +
+                "<OrderSearch orderid='" + detail.getExpressNo() + "'/>" +
+                "</Body>" +
+                "</Request>";
+    }
+
+    public String sfBspOrderQuery(String orderQueryXml) {
+        logger.info("bspOrderQuery start, orderCancelXml:" + orderQueryXml);
+        String result = sfBspHttpRequest(orderQueryXml);
+        logger.info("bspOrderQuery end, result:" + result);
+        return result;
+    }
+
+
+
+    /**
+     * sf bsp 取消订单
+     * @param detail
+     * @return
+     */
+    public String sfBspOrderCancel(ExpressDeliverDetail detail) {
+        return sfBspOrderCancel(setSfBspOrderCancelXml(detail));
+    }
+
+    public String setSfBspOrderCancelXml(ExpressDeliverDetail detail) {
+        return  "<Request service='" + ErpConstant.sf_bsp_orderConfirmService +  "' lang='zh-CN'>" +
+                "<Head>" + sfExpress.getCustCode() + "</Head>" +
+                "<Body>" +
+                "<OrderConfirm " +
+                "orderid='" + detail.getExpressNo() + "' " +
+                "dealtype='2'>" +
+                "</OrderConfirm>" +
+                "</Body>" +
+                "</Request>";
+    }
+
+    public String sfBspOrderCancel(String orderCancelXml) {
+        logger.info("bspOrderCancel start, orderCancelXml:" + orderCancelXml);
+
+        String result = sfBspHttpRequest(orderCancelXml);
+
+        if (result.contains("<Head>OK</Head>")) {
+            result = XML.toJSONObject(result).getJSONObject("Response").getJSONObject("Body").getJSONObject("OrderConfirmResponse").
+                    get("res_status").toString().equals("2") ? CommonConstant.success : CommonConstant.fail;
+        } else {
+            result = XML.toJSONObject(result).getJSONObject("ERROR").getString("content");
+        }
+
+        logger.info("bspOrderCancel end, result:" + result);
+        return result;
+    }
+
+
+    public String sfBspHttpRequest(String requestXml) {
+        logger.info("sfBspHttpRequest start, requestXml:" + requestXml);
+
+        String result = "<Head>ERR</Head>";
+        try {
+            result = httpClientUtil.postSFAPI(sfExpress.getBspUrl(), requestXml, verifyCodeUtil.md5EncryptAndBase64(requestXml+sfExpress.getBspCheckWord()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        logger.info("sfBspHttpRequest end, result:" + result);
+        return result;
+    }
+
+    public ExpressDeliverDetail getSfWaybillInfo(ExpressDeliverDetail detail) {
+        return setWaybillinfo(sfBspOrderQuery(detail));
+    }
+
+    public ExpressDeliverDetail setWaybillinfo(ExpressDeliverDetail detail) {
+        String qzoneMailNo = "";
+        for (int i = 0; i < detail.getMailNo().length(); i++) {
+            qzoneMailNo += detail.getMailNo().charAt(i);
+            if ((i + 1) % 3 == 0) {
+                qzoneMailNo += " ";
+            }
+        }
+        detail.setQzoneMailNo(qzoneMailNo);
+        detail.setParcelQuantity(1);
+        detail.setMailNoBarcode(imageBase64.imageToBase64(barcodeUtil.generate128C(String.valueOf(detail.getMailNo()))));
+        detail.setPayType(ErpConstant.sf_bsp_payMethod_name);
+        detail.setCustId(sfExpress.getCustId());
+        return detail;
+    }
+
+
+
+    /**
+     *
+     *  ========================= 顺丰开发平台接口 =======================
+     *
+     */
+
+
+    /**
+     * 下单
+     * @param expressDeliver
+     * @return
+     */
+    public List<String> sfExpressOrder(ExpressDeliver expressDeliver) {
         logger.info("sfExpressOrder start, details:" + expressDeliver.toString());
 
-        String result = CommonConstant.fail;
+        List<String> expressNos = new ArrayList<>();
 
         //设置 uri
-        String url = httpProxyDiscovery.getHttpProxyAddress() + sfExpress.getOrderUri();
+        String url = sfExpress.getOrderUri();
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(sfExpress.getAppId());
         appInfo.setAppKey(sfExpress.getAppKey());
-        appInfo.setAccessToken(getSfToken(sfExpress.getAppId(), sfExpress.getAppKey()));
+        appInfo.setAccessToken(getSfToken());
 
-        for (ExpressDeliverDetail expressDeliverDetail : expressDeliver.getDetails()) {
+        for (ExpressDeliverDetail detail : expressDeliver.getDetails()) {
             //设置请求头
             MessageReq req = new MessageReq();
             HeadMessageReq head = new HeadMessageReq();
             head.setTransType(ErpConstant.sf_action_code_order);
-            head.setTransMessageId(expressDeliverDetail.getExpressNo().replace(ErpConstant.no_expressDelivery_perfix, ""));
+            head.setTransMessageId(detail.getExpressNo().replace(ErpConstant.no_expressDelivery_perfix, ""));
             req.setHead(head);
 
             OrderReqDto orderReqDto = new OrderReqDto();
-            orderReqDto.setOrderId(expressDeliverDetail.getExpressNo());
+            orderReqDto.setOrderId(detail.getExpressNo());
             orderReqDto.setExpressType((short) 1);
             orderReqDto.setPayMethod((short) 1);
             orderReqDto.setNeedReturnTrackingNo((short) 0);
@@ -2319,20 +2546,21 @@ public class ErpService {
             //货物信息
             CargoInfoDto cargoInfoDto = new CargoInfoDto();
             cargoInfoDto.setParcelQuantity(Integer.valueOf(1));
-            cargoInfoDto.setCargo(expressDeliverDetail.getProductNo());
-            cargoInfoDto.setCargoCount(Integer.toString((int)Math.rint(expressDeliverDetail.getQuantity().doubleValue())));
-            cargoInfoDto.setCargoUnit(expressDeliverDetail.getUnit());
-            cargoInfoDto.setCargoAmount(Integer.toString((int)Math.rint(expressDeliverDetail.getPrice().doubleValue())));
+            cargoInfoDto.setCargo(detail.getProductNo());
+            cargoInfoDto.setCargoCount(getExpressDeliverDetailCount(detail).toString());
+            cargoInfoDto.setCargoUnit(getExpressDeliverDetailUnit(detail));
+            cargoInfoDto.setCargoWeight(Float.toString(getExpressDeliverDetailWeight(detail)));
+            cargoInfoDto.setCargoAmount(Integer.toString((int)Math.rint(detail.getPrice().doubleValue())));
 
             orderReqDto.setDeliverInfo(deliverInfoDto);
             orderReqDto.setConsigneeInfo(consigneeInfoDto);
             orderReqDto.setCargoInfo(cargoInfoDto);
 
             //增值服务，商品保价
-            if (expressDeliverDetail.getInsure() != null && expressDeliverDetail.getInsure().compareTo(0f) > 0) {
+            if (detail.getInsure() != null && detail.getInsure().compareTo(0f) > 0) {
                 AddedServiceDto insureServiceDto = new AddedServiceDto();
                 insureServiceDto.setName(ErpConstant.sf_added_service_name_insure);
-                insureServiceDto.setValue(Integer.toString((int)Math.rint(expressDeliverDetail.getInsure().doubleValue())));
+                insureServiceDto.setValue(Integer.toString((int)Math.rint(detail.getInsure().doubleValue())));
 
                 orderReqDto.setAddedServices(new ArrayList());
                 orderReqDto.getAddedServices().add(insureServiceDto);
@@ -2346,36 +2574,18 @@ public class ErpService {
                 messageResp = OrderTools.order(url, appInfo, req);
             } catch (Exception e) {
                 e.printStackTrace();
-                result += CommonConstant.fail;
             }
 
             if (messageResp.getHead().getCode().equals(ErpConstant.sf_response_code_success) &&
                     messageResp.getBody().getRemarkCode().equals("01")) {
-                result += CommonConstant.success;
+                expressNos.add(detail.getExpressNo());
             } else {
-                result += CommonConstant.fail;
                 logger.info(messageResp.getHead().getMessage());
             }
         }
 
-        logger.info("sfExpressOrder end, " + result);
-        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
-    }
-
-    public List<OrderQueryRespDto> sfExpressOrderQuery(ExpressDeliver expressDeliver) {
-        logger.info("sfExpressOrderQuery start");
-
-        List<OrderQueryRespDto> orderQueryRespDtos = new ArrayList<>();
-        for (ExpressDeliverDetail detail : expressDeliver.getDetails()) {
-            OrderQueryRespDto orderQueryRespDto = sfExpressOrderQuery(detail.getExpressNo());
-
-            if (orderQueryRespDto != null) {
-                orderQueryRespDtos.add(orderQueryRespDto);
-            }
-        }
-
-        logger.info("sfExpressOrderQuery end");
-        return  orderQueryRespDtos;
+        logger.info("sfExpressOrder end, " + Arrays.toString(expressNos.toArray()));
+        return expressNos;
     }
 
     /**
@@ -2384,11 +2594,11 @@ public class ErpService {
      * @return
      */
     public OrderQueryRespDto sfExpressOrderQuery(String expressNo) {
-        String url = httpProxyDiscovery.getHttpProxyAddress() + sfExpress.getOrderQueryUri();
+        String url = sfExpress.getOrderQueryUri();
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(sfExpress.getAppId());
         appInfo.setAppKey(sfExpress.getAppKey());
-        appInfo.setAccessToken(getSfToken(sfExpress.getAppId(), sfExpress.getAppKey()));
+        appInfo.setAccessToken(getSfToken());
 
         MessageReq req = new MessageReq();
         HeadMessageReq head = new HeadMessageReq();
@@ -2408,43 +2618,23 @@ public class ErpService {
         }
 
         if (messageResp.getHead().getCode().equals(ErpConstant.sf_response_code_success)) {
+            updateMailNo(expressNo, messageResp.getBody().getMailNo());
             return messageResp.getBody();
         } else {
             return null;
         }
     }
 
-    /**
-     * 下载出库商品快递单
-     * @param expressDeliver
-     * @return
-     */
-    public String downloadSfWaybill(ExpressDeliver expressDeliver) {
-        logger.info("downloadSfWaybill start:" + expressDeliver.getId());
-        String sfWaybills = "";
-
-        List<OrderQueryRespDto> orderQueryRespDtos = sfExpressOrderQuery(expressDeliver);
-        if (!orderQueryRespDtos.isEmpty()){
-            for (OrderQueryRespDto orderQueryRespDto : orderQueryRespDtos) {
-
-                if (orderQueryRespDto.getMailNo() != null) {
-                    String sfWaybill = downloadSfWaybill(orderQueryRespDto.getOrderId());
-                    if (sfWaybill.contains("<img")) {
-                        sfWaybills += sfWaybill;
-
-                        ExpressDeliverDetail expressDeliverDetail = new ExpressDeliverDetail();
-                        expressDeliverDetail.setExpressNo(orderQueryRespDto.getOrderId());
-                        ExpressDeliverDetail dbExpressDeliverDetail = (ExpressDeliverDetail) erpDao.query(expressDeliverDetail).get(0);
-                        expressDeliverDetail.setState(ErpConstant.express_detail_state_sended);
-                        expressDeliverDetail.setId(dbExpressDeliverDetail.getId());
-                        erpDao.updateById(expressDeliverDetail.getId(), expressDeliverDetail);
-                    }
-                }
-            }
+    public void updateMailNo(String expressNo, String mailNo) {
+        try {
+            ExpressDeliverDetail deliverDetail = new ExpressDeliverDetail();
+            deliverDetail.setExpressNo(expressNo);
+            ExpressDeliverDetail dbDeliverDetail = (ExpressDeliverDetail) erpDao.query(deliverDetail).get(0);
+            dbDeliverDetail.setMailNo(mailNo);
+            erpDao.updateById(dbDeliverDetail.getId(), dbDeliverDetail);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        logger.info("downloadSfWaybill end");
-        return sfWaybills;
     }
 
     /**
@@ -2455,11 +2645,11 @@ public class ErpService {
     public String downloadSfWaybill(String expressNo) {
         String sfWaybillImage = "";
 
-        String url = httpProxyDiscovery.getHttpProxyAddress() + sfExpress.getImageUri();
+        String url = sfExpress.getImageUri();
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(sfExpress.getAppId());
         appInfo.setAppKey(sfExpress.getAppKey());
-        appInfo.setAccessToken(getSfToken(sfExpress.getAppId(), sfExpress.getAppKey()));
+        appInfo.setAccessToken(getSfToken());
 
         //设置请求头
         MessageReq<WaybillReqDto> req = new MessageReq<>();
@@ -2493,11 +2683,9 @@ public class ErpService {
 
     /**
      * 获取顺丰 token
-     * @param appId
-     * @param appKey
      * @return
      */
-    public String getSfToken(String appId, String appKey) {
+    public String getSfToken() {
         logger.info("getSfToken start");
         String token = (String) erpDao.getFromRedis(ErpConstant.sf_access_token_key);
 
@@ -2626,14 +2814,14 @@ public class ErpService {
     }
 
     public Integer getShippedProductState(Product product) {
-        Integer state = product.getState();
+        Integer state;
 
         int compare = getProductShippedQuantity(product).compareTo(getProductQuantity(product));
 
-        if (compare == 0) {
-            state = ErpConstant.product_state_shipped;
-        } else if (compare < 0) {
+        if (compare < 0) {
             state = ErpConstant.product_state_shipped_part;
+        } else {
+            state = ErpConstant.product_state_shipped;
         }
 
         return state;
@@ -2674,5 +2862,270 @@ public class ErpService {
         }
 
         return details;
+    }
+
+
+
+    /**
+     * 获取快递商品数量
+     * @param detail
+     * @return
+     */
+    public Integer getExpressDeliverDetailCount(ExpressDeliverDetail detail) {
+        Integer detailCount = null;
+
+        if (detail.getUnit().equals(ErpConstant.unit_g) || detail.getUnit().equals(ErpConstant.unit_kg) ||
+                detail.getUnit().equals(ErpConstant.unit_ct) || detail.getUnit().equals(ErpConstant.unit_oz)) {
+            detailCount = 1;
+        } else {
+            detailCount = detail.getQuantity().intValue();
+        }
+
+        return detailCount;
+    }
+
+    /**
+     * 获取快递商品单位
+     * @param detail
+     * @return
+     */
+    public String getExpressDeliverDetailUnit(ExpressDeliverDetail detail) {
+        String detailUnit = null;
+
+        if (detail.getUnit().equals(ErpConstant.unit_g) || detail.getUnit().equals(ErpConstant.unit_kg) ||
+                detail.getUnit().equals(ErpConstant.unit_ct) || detail.getUnit().equals(ErpConstant.unit_oz)) {
+            detailUnit = ErpConstant.unit_piece;
+        } else {
+            detailUnit = detail.getUnit();
+        }
+
+        return detailUnit;
+    }
+
+    /**
+     * 获取快递商品单位重量
+     * @param detail
+     * @return
+     */
+    public Float getExpressDeliverDetailWeight(ExpressDeliverDetail detail) {
+        Product queryProduct = ((ExpressDeliverDetailProduct)detail.getExpressDeliverDetailProducts().toArray()[0]).getProduct();
+        logger.info("getExpressDeliverDetailWeight start, unit:" + detail.getUnit() + ",quantity" + detail.getQuantity() + ",productId:" + queryProduct.getId());
+
+        Float detailWeight = null;
+
+        if (detail.getUnit().equals(ErpConstant.unit_g)) {
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.001")).floatValue();
+
+        } else if (detail.getUnit().equals(ErpConstant.unit_kg)) {
+            detailWeight = detail.getQuantity();
+
+        } else if (detail.getUnit().equals(ErpConstant.unit_ct)) {
+            /**
+             * 1 克拉 = 0.2 克 = 0.0002千克
+             */
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0002")).floatValue();
+
+        } else if (detail.getUnit().equals(ErpConstant.unit_oz)) {
+            /**
+             * 1 盎司 = 28.3495 克 = 0.0283495千克
+             */
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0283495")).floatValue();
+
+        } else {
+            Product dbProduct = (Product) erpDao.query(queryProduct).get(0);
+            String productWeight = null;
+
+            if (dbProduct != null) {
+                for (ProductOwnProperty property : dbProduct.getProperties()) {
+                    if (property.getName().equals(ErpConstant.product_property_name_weight)) {
+                        productWeight = property.getValue();
+                        break;
+                    }
+                }
+            }
+
+            /**
+             * 商品重量单位为 克
+             */
+            if (productWeight != null) {
+                detailWeight = new BigDecimal(productWeight).multiply(new BigDecimal("0.001")).floatValue();
+            }
+        }
+
+        /**
+         * 精确到克, 即小数点后 3 位
+         */
+        if (detailWeight != null) {
+            detailWeight = Float.valueOf(String.valueOf(Math.round(detailWeight * 1000)/1000));
+        }
+
+        logger.info("getExpressDeliverDetailWeight end, detailWeight:" + detailWeight);
+
+        return detailWeight;
+    }
+
+
+
+
+
+    public String launchAuditFlow(String entity, Integer entityId, String entityNo, String auditName, String content, User user) {
+        String result = CommonConstant.fail;
+
+        logger.info("launchAuditFlow start:" + result);
+
+        /**
+         * 创建审核流程第一个节点，发起审核流程
+         */
+        Audit audit = new Audit();
+        audit.setEntity(entity);
+        audit.setEntityId(entityId);
+        audit.setEntityNo(entityNo);
+        audit.setName(auditName);
+        audit.setContent(content);
+
+        Post post = (Post)(((List<User>)erpDao.query(user)).get(0)).getPosts().toArray()[0];
+        audit.setCompany(post.getDept().getCompany());
+
+        Map<String, String> result1 = writer.gson.fromJson(sysClient.launchAuditFlow(writer.gson.toJson(audit)),
+                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+
+        result = result1.get(CommonConstant.result);
+
+        logger.info("launchAuditFlow end, result:" + result);
+
+        return result;
+    }
+
+    public String launchAuditFlowByPost(String entity, Integer entityId, String entityNo, String auditName, Post post, String preFlowAuditNo) {
+        String result = CommonConstant.fail;
+
+        logger.info("launchAuditFlowByPost start:" + result);
+
+        /**
+         * 创建审核流程第一个节点，发起审核流程
+         */
+        Audit audit = new Audit();
+        audit.setEntity(entity);
+        audit.setEntityId(entityId);
+        audit.setEntityNo(entityNo);
+        audit.setName(auditName);
+        audit.setPreFlowAuditNo(preFlowAuditNo);
+
+        audit.setPost(post);
+        audit.setCompany(post.getDept().getCompany());
+
+        Map<String, String> result1 = writer.gson.fromJson(sysClient.launchAuditFlow(writer.gson.toJson(audit)),
+                new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+
+        result = result1.get(CommonConstant.result);
+
+        logger.info("launchAuditFlowByPost end, audit result:" + result);
+
+        return result;
+    }
+
+    /**
+     * 查询同批次同类型商品是否已经发起审核流程
+     * @param product
+     * @return
+     */
+    public List queryProductAudit(Product product) {
+        List audits = null;
+
+        try {
+            Audit audit = new Audit();
+            audit.setEntity(AuditFlowConstant.business_product);
+            audit.setEntityNo(product.getNo());
+
+            String auditSql = objectToSql.generateSelectSqlByAnnotation(audit);
+            String selectSql = "", fromSql = "", whereSql = "", sortNumSql = "";
+
+            String[] sqlParts = erpDao.getSqlPart(auditSql, Audit.class);
+            selectSql = sqlParts[0];
+            fromSql = sqlParts[1];
+            whereSql = sqlParts[2];
+            sortNumSql = sqlParts[3];
+
+            fromSql += ", " + objectToSql.getTableName(Product.class) + " t21 ";
+            if (!whereSql.trim().equals("")) {
+                whereSql += " and ";
+            }
+            whereSql += " t21." + objectToSql.getColumn(Product.class.getDeclaredField("no")) +
+                    " = t." + objectToSql.getColumn(Audit.class.getDeclaredField("entityNo")) +
+                    " and t21." + objectToSql.getColumn(Product.class.getDeclaredField("describe")) +
+                    " = " + product.getDescribe().getId();
+
+            audits = erpDao.queryBySql("select " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql, Audit.class);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return audits;
+    }
+
+    public String queryProductOnSalePreFlowAuditNo(Product product){
+        PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
+        detailProduct.setProduct(product);
+        PurchaseDetail detail = ((PurchaseDetailProduct)erpDao.query(detailProduct).get(0)).getPurchaseDetail();
+
+        Audit audit = new Audit();
+        audit.setEntity(Purchase.class.getSimpleName().toLowerCase());
+        audit.setEntityId(detail.getPurchase().getId());
+
+        List<Audit> dbAudits = writer.gson.fromJson(
+                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
+                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
+
+        return dbAudits.get(0).getNo();
+    }
+
+    public String updateAudit(Integer entityId, String oldEntity, String newEntity, String newName, String newContent) {
+        String result = CommonConstant.fail;
+
+        Audit audit = new Audit();
+        audit.setEntity(oldEntity);
+        audit.setEntityId(entityId);
+
+        List<Audit> dbAudits = writer.gson.fromJson(
+                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
+                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
+
+        for (Audit audit1 : dbAudits) {
+            audit.setId(audit1.getId());
+            audit.setName(newName);
+            audit.setContent(newContent);
+            audit.setEntity(newEntity);
+
+            Map<String, String> result1 = writer.gson.fromJson(sysClient.update(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
+                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+
+            result = result1.get(CommonConstant.result);
+        }
+
+        return result;
+    }
+
+    public String deleteAudit(Integer entityId, String entity) {
+        String result = CommonConstant.fail;
+
+        Audit audit = new Audit();
+        audit.setEntity(entity);
+        audit.setEntityId(entityId);
+
+        List<Audit> dbAudits = writer.gson.fromJson(
+                sysClient.query(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
+                new com.google.gson.reflect.TypeToken<List<Audit>>() {}.getType());
+
+        for (Audit audit1 : dbAudits) {
+            audit.setId(audit1.getId());
+
+            Map<String, String> result1 = writer.gson.fromJson(sysClient.delete(Audit.class.getSimpleName().toLowerCase(), writer.gson.toJson(audit)),
+                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+
+            result = result1.get(CommonConstant.result);
+        }
+
+        return result;
     }
 }

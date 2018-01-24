@@ -76,4 +76,13 @@ public class OrderBook implements Serializable {
     public void setOrder(Order order) {
         this.order = order;
     }
+
+    public String getStateName() {
+        switch (state) {
+            case 0 : return "未支付";
+            case 1 : return "已支付";
+            case 2 : return "取消";
+            default : return "";
+        }
+    }
 }

@@ -1,11 +1,8 @@
 package com.hzg.order;
 
 import com.google.gson.reflect.TypeToken;
-import com.hzg.customer.Express;
 import com.hzg.customer.User;
 import com.hzg.erp.Product;
-import com.hzg.erp.ProductPriceChange;
-import com.hzg.pay.Pay;
 import com.hzg.sys.Action;
 import com.hzg.tools.*;
 import org.apache.log4j.Logger;
@@ -152,8 +149,8 @@ public class OrderController {
                 }
 
                 if (type.compareTo(OrderConstant.order_action_paid) == 0) {
-                    dbOrder.setPays(orderService.queryPayByOrder(order));
-                    result += orderService.paidOrder(dbOrder);
+                    dbOrder.setPays(orderService.queryPaysByOrder(order));
+                    result += orderService.paidOfflineOrder(dbOrder);
                 }
 
                 if (type.compareTo(OrderConstant.order_action_audit) == 0) {
@@ -230,8 +227,27 @@ public class OrderController {
                     result += CommonConstant.fail + ",查询不到核定金额的用户，核定金额失败";
                 }
 
-            } else if (name.equals(OrderConstant.order_action_name_paidOrder)) {
-                result += orderService.paidOrder(orderService.queryOrder(writer.gson.fromJson(json, Order.class)).get(0));
+            } else if (name.equals(OrderConstant.order_action_name_paidOnlineOrder)) {
+                result += orderService.paidOnlineOrder(orderService.queryOrder(writer.gson.fromJson(json, Order.class)).get(0));
+
+            } else if (name.equals(OrderConstant.order_action_name_orderBookPaid)) {
+                Order queryOrder = writer.gson.fromJson(json, Order.class);
+                Order dbOrder = orderService.queryOrder(queryOrder).get(0);
+                OrderBook queryOrderBook = new OrderBook();
+                queryOrderBook.setOrder(dbOrder);
+                dbOrder.setOrderBook((OrderBook) orderDao.query(queryOrderBook).get(0));
+
+                result += orderService.paidOrderBook(dbOrder);
+
+                Action action = new Action();
+                action.setEntity(OrderConstant.order);
+                action.setEntityId(dbOrder.getId());
+                action.setType(OrderConstant.order_action_orderBookPaid);
+                action.setInputer((com.hzg.sys.User) orderDao.getFromRedis((String)orderDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + queryOrder.getSessionId())));
+                action.setInputDate(dateUtil.getSecondCurrentTimestamp());
+
+                result += orderDao.save(action);
+
             }
         } catch (Exception e) {
             e.printStackTrace();

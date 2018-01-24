@@ -35,6 +35,7 @@ public class OrderController extends com.hzg.base.SessionController {
         super(orderClient);
     }
 
+    @CrossOrigin
     @PostMapping("/save")
     public void save(HttpServletResponse response, String json,
                      @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
@@ -45,28 +46,16 @@ public class OrderController extends com.hzg.base.SessionController {
                 "\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
 
         jmsMessagingTemplate.convertAndSend(orderQueue, json);
-        writer.writeStringToJsonAccessAllow(response, "{\"" + CommonConstant.orderSessionId + "\":\"" + orderSessionId + "\"}");
+        writer.writeStringToJson(response, "{\"" + CommonConstant.orderSessionId + "\":\"" + orderSessionId + "\"}");
 
         logger.info("save order end");
     }
 
-    @GetMapping("/saveResult/{" + CommonConstant.orderSessionId +"}")
-    public void saveResult(HttpServletResponse response, @PathVariable(CommonConstant.orderSessionId) String orderSessionId) {
-        logger.info("saveResult start:" + orderSessionId);
-        writer.writeStringToJsonAccessAllow(response, orderClient.saveResult(orderSessionId));
-        logger.info("saveResult end");
+    @CrossOrigin
+    @GetMapping("/querySaveResult/{" + CommonConstant.orderSessionId +"}")
+    public void querySaveResult(HttpServletResponse response, @PathVariable(CommonConstant.orderSessionId) String orderSessionId) {
+        logger.info("querySaveResult start:" + orderSessionId);
+        writer.writeStringToJson(response, orderClient.querySaveResult(orderSessionId));
+        logger.info("querySaveResult end");
     }
-
-    @PostMapping("/cancel")
-    public void cancel(HttpServletResponse response, String json,
-                       @CookieValue(name=CommonConstant.sessionId, defaultValue = "")String sessionId) {
-        logger.info("cancel order start:" + json);
-
-        json = json.substring(0, json.length()-1) + ",\"" + CommonConstant.sessionId + "\":\"" + sessionId + "\"}";
-        writer.writeObjectToJsonAccessAllow(response, orderClient.cancel(json));
-
-        logger.info("cancel order end");
-    }
-
-
 }

@@ -5,7 +5,7 @@ public class AfterSaleServiceConstant {
 
     public final static String returnProduct = "returnProduct";
 
-    public final static String returnProduct_action_name_setReturnProduct = "setReturnProduct";
+    public final static String returnProduct_action_name_returnProduct = "returnProduct";
     public final static String returnProduct_action_name_saleAudit = "returnProductSaleAudit";
     public final static String returnProduct_action_name_directorAudit = "returnProductDirectorAudit";
     public final static String returnProduct_action_name_warehousingAudit = "returnProductWarehousingAudit";

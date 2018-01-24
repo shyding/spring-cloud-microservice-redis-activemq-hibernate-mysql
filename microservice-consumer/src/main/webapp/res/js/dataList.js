@@ -267,7 +267,7 @@ var dataList = (function ($) {
         "auditFlow": "<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
         "article": "<th>标题</th><th>分类</th><th>摘要</th><th>阅读量</th><th>发布人</th><th>创建时间</th><th>状态</th><th>文章优化关键词</th>",
         "articleCate": "<th>文章分类名称</th><th>分类名称简写</th><th>文章分类优化关键词</th>",
-        "product": "<th>名称</th><th>编号</th><th>类别</th><th>结缘价</th><th>市场价</th><th>成本价</th><th>特性</th><th>入库时间</th><th>供应商</th><th>图片</th><th>状态</th>",
+        "product": "<th>名称</th><th>编号</th><th>类别</th><th>结缘价</th><th>市场价</th><th>成本价</th><th>特性</th><th>供应商</th><th>图片</th><th>状态</th>",
         "productDescribe": "<th>标题</th><th>关键词</th><th>编辑时间</th>",
         "productType": "<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "productPriceChange": "<th>编号</th><th>商品编号</th><th>商品名称</th><th>商品价格</th><th>调整后价格</th><th>状态</th>",
@@ -297,7 +297,7 @@ var dataList = (function ($) {
         "auditFlow": ["name", "entity", "company[name]", "state"],
         "article": ["title","articleCate[name]", "shortContent", "hits", "author[name]", "inputDate", "state", "seoKeyword"],
         "articleCate": ["name", "nickname", "articleKeyword"],
-        "product": ["product[name]", "product[no]", "product[type[name]]", "product[fatePrice]", "product[price]", "product[costPrice]", "product[feature]", "stockInOut[date]", "product[supplier[name]]", "product[describe[imageParentDirPath]]", "product[state]"],
+        "product": ["name", "no", "type[name]", "fatePrice", "price", "costPrice", "feature", "supplier[name]", "describe[imageParentDirPath]", "state"],
         "productDescribe": ["seoTitle", "seoKeyword", "date"],
         "productType": ["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "productPriceChange": ["no", "product[name]", "product[no]", "product[fatePrice]", "price", "state"],
@@ -327,7 +327,7 @@ var dataList = (function ($) {
         "auditFlow": "name",
         "article": "title",
         "articleCate": "name",
-        "product": "product[name]",
+        "product": "name",
         "productDescribe": "seoTitle",
         "productType": "name",
         "productPriceChange": "no",
@@ -357,7 +357,7 @@ var dataList = (function ($) {
         "auditFlow": "id",
         "article": "id",
         "articleCate": "id",
-        "product": "product[id]",
+        "product": "id",
         "productDescribe": "id",
         "productType": "id",
         "productPriceChange": "id",
@@ -378,7 +378,7 @@ var dataList = (function ($) {
     };
 
     var imageTitles = {
-        "product": "product[describe[imageParentDirPath]]"
+        "product": "describe[imageParentDirPath]"
     };
 
     var entityStateNames = {
@@ -386,10 +386,10 @@ var dataList = (function ($) {
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
         "article": {"state": {0: "保存", 1: "发布",2:"删除"}},
-        "product": {"product[state]": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货"}},
+        "product": {"state": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货"}},
         "productPriceChange": {"state": {0: "申请", 1: "在用", 2: "保存"}},
         "productCheck": {"state": {0: "保存", 1: "盘点"}},
-        "purchase": {"state": {0: "正常", 1: "关闭", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
+        "purchase": {"state": {0: "申请", 1: "完成", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
         "stockInOut": {
             "state": {0: "申请", 1: "完成", 2: "作废"},
             "type": {
@@ -967,7 +967,7 @@ var dataList = (function ($) {
                         for (var i in totalTableData) {
                             for (var ii in totalTableData[i]) {
 
-                                var searchColumn = totalTableData[i][ii];
+                                var searchColumn = String(totalTableData[i][ii]);
                                 if (searchColumn.indexOf("<a") != -1) {
                                     searchColumn = searchColumn.substring(searchColumn.indexOf(">") + 1, searchColumn.indexOf("</"));
                                 }

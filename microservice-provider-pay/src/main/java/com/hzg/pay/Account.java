@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.hzg.sys.User;
 
@@ -37,6 +37,9 @@ public class Account implements Serializable {
 
     @Column(name="inputDate")
     private Timestamp inputDate;
+
+    @Column(name="name", length = 30)
+    private String name;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -96,5 +99,13 @@ public class Account implements Serializable {
 
     public void setInputDate(Timestamp inputDate) {
         this.inputDate = inputDate;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }

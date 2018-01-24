@@ -26,6 +26,7 @@ public class ErpDao extends Dao {
     public RedisTemplate<String, Long> redisTemplateLong;
 
     private String currentDay = "";
+    private String sfTransMessage_currentDay = "";
     private int countLength = 3;
 
     private RedisAtomicLong counter;
@@ -74,9 +75,9 @@ public class ErpDao extends Dao {
     }
 
     /**
-     * 顺丰交易流水号格式如：YYYYMMDD+流水号{10},例如:201404120000000001,交易流水号唯一且不能重复
+     * 顺丰交易流水号格式如：YYYYMMDDHHmmss+流水号{4},例如:201811121633230001,交易流水号唯一且不能重复
      */
-    private int sfTransMessageIdCountLength = 10;
+    private int sfTransMessageIdCountLength = 4;
 
     public String getSfTransMessageId() {
         String key = "counter_SfTransMessageId";
@@ -87,14 +88,14 @@ public class ErpDao extends Dao {
         if (value == null) {
             counter = new RedisAtomicLong(key, redisTemplateLong.getConnectionFactory(), count);
             counter.expireAt(dateUtil.getDay(1));
-            currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+            sfTransMessage_currentDay = dateUtil.getCurrentDayStr("yyyyMMddHHmmss");
 
         } else {
             if (counter == null) {
                 counter = new RedisAtomicLong(key, redisTemplate.getConnectionFactory());
                 counter.set(value);
                 counter.expireAt(dateUtil.getDay(1));
-                currentDay = dateUtil.getCurrentDayStr("yyyyMMdd");
+                sfTransMessage_currentDay = dateUtil.getCurrentDayStr("yyyyMMddHHmmss");
             }
 
             count = counter.incrementAndGet();
@@ -109,7 +110,7 @@ public class ErpDao extends Dao {
             --minusLength;
         }
 
-        String sfTransMessageId = currentDay + countStr;
+        String sfTransMessageId = sfTransMessage_currentDay + countStr;
 
         logger.info("generate getSfTransMessageId:" + sfTransMessageId);
 

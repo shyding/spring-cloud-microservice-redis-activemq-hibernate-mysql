@@ -75,7 +75,7 @@ public class OrderApplication {
 
     // 设置 mq 队列
     @Bean
-    public Queue queue() {
+    public Queue orderQueue() {
         return new ActiveMQQueue(OrderConstant.queue_order);
     }
 

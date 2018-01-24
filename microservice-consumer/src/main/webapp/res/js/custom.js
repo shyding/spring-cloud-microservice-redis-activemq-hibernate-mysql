@@ -247,9 +247,24 @@ function setSelect(src, value) {
     }
 }
 
+function setCheck(src,value) {
+    for (var i = 0; i < src.length; i++) {
+        if (src[i].value == value) {
+            console.log(src[i]);
+            src[i].selected = true;
+        }
+    }
+}
+
 function setMutilSelect(src, values) {
     for (var vi in values) {
         setSelect(src, values[vi]);
+    }
+}
+
+function setMutilCheckbox(src, values) {
+    for (var vi in values) {
+        setCheck(src, values[vi]);
     }
 }
 
@@ -272,9 +287,8 @@ $.fn.accountInput = function(){
 function init(editable) {
     $("#edit").unbind("click").click(function(){
         editable = true;
-
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
-        $('#send, #doBusiness, #delete, #recover').attr("disabled", false);
+        $('#send, #doBusiness, #delete, #recover,#publish,#stop').attr("disabled", false);
         $("#edit").attr("disabled", "disabled");
     });
 
@@ -285,7 +299,7 @@ function init(editable) {
 
     if (!editable) {
         $('#form :input').attr("readonly","readonly").css("border", "0");
-        $('#send, #doBusiness, #delete, #recover').attr("disabled","disabled");
+        $('#send, #doBusiness, #delete, #recover,#publish,#stop').attr("disabled","disabled");
     }
 
     $("#cancel, #return").unbind("click").click(function(){
@@ -294,10 +308,6 @@ function init(editable) {
     });
 }
 
-/**
-  * from http://www.cnblogs.com/fumj/archive/2012/12/01/2797588.html
-  *
-  */
 Math.formatFloat = function(f, digit) {
     var m = Math.pow(10, digit);
     return parseInt(f * m, 10) / m;

@@ -30,7 +30,7 @@ public interface ErpClient {
     @RequestMapping(value = "/getWarehouseByCompany", method = RequestMethod.GET)
     String getWarehouseByCompany(@RequestBody String json);
 
-    @RequestMapping(value = "/sfExpressOrder", method = RequestMethod.POST)
+    @RequestMapping(value = "/sfExpress/order", method = RequestMethod.POST)
     String sfExpressOrder(@RequestBody String json);
 
     @RequestMapping(value = "/query", method = RequestMethod.POST)
@@ -38,9 +38,6 @@ public interface ErpClient {
 
     @RequestMapping(value = "/getLastStockInOutByProductAndType", method = RequestMethod.POST)
     String getLastStockInOutByProductAndType(@RequestBody String json, @RequestParam("type") String type);
-
-    @RequestMapping(value = "/getExpressNo", method = RequestMethod.GET)
-    String getExpressNo();
 
     @Component
     class ErpClientFallback implements ErpClient {
@@ -95,12 +92,6 @@ public interface ErpClient {
         @Override
         public String getLastStockInOutByProductAndType(String json, String type) {
             logger.info("query 异常发生，进入fallback方法，接收的参数：" + json + "," + type);
-            return "{}";
-        }
-
-        @Override
-        public String getExpressNo() {
-            logger.info("query 异常发生，进入fallback方法");
             return "{}";
         }
     }

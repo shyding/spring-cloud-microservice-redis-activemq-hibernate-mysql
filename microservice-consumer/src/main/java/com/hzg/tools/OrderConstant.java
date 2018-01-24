@@ -8,9 +8,22 @@ public class OrderConstant {
 
     public final static String no_order_perfix = "FR";
 
-    public final static Integer order_state_normal = 0;
+    public final static Integer order_state_unPay = 0;
     public final static Integer order_state_paid = 1;
     public final static Integer order_state_cancel = 2;
+    public final static Integer order_state_refund = 3;
+    public final static Integer order_state_paid_confirm = 4;
+    public final static Integer order_state_refund_part = 5;
+
+    public final static Integer order_detail_state_unSale = 0;
+    public final static Integer order_detail_state_saled = 1;
+    public final static Integer order_detail_state_book = 2;
+    public final static Integer order_detail_state_return_goods = 3;
+    public final static Integer order_detail_state_change_goods = 4;
+
+    public final static Integer order_book_state_upPay = 0;
+    public final static Integer order_book_state_paid = 1;
+    public final static Integer order_book_state_cancel = 2;
 
     public final static Integer order_type_selfService = 0;
     public final static Integer order_type_assist  = 1;
@@ -21,4 +34,7 @@ public class OrderConstant {
 
     public final static String queue_order = "queue_order";
     public final static String order_no = "orderNo";
+
+    public final static String returnProduct = "afterSaleService";
+    public final static String changeProduct = "changeProduct:";
 }

@@ -12,6 +12,13 @@ public class ErpConstant {
     public final static Integer purchase_type_cash = 3;
     public final static Integer purchase_type_deposit = 4;
 
+    public final static Integer purchase_type_temp_payKind_totalPayment = 0;
+    public final static Integer purchase_type_temp_payKind_deposit = 1;
+
+    public final static Integer purchase_type_temp_deposit_uppay = 0;
+    public final static Integer purchase_type_temp_deposit_paid = 1;
+    public final static Integer purchase_type_temp_deposit_cancel = 2;
+
     public final static Integer product_state_purchase = 0;
     public final static Integer product_state_purchase_pass = 10;
     public final static Integer product_state_purchase_close = 11;
@@ -87,6 +94,8 @@ public class ErpConstant {
     public final static String stockOut = "stockOut";
     public final static String stockInOut = "stockInOut";
 
+    public final static String purchase = "purchase";
+
     public final static String product = "product";
     public final static String product_property_name_weight = "重量";
 
@@ -133,6 +142,7 @@ public class ErpConstant {
     public final static int sf_token_time = 60 * 60;
     public final static int sf_refresh_token_time = 60 * 60 * 24;
 
+    public final static String sf_added_service_name_insure = "SINSURE";
 
     public final static String deliver_sfExpress = "顺丰快递";
     public final static String deliver_sfExpress_type = "顺丰标快";
@@ -142,6 +152,15 @@ public class ErpConstant {
     public final static Integer sf_action_code_access_token = 301;
     public final static Integer sf_action_code_refresh_Token = 302;
     public final static Integer sf_action_code_download_waybill = 205;
+
+    public static final String sf_bsp_param_name_xml = "xml";
+    public static final String sf_bsp_param_name_verifyCode = "verifyCode";
+    public static final String sf_bsp_orderService = "OrderService";
+    public static final String sf_bsp_orderConfirmService = "OrderConfirmService";
+    public static final String sf_bsp_OrderSearchService = "OrderSearchService";
+
+    public static final String sf_bsp_payMethod = "1";
+    public static final String sf_bsp_payMethod_name = "寄方付";
 
     public final static Integer express_state_sending = 0;
     public final static Integer express_state_sended = 1;
@@ -156,6 +175,8 @@ public class ErpConstant {
     public final static String unit_kg = "千克";
     public final static String unit_ct = "克拉";
     public final static String unit_oz = "盎司";
+
+    public final static String unit_piece = "件";
 
     public final static String stockInOut_action_name_print_barcode = "barcode";
     public final static String stockInOut_action_name_print_stockOutBills = "stockOutBills";
@@ -181,4 +202,7 @@ public class ErpConstant {
     public final static String product_action_name_upShelf = "upShelfProduct";
     public final static String product_action_name_downShelf = "downShelfProduct";
     public final static String product_action_name_generateSfExpressOrderByReceiverAndStockOut = "generateSfExpressOrderByReceiverAndStockOut";
+
+    public final static Integer purchase_action_purchaseBookPaid = 0;
+    public final static String purchase_action_name_purchaseBookPaid = "purchaseBookPaid";
 }

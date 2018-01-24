@@ -60,6 +60,12 @@ public class Order implements Serializable {
     @JoinColumn(name = "salerId")
     private com.hzg.sys.User saler;
 
+    @Column(name="describes",length=256)
+    private String describes;
+
+    @Column(name="soldDate")
+    private Timestamp soldDate;
+
     @OneToMany(mappedBy = "order", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<OrderDetail> details;
 
@@ -163,6 +169,22 @@ public class Order implements Serializable {
         this.saler = saler;
     }
 
+    public String getDescribes() {
+        return describes;
+    }
+
+    public void setDescribes(String describes) {
+        this.describes = describes;
+    }
+
+    public Timestamp getSoldDate() {
+        return soldDate;
+    }
+
+    public void setSoldDate(Timestamp soldDate) {
+        this.soldDate = soldDate;
+    }
+
     public String getSessionId() {
         return sessionId;
     }
@@ -217,6 +239,8 @@ public class Order implements Serializable {
             case 1 : return "已支付";
             case 2 : return "取消";
             case 3 : return "已退款";
+            case 4 : return "财务确认已付款";
+            case 5 : return "部分退款";
             default : return "";
         }
     }

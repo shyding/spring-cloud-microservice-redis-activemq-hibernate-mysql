@@ -1,3 +1,13 @@
+<%--
+**
+* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+* 文件名: productDescribe.jsp
+*
+* @author smjie
+* @Date  2017/7/10
+* @version 1.00
+*
+--%>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.ProductDescribe" %>
 <%@ page import="com.hzg.tools.ErpConstant" %>
@@ -174,7 +184,7 @@
     function addItem(tbody, item) {
         $("#describeId").val(item.describe.id);
         tbody.append("<tr><td>" + item.name + "</td><td>" + item.no + "</td><td>" +
-            dataList.entityStateNames["product"]["product[state]"][item.state] + "</td><td>" + item.type.name + "</td><td>" + item.unitPrice + "</td><td>" +
+            dataList.entityStateNames["product"]["state"][item.state] + "</td><td>" + item.type.name + "</td><td>" + item.unitPrice + "</td><td>" +
             "<a id='" + item.id + "' href='<%=FileServerInfo.imageServerUrl%>/" + item.describe.imageParentDirPath + "/snapshoot.jpg'>图片</a></td></tr>");
 
         $(document.getElementById(item.id)).lightbox({

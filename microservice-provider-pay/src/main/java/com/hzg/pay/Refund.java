@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import javax.persistence.*;
 import java.io.Serializable;

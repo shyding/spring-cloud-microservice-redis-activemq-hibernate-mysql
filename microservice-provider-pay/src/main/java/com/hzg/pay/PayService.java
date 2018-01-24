@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
@@ -21,6 +21,8 @@ import sun.misc.BASE64Decoder;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -38,6 +40,9 @@ public class PayService {
 
     @Autowired
     private OrderClient orderClient;
+
+    @Autowired
+    private Writer writer;
 
     public String processAlipayNotify(AyncNotify ayncNotify) {
         String result = CommonConstant.fail;
@@ -257,7 +262,7 @@ public class PayService {
         String result = "";
 
         if (entity.equalsIgnoreCase(Order.class.getSimpleName())) {
-            result += orderClient.business(OrderConstant.order_action_name_paidOrder, "{\"" + CommonConstant.id +"\":" + entityId + "}");
+            result += orderClient.business(OrderConstant.order_action_name_paidOnlineOrder, "{\"" + CommonConstant.id +"\":" + entityId + "}");
         }
 
         return result;
@@ -307,27 +312,123 @@ public class PayService {
         return balancePays;
     }
 
+    /**
+     * 支付记录列表里的支付记录按指定金额保存
+     *
+     *
+     * 先对支付记录列表按照支付金额有大到小排序
+     *
+     * 1、如果支付记录列表里有支付金额 = 指定金额的，则首先保存该支付记录，再保存其他支付记录
+     * 2、如果支付记录列表里没有支付金额 = 指定金额的,但是有支付记录 > 指定金额的，则把该支付记录分为 2 条支付记录，其中一条的
+     *    支付金额 = 指定金额，然后先保存等于指定金额的这条支付记录及另一条支付记录,再保存其他支付记录
+     * 3、如果支付记录列表里的支付金额都 < 指定金额，则先从支付记录列表头开始累加支付记录的金额，直到该累加的支付金额 >= 指定金额，
+     *  再把最后累加的支付记录分为 2 条支付记录，其中一条的金额 + 前面累加的 (n -1)支付金额 = 指定金额，然后先保存累加的 (n -1) 条
+     *  支付记录，再保存分割后的这条支付记录及另一条支付记录，再保存其他支付记录
+     *
+     * @param amount
+     * @param pays
+     * @return
+     */
+    public String saveSplitAmountPays(Float amount, List<Pay> pays) {
+        String result = CommonConstant.fail;
+        List<Pay> toSavePays = new ArrayList<>();
 
+        pays.sort( new Comparator<Pay>() {
+            /**
+             * 如果要按照升序排序，
+             * 则o1 小于o2，返回-1（负数），相等返回0，o1大于o2返回1（正数）
+             * 如果要按照降序排序
+             * 则o1 小于o2，返回1（正数），相等返回0，o1大于o2返回-1（负数）
+             * @param o1
+             * @param o2
+             * @return
+             */
+            @Override
+            public int compare(Pay o1, Pay o2) {
+                if (o1.getAmount().compareTo(o2.getAmount()) > 0) {
+                    return -1;
+                } else if (o1.getAmount().compareTo(o2.getAmount()) < 0) {
+                    return 1;
+                }
 
+                return 0;
+            }
+        });
 
+        int equalPosition = -1, largerPosition = -1;
+        for (int i = 0; i < pays.size(); i++) {
+            if (equalPosition == -1) {
+                if (pays.get(i).getAmount().compareTo(amount) == 0) {
+                    equalPosition = i;
+                }
+            }
 
+            if (largerPosition == -1) {
+                if (pays.get(i).getAmount().compareTo(amount) > 0) {
+                    largerPosition = i;
+                }
+            }
+        }
 
+        if (equalPosition != -1) {
+            toSavePays.add(pays.get(equalPosition));
 
+            for (int i = 0; i < pays.size(); i++) {
+                if (i != equalPosition) {
+                    toSavePays.add(pays.get(i));
+                }
+            }
 
+        } else {
+            if (largerPosition > -1) {
+                Pay equalPay = writer.gson.fromJson(writer.gson.toJson(pays.get(largerPosition)), Pay.class);
+                equalPay.setAmount(amount);
+                toSavePays.add(equalPay);
 
+                Pay differencePay = writer.gson.fromJson(writer.gson.toJson(pays.get(largerPosition)), Pay.class);
+                differencePay.setAmount(new BigDecimal(Float.toString(pays.get(largerPosition).getAmount())).subtract(new BigDecimal(Float.toString(amount))).floatValue());
+                toSavePays.add(differencePay);
 
+                for (int i = largerPosition+1; i < pays.size(); i++) {
+                    toSavePays.add(pays.get(i));
+                }
 
+            } else {
+                int notSplitPosition = -1;
+                Float balance = amount;
+                for (int i = 0; i < pays.size(); i++) {
+                   if (balance.compareTo(pays.get(i).getAmount()) >= 0) {
+                       toSavePays.add(pays.get(i));
+                       balance = new BigDecimal(Float.toString(balance)).subtract(new BigDecimal(Float.toString(pays.get(i).getAmount()))).floatValue();
 
+                   } else {
+                       Pay equalPay = writer.gson.fromJson(writer.gson.toJson(pays.get(i)), Pay.class);
+                       equalPay.setAmount(balance);
+                       toSavePays.add(equalPay);
 
+                       Pay differencePay = writer.gson.fromJson(writer.gson.toJson(pays.get(i)), Pay.class);
+                       differencePay.setAmount(new BigDecimal(Float.toString(pays.get(i).getAmount())).subtract(new BigDecimal(Float.toString(balance))).floatValue());
+                       toSavePays.add(differencePay);
 
+                       notSplitPosition = i+1;
+                   }
+                }
 
+                if (notSplitPosition != -1) {
+                    for (int i = notSplitPosition; i < pays.size(); i++) {
+                        toSavePays.add(pays.get(i));
+                    }
+                }
+            }
+        }
 
+        Timestamp inputDate = dateUtil.getSecondCurrentTimestamp();
+        for (Pay pay : toSavePays) {
+            pay.setNo(payDao.getNo());
+            pay.setInputDate(inputDate);
+            result += payDao.save(pay);
+        }
 
-
-
-
-
-
-
-
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
 }

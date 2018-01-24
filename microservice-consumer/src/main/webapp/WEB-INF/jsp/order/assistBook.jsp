@@ -83,6 +83,12 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="describes">备注</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <textarea id="describes" name="describes" class="form-control col-md-7 col-xs-12" data-validate-length-range="6,256" data-validate-words="1">${entity.describes}</textarea>
+                                </div>
+                            </div>
 
                             <div class="item form-group" style="padding-top: 30px">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">支付明细 <span class="required">*</span></label>
@@ -94,9 +100,11 @@
                                             <td>
                                                 <select name="pays[][payType]:number" class="form-control col-md-7 col-xs-12" required>
                                                     <option value="">请选择支付方式</option>
-                                                        <option value="<%=PayConstants.type_pay_transfer_accounts%>">转账</option>
-                                                        <option value="<%=PayConstants.type_pay_remit%>">汇款</option>
-                                                        <option value="<%=PayConstants.type_pay_other%>">其他</option>
+                                                        <option value="<%=PayConstants.pay_type_transfer_accounts_alipay%>">支付宝转账</option>
+                                                        <option value="<%=PayConstants.pay_type_transfer_accounts_weixin%>">微信转账</option>
+                                                        <option value="<%=PayConstants.pay_type_transfer_accounts%>">转账</option>
+                                                        <option value="<%=PayConstants.pay_type_remit%>">汇款</option>
+                                                        <option value="<%=PayConstants.pay_type_other%>">其他</option>
                                                 </select>
                                             </td>
                                             <td>
@@ -116,7 +124,7 @@
                                                     <%=PayConstants.bankSelectOptions%>
                                                 </select>
                                             </td>
-                                            <td><input type="text" class="form-control col-md-7 col-xs-12" name="pays[][payAccount]:string" required></td>
+                                            <td><input type="text" class="form-control col-md-7 col-xs-12" data-account="account" name="pays[][payAccount]:string" required></td>
                                             <td><input type="number" class="form-control col-md-7 col-xs-12" name="pays[][amount]:number" required></td>
                                         </tr>
                                         </tbody>
@@ -153,14 +161,14 @@
                             <thead><tr><th>商品编号</th><th>商品名称</th><th>结缘价</th><th>价格浮动码</th><th>价格浮动金额</th><th>数量</th><th>计量单位</th><th>支付金额</th><th>价格、私人订制描述</th><th>私人订制配饰</th></tr></thead>
                             <tbody>
                             <tr>
-                                <td><input type="text" data-property-name="productNo" name="details[][productNo]:string"  required></td>
+                                <td><input type="text" style="width: 120px" data-property-name="productNo" name="details[][productNo]:string"  required></td>
                                 <td><input type="text" name="details[][product[name]]:string" readonly></td>
-                                <td><input type="number" data-property-name="fatePrice" name="details[][product[fatePrice]]:number" readonly></td>
-                                <td><input type="text" data-property-name="priceChangeNo" name="details[][priceChange[no]]:string" data-skip-falsy="true"></td>
-                                <td><input type="text" name="details[][priceChange[price]]:number" data-skip-falsy="true" readonly></td>
-                                <td><input type="text" data-property-name="quantity" name="details[][quantity]:number" value="1" required></td>
+                                <td><input type="number" style="width: 120px" data-property-name="fatePrice" name="details[][product[fatePrice]]:number" readonly></td>
+                                <td><input type="text" style="width: 120px" data-property-name="priceChangeNo" name="details[][priceChange[no]]:string" data-skip-falsy="true"></td>
+                                <td><input type="text" style="width: 120px" name="details[][priceChange[price]]:number" data-skip-falsy="true" readonly></td>
+                                <td><input type="text" style="width: 70px" data-property-name="quantity" name="details[][quantity]:number" value="1" required></td>
                                 <td>
-                                    <select name="details[][unit]:string" required>
+                                    <select style="width: 70px" name="details[][unit]:string" required>
                                         <option value="件">件</option>
                                         <option value="克">克</option>
                                         <option value="克拉">克拉</option>
@@ -172,7 +180,7 @@
                                         <option value="其他">其他</option>
                                     </select>
                                 </td>
-                                <td><input type="text" name="details[][payAmount]:number" readonly></td>
+                                <td><input style="width: 120px" type="text" name="details[][payAmount]:number" readonly></td>
                                 <td><input type="text" name="details[][orderPrivate[describes]]:string"></td>
                                 <td><input type="text" data-property-name="accsInfo" name="accsQuantityUnit" placeholder="请选择配饰" readonly>
                                     <a href="#" data-property-name="chooseAccs" style="padding-left: 10px;padding-right: 20px;border-left: 1px solid black">选择</a>

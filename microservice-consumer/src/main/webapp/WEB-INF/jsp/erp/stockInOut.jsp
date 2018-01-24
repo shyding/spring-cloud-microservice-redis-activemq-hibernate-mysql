@@ -1,11 +1,10 @@
-﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.StockInOut" %>
 <%@ page import="com.hzg.tools.ErpConstant" %>
 <%@ page import="com.hzg.erp.Warehouse" %>
 <%@ page import="com.hzg.erp.StockInOutDetail" %>
-<%@ page import="com.hzg.tools.Writer" %>
 <%@ page import="com.hzg.erp.StockInOutDetailProduct" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
@@ -642,10 +641,13 @@
 
             if ($("#type").val() < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
                 queryJson["purchase"]["state"] = <%=ErpConstant.purchase_state_close%>;
-                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_purchase_close%> + "," + <%=ErpConstant.product_state_stockOut%> + ")";
+                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_purchase_close%> + "," + <%=ErpConstant.product_state_stockOut%> +
+                        "," + <%=ErpConstant.product_state_stockOut_part%> + "," + <%=ErpConstant.product_state_returnedProduct%> +
+                        "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
             } else {
                 queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于出库单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
-                queryJson["product"]["state"] = <%=ErpConstant.product_state_stockIn%>;
+                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_stockIn%> + "," + <%=ErpConstant.product_state_stockIn_part%> +
+                        "," + <%=ErpConstant.product_state_sold%> + "," + <%=ErpConstant.product_state_sold_part%> + ")";
                 queryJson["product"]["stockInOut"] = '{"warehouse":{"id":' + parseInt(document.getElementById("warehouse[id]").value) + '}}';
             }
 
@@ -751,7 +753,7 @@
         tbody.append("<tr id='tr" + item["product"]["no"] + item["product"]["id"] + "'>" +
             "<td>" + item.productName + "<input type='hidden' name='details[][stockInOutDetailProducts]:array' value='" + detailProducts + "'>" + "</td>" +
             "<td><input type='text' name='details[][productNo]:string' value='" + item["product"]["no"] + "' readonly></td>" +
-            "<td>" + dataList.entityStateNames["product"]["product[state]"][item["product"]["state"]] + "</td>" +
+            "<td>" + dataList.entityStateNames["product"]["state"][item["product"]["state"]] + "</td>" +
             "<td>" + item["product"]["type"]["name"] + "</td>" +
             "<td><input type='text' name='details[][quantity]:number' value='" + quantity + "'></td>" +
             "<td><input type='text' name='details[][unit]:string' value='" + item.unit + "'></td>" +
@@ -807,25 +809,21 @@
                 }
 
                 var receiverCity = $.trim($("#receiverCity").val()), receiverProvince = $.trim($("#receiverProvince").val());
-                if ((receiverCity.substring(receiverCity.length-2)) != "市") {
+                if (receiverCity.substring(receiverCity.length-1) != "市") {
                     $("#receiverCity").val(receiverCity + "市");
                 }
 
                 if (receiverProvince == "北京" || receiverProvince == "上海" || receiverProvince == "天津" || receiverProvince == "重庆") {
                     $("#receiverProvince").val(receiverProvince + "市")
                 } else {
-                    if ((receiverProvince.substring(receiverProvince.length-2)) != "省") {
-                        $("#receiverProvince").val(receiverProvince + "省");
+                    if (receiverProvince != "北京市" && receiverProvince != "上海市" && receiverProvince != "天津市" && receiverProvince != "重庆市") {
+                        if (receiverProvince.substring(receiverProvince.length-1) != "省") {
+                            $("#receiverProvince").val(receiverProvince + "省");
+                        }
                     }
                 }
 
-                var expressReceiverInfo = $("#expressReceiverInfo");
-                var expressReceiverInfoJson = JSON.stringify(expressReceiverInfoForm.serializeJSON());
-                if (expressReceiverInfo.val() == expressReceiverInfoJson) {
-                    alert("不能重复提交");
-                    return false;
-                }
-                expressReceiverInfo.val(expressReceiverInfoJson);
+                $("#expressReceiverInfo").val(JSON.stringify(expressReceiverInfoForm.serializeJSON()));
                 /**
                  * 设置随机数使得 actionForm 可以随机提交
                  */
@@ -843,13 +841,14 @@
                     }
                 });
 
-                var timeoutPrintExpressWaybill = setTimeout(function(){
+                var printExpressWaybillTimeout = setTimeout(function(){
                     if (isSuccess) {
-                        $("#jsonn").val(json);
-                        $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
                         $("#expressReceiverInfoDiv").dialog("close");
 
-                        clearTimeout(timeoutPrintExpressWaybill);
+                        $("#jsonn").val(json);
+                        $("#printForm").attr("action", "<%=request.getContextPath()%><%=ErpConstant.privilege_resource_uri_print_expressWaybill%>").submit();
+
+                        clearTimeout(printExpressWaybillTimeout);
                     }
                 }, 5000);
             },

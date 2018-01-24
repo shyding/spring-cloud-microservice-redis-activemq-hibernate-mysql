@@ -1,5 +1,6 @@
-﻿<%@ page import="com.hzg.sys.Company" %>
+<%@ page import="com.hzg.sys.Company" %>
 <%@ page import="com.hzg.erp.Warehouse" %>
+<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!-- page content -->
@@ -56,7 +57,7 @@
     init(<c:out value="${entity == null}"/>);
 
     var iframe = document.createElement("iframe");
-    iframe.src = "http://localhost:8080/stream_hzg_upload/index.html?" + Math.random();
+    iframe.src = "<%=FileServerInfo.uploadDirOrFilesUrl%>?" + Math.random();
     iframe.id = "uploadFrame";
     iframe.style.width = '100%';
     iframe.style.height = '100%';

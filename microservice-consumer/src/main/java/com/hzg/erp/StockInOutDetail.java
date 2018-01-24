@@ -18,9 +18,15 @@ public class StockInOutDetail implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
+    @Column(name="state",length = 1)
+    private Integer state;
+
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "stockInOutId")
     private StockInOut stockInOut;
+
+    @Column(name="productNo",length=16)
+    private String productNo;
 
     @Column(name="quantity", length = 8, precision = 2)
     private Float quantity;
@@ -46,12 +52,28 @@ public class StockInOutDetail implements Serializable {
         this.id = id;
     }
 
+    public Integer getState() {
+        return state;
+    }
+
+    public void setState(Integer state) {
+        this.state = state;
+    }
+
     public StockInOut getStockInOut() {
         return stockInOut;
     }
 
     public void setStockInOut(StockInOut stockInOut) {
         this.stockInOut = stockInOut;
+    }
+
+    public String getProductNo() {
+        return productNo;
+    }
+
+    public void setProductNo(String productNo) {
+        this.productNo = productNo;
     }
 
     public Float getQuantity() {

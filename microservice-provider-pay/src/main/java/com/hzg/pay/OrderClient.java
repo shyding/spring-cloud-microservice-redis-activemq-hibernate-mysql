@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.hzg.tools.CommonConstant;
 import org.springframework.cloud.netflix.feign.FeignClient;

@@ -77,6 +77,16 @@ hystrix:
           isolation:
             thread:
               timeoutInMilliseconds: 10000
+    "OrderClient#paid(String)":
+       execution:
+          isolation:
+            thread:
+              timeoutInMilliseconds: 5000
+    "OrderClient#save(String,String)":
+       execution:
+          isolation:
+            thread:
+              timeoutInMilliseconds: 5000
 
 
 

@@ -24,8 +24,8 @@ public class PurchaseDetail implements Serializable {
     @JoinColumn(name = "purchaseId")
     private Purchase purchase;
 
-    @Column(name="no",length=16)
-    private String no;
+    @Column(name="productNo",length=16)
+    private String productNo;
 
     @Column(name="productName",length=30)
     private String productName;
@@ -74,12 +74,12 @@ public class PurchaseDetail implements Serializable {
         this.purchase = purchase;
     }
 
-    public String getNo() {
-        return no;
+    public String getProductNo() {
+        return productNo;
     }
 
-    public void setNo(String no) {
-        this.no = no;
+    public void setProductNo(String productNo) {
+        this.productNo = productNo;
     }
 
     public String getProductName() {

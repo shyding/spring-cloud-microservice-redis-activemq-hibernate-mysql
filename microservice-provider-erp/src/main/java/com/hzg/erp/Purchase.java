@@ -1,11 +1,12 @@
 package com.hzg.erp;
 
-import com.hzg.pay.Account;
+import com.hzg.pay.Pay;
 import com.hzg.sys.User;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Set;
 
 @Entity(name = "hzg_purchase")
@@ -14,6 +15,11 @@ public class Purchase implements Serializable {
 
     public Purchase(){
         super();
+    }
+
+    public Purchase(Integer id){
+        super();
+        this.id = id;
     }
 
     @Id
@@ -53,12 +59,24 @@ public class Purchase implements Serializable {
     @Column(name="describes",length=256)
     private String describes;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "account")
-    private Account account;
-
     @OneToMany(mappedBy = "purchase", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<PurchaseDetail> details;
+
+    @Transient
+    private List<Pay> pays;
+
+    @Transient
+    private PurchaseBook purchaseBook;
+
+    @Transient
+    private Integer temporaryPurchasePayKind;
+
+    @Transient
+    private Boolean purchaseBookPaid;
+
+    @Transient
+    private Boolean toPayBalance;
+
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -152,19 +170,51 @@ public class Purchase implements Serializable {
         this.describes = describes;
     }
 
-    public Account getAccount() {
-        return account;
-    }
-
-    public void setAccount(Account account) {
-        this.account = account;
-    }
-
     public Set<PurchaseDetail> getDetails() {
         return details;
     }
 
     public void setDetails(Set<PurchaseDetail> details) {
         this.details = details;
+    }
+
+    public List<Pay> getPays() {
+        return pays;
+    }
+
+    public void setPays(List<Pay> pays) {
+        this.pays = pays;
+    }
+
+    public PurchaseBook getPurchaseBook() {
+        return purchaseBook;
+    }
+
+    public void setPurchaseBook(PurchaseBook purchaseBook) {
+        this.purchaseBook = purchaseBook;
+    }
+
+    public Integer getTemporaryPurchasePayKind() {
+        return temporaryPurchasePayKind;
+    }
+
+    public void setTemporaryPurchasePayKind(Integer temporaryPurchasePayKind) {
+        this.temporaryPurchasePayKind = temporaryPurchasePayKind;
+    }
+
+    public Boolean getPurchaseBookPaid() {
+        return purchaseBookPaid;
+    }
+
+    public void setPurchaseBookPaid(Boolean purchaseBookPaid) {
+        this.purchaseBookPaid = purchaseBookPaid;
+    }
+
+    public Boolean getToPayBalance() {
+        return toPayBalance;
+    }
+
+    public void setToPayBalance(Boolean toPayBalance) {
+        this.toPayBalance = toPayBalance;
     }
 }

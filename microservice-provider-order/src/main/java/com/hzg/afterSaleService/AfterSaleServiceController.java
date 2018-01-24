@@ -12,12 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
+import java.math.BigInteger;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 @Controller
-@RequestMapping("/returnProduct")
+@RequestMapping("/afterSaleService")
 public class AfterSaleServiceController {
 
     Logger logger = Logger.getLogger(AfterSaleServiceController.class);
@@ -57,7 +59,15 @@ public class AfterSaleServiceController {
 
         try {
             if (entity.equalsIgnoreCase(ReturnProduct.class.getSimpleName())) {
-                result += afterSaleServiceService.saveReturnProduct(writer.gson.fromJson(json, ReturnProduct.class));
+                ReturnProduct returnProduct = writer.gson.fromJson(json, ReturnProduct.class);
+                result += afterSaleServiceService.saveReturnProduct(returnProduct);
+
+                result = "{\"" + CommonConstant.result + "\":\"" + transcation.dealResult(result) + "\"" +
+                        ",\"" + CommonConstant.id + "\":" + returnProduct.getId() + "}";
+
+                writer.writeStringToJson(response, result);
+                logger.info("save end, result:" + result);
+                return;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -66,7 +76,7 @@ public class AfterSaleServiceController {
             result = transcation.dealResult(result);
         }
 
-        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        writer.writeStringToJson(response, result);
         logger.info("save end, result:" + result);
     }
 
@@ -79,12 +89,13 @@ public class AfterSaleServiceController {
         String result = CommonConstant.fail;
 
         try {
-            if (name.equals(AfterSaleServiceConstant.returnProduct_action_name_setReturnProduct)) {
+            if (name.equals(AfterSaleServiceConstant.returnProduct_action_name_returnProduct)) {
                 ReturnProduct returnProduct = new ReturnProduct();
                 Map<String, Object> returnProductInfo = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>(){}.getType());
 
                 if (returnProductInfo.get(CommonConstant.entity).equals(OrderConstant.order)) {
-                    Order order = orderService.queryOrder(new Order((Integer)returnProductInfo.get(CommonConstant.entityId))).get(0);
+                    String entityId = String.valueOf(returnProductInfo.get(CommonConstant.entityId));
+                    Order order = orderService.queryOrder(new Order(Integer.parseInt(entityId.substring(0, entityId.indexOf("."))))).get(0);
 
                     returnProduct.setNo(afterSaleServiceDao.getNo(AfterSaleServiceConstant.no_returnProduct_perfix));
                     returnProduct.setEntity(OrderConstant.order);
@@ -108,9 +119,12 @@ public class AfterSaleServiceController {
                         }
                         returnProductDetail.setAmount(orderDetail.getPayAmount());
                         returnProductDetail.setProduct(orderDetail.getProduct());
+
+                        details.add(returnProductDetail);
                     }
 
                     returnProduct.setDetails(details);
+                    result += CommonConstant.success;
 
                     writer.writeStringToJson(response, writer.gson.toJson(returnProduct));
                     logger.info("business end");
@@ -168,5 +182,59 @@ public class AfterSaleServiceController {
         logger.info("getProductReturnedQuantity start, parameter:" + json);
         writer.writeStringToJson(response, "{\"" + ErpConstant.product_returned_quantity +"\":\"" + afterSaleServiceService.getProductReturnedQuantity(writer.gson.fromJson(json, Product.class)) + "\"}");
         logger.info("getProductReturnedQuantity start, end");
+    }
+
+    @RequestMapping(value = "/unlimitedQuery", method = {RequestMethod.GET, RequestMethod.POST})
+    public void unlimitedQuery(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("unlimitedQuery start, parameter:" + entity + ":" + json);
+
+        if (entity.equalsIgnoreCase(ReturnProduct.class.getSimpleName())) {
+            List<ReturnProduct> returnProducts = afterSaleServiceService.queryReturnProduct(writer.gson.fromJson(json, ReturnProduct.class));
+            writer.writeObjectToJson(response, returnProducts);
+        }
+
+        logger.info("unlimitedQuery end");
+    }
+
+    @RequestMapping(value = "/unlimitedSuggest", method = {RequestMethod.GET, RequestMethod.POST})
+    public void unlimitedSuggest(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("unlimitedSuggest start, parameter:" + entity + ":" + json);
+
+        if (entity.equalsIgnoreCase(ReturnProduct.class.getSimpleName())) {
+            writer.writeObjectToJson(response, afterSaleServiceDao.suggest(writer.gson.fromJson(json, ReturnProduct.class), null));
+        }
+
+        logger.info("unlimitedSuggest end");
+    }
+
+    @RequestMapping(value = "/unlimitedComplexQuery", method = {RequestMethod.GET, RequestMethod.POST})
+    public void unlimitedComplexQuery(HttpServletResponse response, String entity, @RequestBody String json, int position, int rowNum){
+        logger.info("unlimitedComplexQuery start, parameter:" + entity + ":" + json + "," + position + "," + rowNum);
+
+        if (entity.equalsIgnoreCase(ReturnProduct.class.getSimpleName())) {
+            writer.writeObjectToJson(response, afterSaleServiceDao.complexQuery(ReturnProduct.class,
+                    writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType()), position, rowNum));
+        }
+
+        logger.info("unlimitedComplexQuery end");
+    }
+
+    /**
+     * 查询条件限制下的记录数
+     * @param response
+     * @param entity
+     * @param json
+     */
+    @RequestMapping(value = "/unlimitedRecordsSum", method = {RequestMethod.GET, RequestMethod.POST})
+    public void unlimitedRecordsSum(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("unlimitedRecordsSum start, parameter:" + entity + ":" + json);
+        BigInteger recordsSum = new BigInteger("-1");
+
+        if (entity.equalsIgnoreCase(ReturnProduct.class.getSimpleName())) {
+            recordsSum = afterSaleServiceDao.recordsSum(ReturnProduct.class, writer.gson.fromJson(json, new TypeToken<Map<String, String>>(){}.getType()));
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
+        logger.info("unlimitedRecordsSum end");
     }
 }

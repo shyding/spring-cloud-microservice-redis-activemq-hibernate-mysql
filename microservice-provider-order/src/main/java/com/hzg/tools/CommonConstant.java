@@ -22,4 +22,17 @@ public class CommonConstant {
 
     public final static String underline = "_";
     public final static String asterisk  = "*";
+
+    public final static String id  = "id";
+    public final static String no  = "no";
+    public final static String state  = "state";
+
+    public final static int hour_seconds = 3600;
+    public final static int millisecond_second = 1000;
+
+    public final static String entity  = "entity";
+    public final static String entityId  = "entityId";
+
+    public final static String Y  = "Y";
+    public final static String N  = "N";
 }

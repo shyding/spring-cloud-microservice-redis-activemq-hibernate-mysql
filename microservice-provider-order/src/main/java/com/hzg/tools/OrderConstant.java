@@ -17,10 +17,14 @@ public class OrderConstant {
     public final static Integer order_state_refund_part = 5;
 
     public final static Integer order_detail_state_unSale = 0;
-    public final static Integer order_detail_state_saled = 1;
+    public final static Integer order_detail_state_sold = 1;
     public final static Integer order_detail_state_book = 2;
     public final static Integer order_detail_state_return_goods = 3;
     public final static Integer order_detail_state_change_goods = 4;
+
+    public final static Integer order_book_state_upPay = 0;
+    public final static Integer order_book_state_paid = 1;
+    public final static Integer order_book_state_cancel = 2;
 
     public final static Integer order_type_selfService = 0;
     public final static Integer order_type_assist  = 1;
@@ -45,10 +49,12 @@ public class OrderConstant {
     public final static String order_action_name_paid = "paid";
     public final static String order_action_name_audit = "audit";
     public final static String order_action_name_authorizeOrderPrivateAmount = "authorizeOrderPrivateAmount";
-    public final static String order_action_name_paidOrder = "paidOrder";
+    public final static String order_action_name_paidOnlineOrder = "paidOnlineOrder";
     public final static String order_action_name_setOrderRefundState = "setOrderRefundState";
+    public final static String order_action_name_orderBookPaid = "orderBookPaid";
 
     public final static Integer order_action_cancel = 0;
     public final static Integer order_action_paid = 1;
     public final static Integer order_action_audit = 2;
+    public final static Integer order_action_orderBookPaid = 3;
 }

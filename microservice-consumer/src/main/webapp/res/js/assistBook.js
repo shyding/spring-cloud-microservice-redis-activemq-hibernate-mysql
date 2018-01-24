@@ -16,6 +16,8 @@ var assistBook = (function ($) {
         }
         $("#" + tableId + " tbody").append(tbodyHtml);
 
+        $('[data-account="account"]').accountInput();
+
         setOrderBookShow();
 
         suggestBookUser(contextPath);
@@ -595,12 +597,12 @@ var assistBook = (function ($) {
                             if ($.trim(giftName) != "") {
                                 var giftUnit = $(trs[i]).find('[name="giftUnit"]')[0].value;
                                 var giftQuantity = $(trs[i]).find('[name="giftQuantity"]')[0].value;
-                                var giftId = $(trs[i]).find('[name="giftId"]')[0].value;
+                                var giftNo = $(trs[i]).find('[name="giftNo"]')[0].value;
                                 var fatePrice = $(trs[i]).find('[name="giftFatePrice"]')[0].value;
 
                                 $(itemsInfo).append('<div data-accs-info="itemInfo" style="display: none"><input type="hidden" value="' + giftUnit + '" name="gifts[][unit]:string">' +
                                     '<input type="hidden" value="' + giftQuantity + '" name="gifts[][quantity]:number">' +
-                                    '<input type="hidden" value="' + giftId + '" name="gifts[][product[id]]:number">' +
+                                    '<input type="hidden" value="' + giftNo + '" name="gifts[][productNo]:string">' +
                                     '<input type="hidden" data-gift-info="name" value="' + giftName + '" name="gifts[][product[name]]:string"></div>');
 
                                 if ($.trim(giftsInfo.value) == "") {
@@ -752,13 +754,13 @@ var assistBook = (function ($) {
                             var accName = $(trs[i]).find('[name="accName"]')[0].value;
 
                             if ($.trim(accName) != "") {
-                                var accId = $(trs[i]).find('[name="accId"]')[0].value;
+                                var accNo = $(trs[i]).find('[name="accNo"]')[0].value;
                                 var accQuantity = $(trs[i]).find('[name="accQuantity"]')[0].value;
                                 var accUnit = $(trs[i]).find('[name="accUnit"]')[0].value;
 
                                 $(itemsInfo).append('<div data-accs-info="itemInfo" style="display: none"><input type="hidden" value="' + accUnit + '" name="details[][orderPrivate[accs[][unit]]]:string">' +
                                     '<input type="hidden" value="' + accQuantity + '" name="details[][orderPrivate[accs[][quantity]]]:number">' +
-                                    '<input type="hidden" data-acc-info="id" value="' + accId + '" name="details[][orderPrivate[accs[][product[id]]]]:number">' +
+                                    '<input type="hidden" value="' + accNo + '" name="details[][orderPrivate[accs[][productNo]]]:string">' +
                                     '<input type="hidden" data-acc-info="name" value="' + accName + '" name="details[][orderPrivate[accs[][product[name]]]]:string"></div>');
 
 
@@ -967,28 +969,33 @@ var assistBook = (function ($) {
 
         $.each($(trs[trs.length-1]).find(":input"), function (ci, item) {
             var name = item.name;
-            if (name != undefined && name == "receiptAccountInfo") {
+            if (name != undefined) {
+                if (name == "receiptAccountInfo") {
+                    $(item).click(function(){
+                        var receiptAccountInfo = $(this).val().split("/");
 
-                $(item).click(function(){
-                    var receiptAccountInfo = $(this).val().split("/");
+                        $.each($(this).parent().find(":input"), function (ci, item) {
+                            var name = item.name;
+                            if (name != undefined) {
+                                if (name == "pays[][receiptAccount]:string") {
+                                    $(item).val(receiptAccountInfo[0]);
+                                }
 
-                    $.each($(this).parent().find(":input"), function (ci, item) {
-                        var name = item.name;
-                        if (name != undefined) {
-                            if (name == "pays[][receiptAccount]:string") {
-                                $(item).val(receiptAccountInfo[0]);
+                                if (name == "pays[][receiptBranch]:string") {
+                                    $(item).val(receiptAccountInfo[1]);
+                                }
+
+                                if (name == "pays[][receiptBank]:string") {
+                                    $(item).val(receiptAccountInfo[2]);
+                                }
                             }
-
-                            if (name == "pays[][receiptBranch]:string") {
-                                $(item).val(receiptAccountInfo[1]);
-                            }
-
-                            if (name == "pays[][receiptBank]:string") {
-                                $(item).val(receiptAccountInfo[2]);
-                            }
-                        }
+                        });
                     });
-                });
+                }
+
+                if (name == "pays[][payAccount]:string") {
+                    $(item).accountInput();
+                }
             }
         });
     }

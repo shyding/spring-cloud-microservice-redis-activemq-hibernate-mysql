@@ -36,6 +36,7 @@
 
         preFormJson = formJson;
     },
+
     $.fn.submitForm = function (url, callBack, isShowResult) {
         if (!validator.checkAll(this)) {
             return;
@@ -90,7 +91,7 @@
         preFormJson = formJson;
     },
 
-    $.fn.sendData = function (url, json, callBack) {
+    $.fn.sendData = function (url, json, callBack, isShowResult) {
         var mac = faultylabs.MD5(json + localStorage.getItem("hzg_sys_user_pin"));
         $.ajax({
             type: "post",
@@ -111,12 +112,26 @@
                     callBack(result);
                 }
 
+                var msg = "";
+
                 if (result.result.indexOf("success") != -1) {
                     submitSucc = true;
-                    alert("提交成功");
+                    msg = "提交成功";
                 } else {
                     submitSucc = false;
-                    alert(result.result);
+                    msg = result.result;
+                }
+
+                if (isShowResult != undefined) {
+                    if (isShowResult == true) {
+                        alert(msg);
+                    } else {
+                        if (msg != "提交成功") {
+                            alert(msg);
+                        }
+                    }
+                } else {
+                    alert(msg);
                 }
             }
         });

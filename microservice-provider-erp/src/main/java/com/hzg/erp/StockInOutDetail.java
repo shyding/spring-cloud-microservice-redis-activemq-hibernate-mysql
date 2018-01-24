@@ -18,6 +18,9 @@ public class StockInOutDetail implements Serializable {
     @Column(name="id", length = 11)
     private Integer id;
 
+    @Column(name="state",length = 1)
+    private Integer state;
+
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "stockInOutId")
     private StockInOut stockInOut;
@@ -47,6 +50,14 @@ public class StockInOutDetail implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getState() {
+        return state;
+    }
+
+    public void setState(Integer state) {
+        this.state = state;
     }
 
     public StockInOut getStockInOut() {

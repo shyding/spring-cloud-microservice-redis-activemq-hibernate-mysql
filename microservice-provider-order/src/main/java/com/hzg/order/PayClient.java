@@ -21,6 +21,18 @@ public interface PayClient {
     @RequestMapping(value = "/save", method = RequestMethod.POST)
     String save(@RequestParam("entity") String entity, @RequestBody String json);
 
+    @RequestMapping(value = "/saveSplitAmountPays", method = RequestMethod.POST)
+    String saveSplitAmountPays(@RequestParam("amount") Float amount, @RequestBody String json);
+
+    @RequestMapping(value = "/offlinePaid", method = RequestMethod.POST)
+    String offlinePaid(@RequestBody String json);
+
+    @RequestMapping(value = "/refund", method = RequestMethod.POST)
+    String refund(@RequestParam("entity") String entity, @RequestParam("entityId") Integer entityId,
+                  @RequestParam("amount") Float amount, @RequestBody String json);
+
+    @RequestMapping(value = "/privateQuery", method = RequestMethod.POST)
+    String privateQuery(@RequestParam("entity") String entity, @RequestBody String json);
 
     @Component
     class PayClientFallback implements PayClient {
@@ -42,6 +54,28 @@ public interface PayClient {
             return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
         }
 
+        @Override
+        public String saveSplitAmountPays(Float amount, String json) {
+            logger.info("saveSplitAmountPays 异常发生，进入fallback方法，接收的参数：" + amount + "," + json);
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
+        }
 
+        @Override
+        public String offlinePaid(String json) {
+            logger.info("offlinePaid 异常发生，进入fallback方法，接收的参数：" + json);
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
+        }
+
+        @Override
+        public String refund(String entity, Integer entityId, Float amount, String json) {
+            logger.info("refund 异常发生，进入fallback方法，接收的参数：" + entity + "," + entityId + "," + amount);
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
+        }
+
+        @Override
+        public String privateQuery(String entity, String json) {
+            logger.info("privateQuery 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
+            return "{}";
+        }
     }
 }

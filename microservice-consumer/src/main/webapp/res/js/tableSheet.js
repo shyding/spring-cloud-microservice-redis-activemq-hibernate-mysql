@@ -382,6 +382,18 @@ var tableSheet = (function ($) {
             return;
         }
 
+        var payItemAmounts = document.getElementsByName("pays[][amount]:number");
+        var totalPayItemAmount = 0;
+        for (var i = 0; i < payItemAmounts.length; i++) {
+            totalPayItemAmount = Math.formatFloat(totalPayItemAmount + parseFloat(payItemAmounts[i].value), 2);
+        }
+
+        if (totalPayItemAmount != Math.formatFloat(parseFloat($("#amount").val()), 2)) {
+            alert("填写的支付金额与采购单实际支付金额不一致");
+            $(payItemAmounts[0]).focus();
+            return false;
+        }
+
         var json = JSON.stringify($form.serializeJSON());
         json = json.substring(0, json.length-1) + ',"details":[';
 
@@ -399,10 +411,6 @@ var tableSheet = (function ($) {
                     if ($.trim(textInputs[j].value) != "" && textInputs[j].type == "text") {
                         notEmptyCounts++;
                     }
-                }
-
-                if (notEmptyCounts > inputsHalfCount) {
-                    console.log($(trs[i]).html());
                 }
 
                 var useType = getInputByNameInTr("details[][product[useType]]:string", trs[i]);

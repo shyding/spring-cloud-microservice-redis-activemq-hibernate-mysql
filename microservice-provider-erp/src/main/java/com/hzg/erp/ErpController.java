@@ -1,6 +1,7 @@
 package com.hzg.erp;
 
 import com.google.gson.reflect.TypeToken;
+import com.hzg.pay.Pay;
 import com.hzg.sys.*;
 import com.hzg.tools.*;
 import com.sf.openapi.common.entity.MessageResp;
@@ -60,22 +61,7 @@ public class ErpController {
             if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
                 Purchase purchase = writer.gson.fromJson(json, Purchase.class);
                 purchase.setInputDate(inputDate);
-                result += erpDao.save(purchase);
-
-                result += erpService.savePurchaseProducts(purchase);
-
-                /**
-                 * 发起采购流程
-                 */
-                String auditEntity = AuditFlowConstant.business_purchase;
-                if (purchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
-                        purchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
-                        purchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
-                    auditEntity = AuditFlowConstant.business_purchaseEmergency;
-                }
-
-                result += erpService.launchAuditFlow(auditEntity, purchase.getId(), purchase.getNo(), purchase.getName(),
-                        "请审核采购单：" + purchase.getNo() ,purchase.getInputer());
+                result += erpService.savePurchase(purchase);
 
             }else if(entity.equalsIgnoreCase(ProductCheck.class.getSimpleName())){
                 ProductCheck productCheck = writer.gson.fromJson(json, ProductCheck.class);
@@ -165,45 +151,7 @@ public class ErpController {
 
         try {
             if (entity.equalsIgnoreCase(Purchase.class.getSimpleName())) {
-                Purchase purchase = writer.gson.fromJson(json, Purchase.class);
-
-                /**
-                 * 查询数据库里的采购单
-                 */
-                Purchase dbPurchase = (Purchase) erpDao.queryById(purchase.getId(), Purchase.class);
-                PurchaseDetail purchaseDetail = (PurchaseDetail) erpDao.queryById(((PurchaseDetail) dbPurchase.getDetails().toArray()[0]).getId(), PurchaseDetail.class);
-                Product stateProduct = (Product) erpDao.queryById(((PurchaseDetailProduct) purchaseDetail.getPurchaseDetailProducts().toArray()[0]).getProduct().getId(), Product.class);
-
-                if (stateProduct.getState().compareTo(ErpConstant.product_state_purchase) == 0) {       //采购状态的才可以修改
-                    result += erpDao.updateById(purchase.getId(), purchase);
-
-                    /**
-                     * 保存采购单里的新商品信息，删除旧商品信息
-                     */
-                    result += erpService.savePurchaseProducts(purchase);
-                    result += erpService.deletePurchaseProducts(dbPurchase);
-
-                    /**
-                     * 修改事宜信息
-                     */
-                    String oldEntity = AuditFlowConstant.business_purchase, newEntity = AuditFlowConstant.business_purchase;
-                    switch (dbPurchase.getType()) {
-                        case 2:
-                            oldEntity = AuditFlowConstant.business_purchaseEmergency;
-                            break;
-                    }
-
-                    switch (purchase.getType()) {
-                        case 2:
-                            newEntity = AuditFlowConstant.business_purchaseEmergency;
-                            break;
-                    }
-
-                    result += erpService.updateAudit(dbPurchase.getId(), oldEntity, newEntity, purchase.getName(), "请审核采购单：" + dbPurchase.getNo());
-
-                } else {
-                    result = CommonConstant.fail + ", 采购单 " + purchase.getNo() + " 里的商品，已审核通过，不能修改";
-                }
+                result += erpService.updatePurchase(writer.gson.fromJson(json, Purchase.class));
 
             } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
                 Supplier supplier = writer.gson.fromJson(json, Supplier.class);
@@ -259,8 +207,8 @@ public class ErpController {
                     result += erpDao.updateById(product.getDescribe().getId(), product.getDescribe());
 
                     for (Product ele : stateProducts) {
-                        product.setState(ErpConstant.product_state_edit);
-                        result += erpDao.updateById(ele.getId(), product);
+                        ele.setState(ErpConstant.product_state_edit);
+                        result += erpDao.updateById(ele.getId(), ele);
                     }
                 } else {
                     result += msg;
@@ -485,6 +433,18 @@ public class ErpController {
                 action.setInputer(erpService.getUserBySessionId(action.getSessionId()));
                 action.setInputDate(dateUtil.getSecondCurrentTimestamp());
                 result += erpDao.save(action);
+
+            } else if (name.equalsIgnoreCase(ErpConstant.purchase_action_name_purchaseBookPaid)) {
+                Action action = writer.gson.fromJson(json, Action.class);
+                Purchase purchase = (Purchase) erpDao.queryById(action.getEntityId(), Purchase.class);
+                purchase.setPays(erpService.getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId()));
+                result += erpService.paidOfflinePurchase(purchase);
+
+                action.setEntity(ErpConstant.purchase);
+                action.setType(ErpConstant.purchase_action_purchaseBookPaid);
+                action.setInputer(erpService.getUserBySessionId(action.getSessionId()));
+                action.setInputDate(dateUtil.getSecondCurrentTimestamp());
+                result += erpDao.save(action);
             }
 
         } catch (Exception e) {
@@ -520,9 +480,14 @@ public class ErpController {
                 action.setType(ErpConstant.stockInOut_action_print_stockOutBills);
 
             } else if (name.equalsIgnoreCase(ErpConstant.stockInOut_action_name_print_expressWaybill)) {
-                printContent = erpService.downloadSfExpressWayBillByStockInOut(stockInOut);
+                List<ExpressDeliverDetail> details = erpService.getSfExpressWayBillsByStockInOut(stockInOut);
+                printContent = writer.gson.toJson(details);
                 action.setType(ErpConstant.stockInOut_action_print_expressWaybill);
 
+                for (ExpressDeliverDetail detail : details) {
+                    detail.setState(ErpConstant.express_detail_state_sended);
+                    result += erpDao.updateById(detail.getId(), detail);
+                }
                 /**
                  * 打印快递单即表示商品已发货
                  */
@@ -588,10 +553,10 @@ public class ErpController {
                      * 删除事宜信息
                      */
                     String auditEntity = AuditFlowConstant.business_purchase;
-                    switch (dbPurchase.getType()) {
-                        case 2:
-                            auditEntity = AuditFlowConstant.business_purchaseEmergency;
-                            break;
+                    if (dbPurchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
+                            dbPurchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
+                            dbPurchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
+                        auditEntity = AuditFlowConstant.business_purchaseEmergency;
                     }
 
                     result += erpService.deleteAudit(dbPurchase.getId(), auditEntity);
@@ -679,11 +644,12 @@ public class ErpController {
                      * 发起采购流程
                      */
                     String auditEntity = AuditFlowConstant.business_purchase;
-                    switch (dbPurchase.getType()) {
-                        case 2:
-                            auditEntity = AuditFlowConstant.business_purchaseEmergency;
-                            break;
+                    if (dbPurchase.getType().compareTo(ErpConstant.purchase_type_emergency) == 0 ||
+                            dbPurchase.getType().compareTo(ErpConstant.purchase_type_cash) == 0 ||
+                            dbPurchase.getType().compareTo(ErpConstant.purchase_type_deposit) == 0) {
+                        auditEntity = AuditFlowConstant.business_purchaseEmergency;
                     }
+
                     result += erpService.launchAuditFlow(auditEntity, dbPurchase.getId(), dbPurchase.getNo(), dbPurchase.getName(),
                             "请审核采购单：" + purchase.getNo() ,dbPurchase.getInputer());
 
@@ -754,6 +720,31 @@ public class ErpController {
                     PurchaseDetailProduct dbDetailProduct = (PurchaseDetailProduct) erpDao.query(detailProduct).get(0);
 
                     detail.setProduct((Product)erpDao.queryById(dbDetailProduct.getProduct().getId(), dbDetailProduct.getProduct().getClass()));
+                }
+
+                if (purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0) {
+                    PurchaseBook queryPurchaseBook = new PurchaseBook();
+                    queryPurchaseBook.setPurchase(new Purchase(purchase.getId()));
+                    List<PurchaseBook> purchaseBooks = erpDao.query(queryPurchaseBook);
+
+                    if (!purchaseBooks.isEmpty()) {
+                        PurchaseBook purchaseBook = purchaseBooks.get(0);
+                        purchase.setPurchaseBook(purchaseBook);
+
+                        purchase.setPurchaseBookPaid(false);
+                        if (purchaseBook.getState().compareTo(ErpConstant.purchase_type_temp_deposit_paid) == 0) {
+                            purchase.setPurchaseBookPaid(true);
+                        }
+                    }
+                }
+
+                purchase.setPays(erpService.getPaysByEntity(purchase.getClass().getSimpleName().toLowerCase(), purchase.getId()));
+                purchase.setToPayBalance(false);
+                for (Pay pay : purchase.getPays()) {
+                    if (pay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
+                        purchase.setToPayBalance(true);
+                        break;
+                    }
                 }
             }
 
@@ -1249,9 +1240,11 @@ public class ErpController {
                     result += erpService.purchaseProductsStateModify(audit, ErpConstant.product_state_purchase);
                     break;
 
-                case AuditFlowConstant.action_purchase_close:
+                case AuditFlowConstant.action_purchase_close: {
+                    result += erpService.purchasePay(audit);
                     result += erpService.purchaseStateModify(audit, ErpConstant.purchase_state_close, ErpConstant.product_state_purchase_close);
                     break;
+                }
 
                 case AuditFlowConstant.action_purchase_modify:
                     result += erpService.purchaseStateModify(audit, ErpConstant.purchase_state_apply, ErpConstant.product_state_purchase);
@@ -1262,7 +1255,7 @@ public class ErpController {
                     break;
 
                 case AuditFlowConstant.action_purchase_emergency_pay:
-                    result += erpService.purchaseEmergencyPay(audit);
+                    result += erpService.purchasePay(audit);
                     break;
 
                 case AuditFlowConstant.action_stockIn_return_deposit:
@@ -1362,12 +1355,6 @@ public class ErpController {
         logger.info("getLastStockInOutByProductAndType end");
     }
 
-    @GetMapping(value = "/getExpressNo")
-    public void getExpressNo(HttpServletResponse response){
-        logger.info("getExpressNo start");
-        writer.writeStringToJson(response, "{\"" + CommonConstant.no + "\":\"" + ErpConstant.no_expressDelivery_perfix + erpDao.getSfTransMessageId() + "\"}");
-        logger.info("getExpressNo end");
-    }
 
     /**
      *
@@ -1388,7 +1375,12 @@ public class ErpController {
         String result = CommonConstant.fail;
 
         try {
-            result += erpService.expressDeliverOrder(writer.gson.fromJson(json, ExpressDeliver.class));
+            List<ExpressDeliverDetail> details = erpService.expressDeliverOrders(writer.gson.fromJson(json, new TypeToken<List<ExpressDeliver>>(){}.getType()));
+            if (!details.isEmpty()) {
+                result += CommonConstant.success;
+            } else {
+                result += CommonConstant.fail;
+            }
         } catch (Exception e) {
             e.printStackTrace();
             result += CommonConstant.fail;
@@ -1402,18 +1394,105 @@ public class ErpController {
 
     /**
      * 查询快递单情况
-     * @param json
+     * @param expressNos
      * @param response
      */
-    @Transactional
-    @PostMapping(value = "/sfExpress/order/query")
-    public void sfExpressOrderQuery(HttpServletResponse response, @RequestBody String json) {
-        logger.info("sfExpressOrderQuery start, json:" + json);
-        ExpressDeliver expressDeliver = writer.gson.fromJson(json, ExpressDeliver.class);
-        ExpressDeliver dbExpressDeliver = (ExpressDeliver) erpDao.queryById(expressDeliver.getId(), expressDeliver.getClass());
+    @GetMapping(value = "/sfExpress/order/query/{expressNos}")
+    public void sfExpressOrderQuery(HttpServletResponse response, @RequestBody String expressNos) {
+        logger.info("sfExpressOrderQuery start, expressNos:" + expressNos);
+        String[] expressNosArr = expressNos.split(",");
+        List<ExpressDeliverDetail> details = new ArrayList<>();
 
-        writer.writeObjectToJson(response, erpService.sfExpressOrderQuery(dbExpressDeliver));
+        for (String expressNo : expressNosArr) {
+            ExpressDeliverDetail detail = new ExpressDeliverDetail();
+            detail.setExpressNo(expressNo);
+            details.add(erpService.sfBspOrderQuery(detail));
+        }
+
+        writer.writeObjectToJson(response, details);
         logger.info("sfExpressOrderQuery end");
+    }
+
+    /**
+     * 查询快递单情况
+     * @param expressNos
+     * @param response
+     */
+    @GetMapping(value = "/sfExpress/order/cancel/{expressNos}")
+    public void sfExpressOrderCancel(HttpServletResponse response, @PathVariable("expressNos") String expressNos) {
+        logger.info("sfExpressOrderQuery start, expressNos:" + expressNos);
+        String[] expressNosArr = expressNos.split(",");
+        List<String> cancelExpressNos = new ArrayList<>();
+
+        for (String expressNo : expressNosArr) {
+            ExpressDeliverDetail detail = new ExpressDeliverDetail();
+            detail.setExpressNo(expressNo);
+
+            if (erpService.sfBspOrderCancel(detail).equals(CommonConstant.success)) {
+                cancelExpressNos.add(expressNo);
+            }
+        }
+
+        writer.writeObjectToJson(response, cancelExpressNos);
+        logger.info("sfExpressOrderQuery end");
+    }
+
+    /**
+     * 产生顺丰快递单
+     * @param expressNos
+     * @param model
+     */
+    @GetMapping(value = "/sfExpress/waybill/{expressNos}")
+    public String sfExpressWaybill(@PathVariable("expressNos") String expressNos, Map<String, Object> model) {
+        logger.info("sfExpressWaybillDownload start, expressNo:" + expressNos);
+
+        String[] expressNosArr = expressNos.split(",");
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+
+        for (String expressNo : expressNosArr) {
+            ExpressDeliverDetail detail = new ExpressDeliverDetail();
+            detail.setExpressNo(expressNo);
+            List<ExpressDeliverDetail> dbDetails = erpDao.query(detail);
+
+            if (!dbDetails.isEmpty()) {
+                ExpressDeliverDetail dbDetail = erpService.getSfWaybillInfo(dbDetails.get(0));
+                if (!dbDetail.getResult().equals("3")) {
+                    details.add(dbDetail);
+                }
+            }
+        }
+
+        model.put("details", details);
+        logger.info("sfExpressWaybillDownload end");
+        return "waybill";
+    }
+
+    /**
+     * sf快递单下单及产生快递单
+     * @param json
+     * @param model
+     */
+    @Transactional
+    @PostMapping(value = "/sfExpress/sfExpressOrderAndWaybill")
+    public String sfExpressOrderAndWaybill(String json, Map<String, Object> model) {
+        logger.info("sfExpressOrderAndWaybill start, json:" + json);
+
+        List<ExpressDeliverDetail> details = new ArrayList<>();
+        try {
+            List<ExpressDeliver> expressDelivers = writer.gson.fromJson(json, new TypeToken<List<ExpressDeliver>>(){}.getType());
+            details = erpService.expressDeliverOrders(expressDelivers);
+
+            for (ExpressDeliverDetail detail : details) {
+                erpService.setWaybillinfo(detail);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            transcation.rollback();
+        }
+
+        model.put("details", details);
+        logger.info("sfExpressWaybillDownload end");
+        return "waybill";
     }
 
     /**

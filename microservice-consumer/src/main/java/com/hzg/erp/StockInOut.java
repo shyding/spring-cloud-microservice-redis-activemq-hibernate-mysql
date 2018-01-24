@@ -55,14 +55,11 @@ public class StockInOut implements Serializable {
     private StockChangeWarehouse changeWarehouse;
 
     @ManyToOne(cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    @JoinColumn(name = "warehoustId")
+    @JoinColumn(name = "warehouseId")
     private Warehouse warehouse;
 
     @OneToMany(mappedBy = "stockInOut", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<StockInOutDetail> details;
-
-    @OneToMany(mappedBy = "stockInOut", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    private Set<StockInOutAction> actions;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -170,13 +167,5 @@ public class StockInOut implements Serializable {
 
     public void setDetails(Set<StockInOutDetail> details) {
         this.details = details;
-    }
-
-    public Set<StockInOutAction> getActions() {
-        return actions;
-    }
-
-    public void setActions(Set<StockInOutAction> actions) {
-        this.actions = actions;
     }
 }

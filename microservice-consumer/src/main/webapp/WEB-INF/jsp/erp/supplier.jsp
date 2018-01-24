@@ -188,6 +188,8 @@
         console.log(start.toISOString(), end.toISOString(), label);
     });
 
+    $("#account").accountInput();
+
     $("#send").click(function(){$('#form').submitForm('<%=request.getContextPath()%>/erp/<c:choose><c:when test="${entity != null}">update</c:when><c:otherwise>save</c:otherwise></c:choose>/<%=Supplier.class.getSimpleName().toLowerCase()%>');});
 
     $("#delete").click(function(){

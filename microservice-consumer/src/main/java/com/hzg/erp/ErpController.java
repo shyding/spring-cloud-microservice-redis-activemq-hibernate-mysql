@@ -60,9 +60,15 @@ public class ErpController extends com.hzg.base.Controller {
                 model.put(CommonConstant.no, no.get(CommonConstant.no));
             }
 
+            model.put(CommonConstant.sessionId, sessionId);
             model.put("currentDay", dateUtil.getCurrentDayStr());
             model.put("productTypes", writer.gson.fromJson(erpClient.complexQuery("productType", "{}", 0, -1), new TypeToken<List<ProductType>>() {}.getType()));
             model.put("accounts", writer.gson.fromJson(payClient.query(Account.class.getSimpleName().toLowerCase(), "{}"), new TypeToken<List<Account>>() {}.getType()));
+            if (!entities.isEmpty()) {
+                model.put("pays", ((Purchase)entities.get(0)).getPays());
+            }
+            model.put(CommonConstant.resources, dao.getFromRedis((String)dao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + sessionId) +
+                    CommonConstant.underline + CommonConstant.resources));
 
         } else if (entity.equalsIgnoreCase(Supplier.class.getSimpleName())) {
             entities = writer.gson.fromJson(client.query(entity, json), new TypeToken<List<Supplier>>() {}.getType());
@@ -128,7 +134,7 @@ public class ErpController extends com.hzg.base.Controller {
         return "/erp/" + entity;
     }
 
-
+    @CrossOrigin
     @RequestMapping(value = "/privateQuery/{entity}", method = {RequestMethod.GET, RequestMethod.POST})
     public void privateQuery(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
         logger.info("privateQuery start, entity:" + entity + ", json:" + json);
@@ -137,7 +143,7 @@ public class ErpController extends com.hzg.base.Controller {
             writer.writeStringToJson(response, client.complexQuery(entity, json, 0, 30));
 
         } else if (entity.equalsIgnoreCase(Product.class.getSimpleName())) {
-            writer.writeStringToJsonAccessAllow(response, client.suggest(entity, json));
+            writer.writeStringToJson(response, client.suggest(entity, json));
 
         } else if (entity.equalsIgnoreCase(ProductPriceChange.class.getSimpleName())) {
             writer.writeStringToJson(response, client.suggest(entity, json));
@@ -208,6 +214,7 @@ public class ErpController extends com.hzg.base.Controller {
         return "/erp/" + name;
     }
 
+    @CrossOrigin
     @RequestMapping(value = "/doBusiness/{name}", method = {RequestMethod.GET, RequestMethod.POST})
     public void doBusiness(javax.servlet.http.HttpServletRequest request, HttpServletResponse response,
                            @PathVariable("name") String name, String json, String sessionId) {
@@ -224,17 +231,17 @@ public class ErpController extends com.hzg.base.Controller {
                 params.put("product", writer.gson.fromJson(json, Product.class));
                 params.put("post", posts.get(0));
 
-                writer.writeStringToJsonAccessAllow(response, erpClient.business(name, writer.gson.toJson(params)));
+                writer.writeStringToJson(response, erpClient.business(name, writer.gson.toJson(params)));
 
             } else {
-                writer.writeStringToJsonAccessAllow(response, "{\"" + CommonConstant.result + "\":\"不能确定用户上传多媒体文件所属岗位，上传失败\"}");
+                writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"不能确定用户上传多媒体文件所属岗位，上传失败\"}");
             }
 
         } else if (name.equalsIgnoreCase(ErpConstant.product_action_name_queryProductAccessAllow)) {
-            writer.writeStringToJsonAccessAllow(response, client.query(Product.class.getSimpleName(), json));
+            writer.writeStringToJson(response, client.query(Product.class.getSimpleName(), json));
 
         } else {
-            writer.writeStringToJsonAccessAllow(response, erpClient.business(name, json));
+            writer.writeStringToJson(response, erpClient.business(name, json));
         }
 
         logger.info("doBusiness " + name + " end");
@@ -243,18 +250,25 @@ public class ErpController extends com.hzg.base.Controller {
     @RequestMapping(value = "/print/{name}", method = {RequestMethod.POST})
     public String print(Map<String, Object> model, @PathVariable("name") String name, String json) {
         logger.info("print start, name:" + name + ", json:" + json);
+        String page = CommonConstant.print;
 
-        model.put(CommonConstant.printContent, erpClient.print(name, json));
+        if (name.equals(ErpConstant.expressWaybill)) {
+            page = "/erp/" + ErpConstant.waybill;
+            model.put(CommonConstant.details, writer.gson.fromJson(erpClient.print(name, json), new TypeToken<List<ExpressDeliverDetail>>(){}.getType()));
+        } else {
+            model.put(CommonConstant.printContent, erpClient.print(name, json));
+        }
+
         logger.info("print " + name + " end");
-
-        return  CommonConstant.print;
+        return page;
     }
 
+    @CrossOrigin
     @RequestMapping(value = "/sfExpress/order/notify", method = {RequestMethod.POST})
     public void sfExpressOrderNotify(HttpServletResponse response, HttpServletRequest request) {
         String json = writer.gson.toJson(request.getParameterMap());
         logger.info("sfExpressOrderNotify start, json:" + json);
-        writer.writeStringToJsonAccessAllow(response, erpClient.sfExpressOrderNotify(json));
+        writer.writeStringToJson(response, erpClient.sfExpressOrderNotify(json));
         logger.info("sfExpressOrderNotify end");
     }
 

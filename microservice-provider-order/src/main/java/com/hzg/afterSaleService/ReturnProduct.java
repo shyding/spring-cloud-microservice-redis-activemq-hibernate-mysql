@@ -7,6 +7,7 @@ import org.hibernate.annotations.Type;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Set;
 
 @Entity(name = "hzg_returnproduct")
@@ -63,7 +64,7 @@ public class ReturnProduct implements Serializable {
     private Set<ReturnProductDetail> details;
 
     @Transient
-    private Set<Action> actions;
+    private List<Action> actions;
 
     @Transient
     private String sessionId;
@@ -168,11 +169,11 @@ public class ReturnProduct implements Serializable {
         this.details = details;
     }
 
-    public Set<Action> getActions() {
+    public List<Action> getActions() {
         return actions;
     }
 
-    public void setActions(Set<Action> actions) {
+    public void setActions(List<Action> actions) {
         this.actions = actions;
     }
 

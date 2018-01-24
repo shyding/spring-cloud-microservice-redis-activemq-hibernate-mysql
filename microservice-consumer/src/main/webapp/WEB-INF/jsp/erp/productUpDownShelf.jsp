@@ -154,7 +154,7 @@
         if (document.getElementById("tr" + item.id) == null) {
             form.append("<input id='ih" + item.id +"' type='hidden' name='entityIds[]' value='" + item.id + "'>");
             tbody.append("<tr id='tr" + item.id + "'><td>" + item.name + "</td><td>" + item.no + "</td><td>" +
-                dataList.entityStateNames["product"]["product[state]"][item.state] + "</td><td>" + item.type.name + "</td><td>" + item.unitPrice + "</td><td>" +
+                dataList.entityStateNames["product"]["state"][item.state] + "</td><td>" + item.type.name + "</td><td>" + item.unitPrice + "</td><td>" +
                 "<a id='" + item.id + "' href='<%=FileServerInfo.imageServerUrl%>/" + item.describe.imageParentDirPath + "/snapshoot.jpg'>图片</a></td></tr>");
 
             $(document.getElementById(item.id)).lightbox({

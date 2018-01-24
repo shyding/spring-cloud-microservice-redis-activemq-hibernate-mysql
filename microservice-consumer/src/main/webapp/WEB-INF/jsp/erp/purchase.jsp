@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page import="com.hzg.erp.Purchase" %>
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.PurchaseDetail" %>
@@ -7,6 +8,8 @@
 <%@ page import="java.util.List" %>
 <%@ page import="com.hzg.pay.Account" %>
 <%@ page import="com.hzg.tools.ErpConstant" %>
+<%@ page import="com.hzg.tools.PayConstants" %>
+<%@ page import="com.hzg.pay.Pay" %>
 <%--jquery ui--%>
 <link type="text/css" href="../../../res/css/jquery-ui-1.10.0.custom.css" rel="stylesheet">
 <!-- page content -->
@@ -58,36 +61,67 @@
                             <label class="control-label col-md-3 col-sm-3 col-xs-12" for="type">采购类型 <span class="required">*</span></label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <select id="type" name="type:number" class="form-control col-md-7 col-xs-12" required>
+                        <%
+                            Purchase purchase = (Purchase) request.getAttribute("entity");
+                            if (purchase == null) {
+                        %>
                                     <option value="">请选择类型</option>
                                     <option value="<%=ErpConstant.purchase_type_normal%>">正常采购</option>
                                     <option value="<%=ErpConstant.purchase_type_temp%>">临时采购</option>
                                     <option value="<%=ErpConstant.purchase_type_emergency%>">应急采购</option>
                                     <option value="<%=ErpConstant.purchase_type_cash%>">现金采购</option>
                                     <option value="<%=ErpConstant.purchase_type_deposit%>">押金采购</option>
+                        <%
+                            } else {
+                                String purchaseTypeOptions =
+                                        ("<option value='" + ErpConstant.purchase_type_normal + "'>正常采购</option>" +
+                                                "<option value='" + ErpConstant.purchase_type_temp + "'>临时采购</option>" +
+                                                "<option value='" + ErpConstant.purchase_type_emergency + "'>应急采购</option>" +
+                                                "<option value='" + ErpConstant.purchase_type_cash + "'>现金采购</option>" +
+                                                "<option value='" + ErpConstant.purchase_type_deposit + "'>押金采购</option>")
+                                                .replace("'" + purchase.getType() + "'", "'" + purchase.getType() + "' selected");
+                        %>
+                            <%=purchaseTypeOptions%>
+                        <%
+                            }
+                        %>
                                 </select>
                             </div>
                         </div>
-                        <div id="accountDiv" class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">支付账户 <span class="required">*</span>
-                            </label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <%
-                                    Integer accountId = -1;
-                                    Purchase purchase = (Purchase)request.getAttribute("entity");
-                                    if (purchase != null && (purchase.getType().compareTo(2) == 0 || purchase.getType().compareTo(3) == 0 || purchase.getType().compareTo(4) == 0)) {
-                                        accountId = purchase.getAccount().getId();
-                                    }
-                                    List<Account> accounts = (List<Account>)request.getAttribute("accounts");
+                        <%
+                            String totalPaymentSelected = "", depositSelected = "";
+                            if (purchase != null && purchase.getType().compareTo(ErpConstant.purchase_type_temp) == 0) {
+                                totalPaymentSelected = "selected";
 
-                                    String options = "";
-                                    for (int i  = 0; i < accounts.size(); i++) {
-                                        options += "<option value=\"" + accounts.get(i).getId() + "\"" + (accounts.get(i).getId().compareTo(accountId) == 0 ? " selected" : "") + ">" + accounts.get(i).getAccount() + "/" + accounts.get(i).getBranch() + "/" + accounts.get(i).getBank() + "</option>";
-                                    }
-                                %>
-                                <select id="account[id]" name="account[id]:number" value="${entity.amount}" data-value-type="number" data-skip-falsy="true" class="form-control col-md-7 col-xs-12">
-                                    <option value="">请选择</option>
-                                    <%=options%>
-                                </select>
+                                if (purchase.getPurchaseBookPaid() != null && purchase.getPurchaseBookPaid()) {
+                                    totalPaymentSelected = "";
+                                    depositSelected = "selected";
+                                }
+                            }
+                        %>
+                            <div id="temporaryPurchasePayKindDiv" <c:if test="${entity.type != 1}">style="display: none"</c:if>>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="temporaryPurchasePayKind">付款类型</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <select id="temporaryPurchasePayKind" name="temporaryPurchasePayKind" class="form-control col-md-7 col-xs-12">
+                                        <option value="<%=ErpConstant.purchase_type_temp_payKind_totalPayment%>" <%=totalPaymentSelected%>>全款</option>
+                                        <option value="<%=ErpConstant.purchase_type_temp_payKind_deposit%>" <%=depositSelected%>>订金</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="purchaseBookDiv"  <c:if test="${entity.purchaseBookPaid == null}">style="display: none"</c:if>>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="purchaseBookDeposit">订金</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input type="number" id="purchaseBookDeposit" name="purchaseBook[deposit]:number" value="${entity.purchaseBook.deposit}" class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入预定订金" data-skip-falsy="true">
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="purchaseBookPayDate">订金付款时间</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input type="text" id="purchaseBookPayDate" name="purchaseBook[payDate]:string" value="${entity.purchaseBook.payDate}" class="form-control col-md-7 col-xs-12" style="width:40%" placeholder="输入订金付款时间" data-skip-falsy="true">
+                                </div>
                             </div>
                         </div>
                         <div class="item form-group">
@@ -96,15 +130,8 @@
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <div class="input-prepend input-group" style="margin-bottom:0">
                                     <span class="add-on input-group-addon"><i class="glyphicon glyphicon-calendar fa fa-calendar"></i></span>
-                                    <input type="text" name="date" id="date" class="form-control" value="${entity.date}">
+                                    <input type="text" name="date" id="date" class="form-control" style="width:37%" value="${entity.date}">
                                 </div>
-                            </div>
-                        </div>
-                        <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12" id="amountLabel" for="amount">采购金额 <span class="required">*</span>
-                            </label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <input id="amount" name="amount:number" value="${entity.amount}" class="form-control col-md-7 col-xs-12" required type="number">
                             </div>
                         </div>
                         <div class="item form-group">
@@ -114,16 +141,115 @@
                                 <input type="hidden" id="charger[id]" name="charger[id]" value="${entity.charger.id}">
                             </div>
                         </div>
+
                         <c:set var="supplierId" />
                         <c:set var="supplierName" />
+                        <c:set var="supplierAccount" />
+                        <c:set var="supplierBranch" />
+                        <c:set var="supplierBank" />
                         <c:forEach items="${entity.details}" var="detail" end="0">
                             <c:set var="supplierId" value="${detail.product.supplier.id}" />
                             <c:set var="supplierName" value="${detail.product.supplier.name}" />
+                            <c:set var="supplierAccount" value="${detail.product.supplier.account}" />
+                            <c:set var="supplierBranch" value="${detail.product.supplier.branch}" />
+                            <c:set var="supplierBank" value="${detail.product.supplier.bank}" />
                         </c:forEach>
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12" for="text2">供应商</label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <input type="text" id="text2" name="text2" value="${supplierName}" placeholder="供应商" class="form-control col-md-7 col-xs-12" style="width:40%" required />
+                            </div>
+                        </div>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12" id="amountLabel" for="amount">采购金额 <span class="required">*</span>
+                            </label>
+                            <div class="col-md-6 col-sm-6 col-xs-12">
+                                <input id="amount" name="amount:number" value="${entity.amount}" style="width:40%" class="form-control col-md-7 col-xs-12" required type="number">
+                            </div>
+                        </div>
+                        <div class="item form-group">
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12">支付明细 <span class="required">*</span></label>
+                            <div class="col-md-9 col-sm-6 col-xs-12">
+                                <div style="padding-top:8px;padding-bottom:8px">支付方式&nbsp;/&nbsp;支付金额&nbsp;/&nbsp;支付账号&nbsp;/&nbsp;收款账号<c:if test="${entity.pays != null}">&nbsp;/&nbsp;状态</c:if></div>
+                                <table id="payList">
+                                    <tbody>
+                                    <c:if test="${entity.pays == null}">
+                                        <tr>
+                                            <td>
+                                                <select name="pays[][payType]:number" class="form-control col-md-7 col-xs-12" style="width:140px" required>
+                                                    <option value="">请选择支付方式</option>
+                                                    <option value="<%=PayConstants.pay_type_transfer_accounts_alipay%>">支付宝转账</option>
+                                                    <option value="<%=PayConstants.pay_type_transfer_accounts_weixin%>">微信转账</option>
+                                                    <option value="<%=PayConstants.pay_type_transfer_accounts%>">转账</option>
+                                                    <option value="<%=PayConstants.pay_type_remit%>">汇款</option>
+                                                    <option value="<%=PayConstants.pay_type_other%>">其他</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="number" class="form-control col-md-7 col-xs-12" name="pays[][amount]:number" style="width:140px" required></td>
+                                            <td>
+                                                <select name="payAccountInfo" class="form-control col-md-7 col-xs-12" style="width:280px" required>
+                                                    <option value="">请选择支付账号</option>
+                                                    <c:forEach items="${accounts}" var="account">
+                                                    <option value="${account.account}/${account.branch}/${account.bank}">${account.account}/${account.branch}/${account.bank}</option>
+                                                    </c:forEach>
+                                                </select>
+                                                <input type="hidden" name="pays[][payAccount]:string">
+                                                <input type="hidden" name="pays[][payBranch]:string">
+                                                <input type="hidden" name="pays[][payBank]:string">
+                                            </td>
+                                            <td>
+                                                <div name="receiptAccountInfo"></div>
+                                                <input type="hidden" name="pays[][receiptAccount]:string">
+                                                <input type="hidden" name="pays[][receiptBranch]:string">
+                                                <input type="hidden" name="pays[][receiptBank]:string">
+                                            </td>
+                                        </tr>
+                                    </c:if>
+                                    <c:if test="${entity.pays != null}">
+                                        <c:forEach items="${entity.pays}" var="pay">
+                                            <%
+                                                Pay pay = (Pay) pageContext.getAttribute("pay");
+
+                                                String payTypeOptions =
+                                                        ("<option value='" + PayConstants.pay_type_transfer_accounts + "'>转账</option>" +
+                                                        "<option value='" + PayConstants.pay_type_remit + "'>汇款</option>" +
+                                                        "<option value='" + PayConstants.pay_type_transfer_accounts_alipay + "'>支付宝转账</option>" +
+                                                        "<option value='" + PayConstants.pay_type_transfer_accounts_weixin + "'>微信转账</option>" +
+                                                        "<option value='" + PayConstants.pay_type_other + "'>其他</option>")
+                                                        .replace("'" + pay.getPayType() + "'", "'" + pay.getPayType() + "' selected");
+
+                                                String payAccountOptions = "";
+                                                List<Account> accounts = (List<Account>)request.getAttribute("accounts");
+                                                for (Account account : accounts) {
+                                                    String accountInfo = account.getAccount() + "/" + account.getBranch() + "/" + account.getBank();
+                                                    payAccountOptions += "<option value='" + accountInfo + "'>" + accountInfo + "</option>";
+                                                }
+                                                String payAccountInfo = pay.getPayAccount() + "/" + pay.getPayBranch() + "/" + pay.getPayBank();
+                                                payAccountOptions = payAccountOptions.replace("'" + payAccountInfo + "'", "'" + payAccountInfo + "' selected");
+
+                                            %>
+                                            <tr>
+                                                <td><select name="pays[][payType]:number" class="form-control col-md-7 col-xs-12" style="width:140px" required><%=payTypeOptions%></select></td>
+                                                <td><input type="number" class="form-control col-md-7 col-xs-12" name="pays[][amount]:number" value="${pay.amount}" style="width:140px" required></td>
+                                                <td>
+                                                    <select name="payAccountInfo" class="form-control col-md-7 col-xs-12" style="width:280px" required><%=payAccountOptions%></select>
+                                                    <input type="hidden" name="pays[][payAccount]:string" value="${pay.payAccount}">
+                                                    <input type="hidden" name="pays[][payBranch]:string" value="${pay.payBranch}">
+                                                    <input type="hidden" name="pays[][payBank]:string" value="${pay.payBank}">
+                                                </td>
+                                                <td>
+                                                    <div name="receiptAccountInfo">${supplierAccount}/${supplierBranch}/${supplierBank}</div>
+                                                    <input type="hidden" name="pays[][receiptAccount]:string" value="${supplierAccount}">
+                                                    <input type="hidden" name="pays[][receiptBranch]:string" value="${supplierBranch}">
+                                                    <input type="hidden" name="pays[][receiptBank]:string" value="${supplierBank}">
+                                                </td>
+                                                <td>${pay.stateName}</td>
+                                            </tr>
+                                        </c:forEach>
+                                    </c:if>
+                                    </tbody>
+                                </table>
+                                <div style="padding-top: 8px"><a href="javascript:void(0)" id="addPayItem">添加支付记录</a></div>
                             </div>
                         </div>
                         <div class="item form-group">
@@ -133,29 +259,6 @@
                                 <textarea id="describes" name="describes" class="form-control col-md-7 col-xs-12" data-validate-length-range="6,256" data-validate-words="1"required>${entity.describes}</textarea>
                             </div>
                         </div>
-                        <%
-                            if (purchase != null && (purchase.getType().compareTo(2) == 0 || purchase.getType().compareTo(3) == 0 || purchase.getType().compareTo(4) == 0)) {
-                                PurchaseDetail detail = null;
-                                for (PurchaseDetail ele : purchase.getDetails()) {
-                                    detail = ele;
-                                    break;
-                                }
-                        %>
-                        <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="payAccount">付款账户</label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <input id="payAccount" name="payAccount" value="<%=purchase.getAccount().getAccount()%>/<%=purchase.getAccount().getBranch()%>/<%=purchase.getAccount().getBank()%>" placeholder="供应商" class="form-control col-md-7 col-xs-12" required />
-                            </div>
-                        </div>
-                        <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="receiptAccount">供应商收款账户</label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <input id="receiptAccount" name="receiptAccount" value="<%=detail.getProduct().getSupplier().getAccount()%>/<%=detail.getProduct().getSupplier().getBranch()%>/<%=detail.getProduct().getSupplier().getBank()%>" placeholder="供应商" class="form-control col-md-7 col-xs-12" required />
-                            </div>
-                        </div>
-                        <%
-                            }
-                        %>
                         <div class="item form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12">采购条目</label>
                         </div>
@@ -435,6 +538,11 @@
                                             <button id="editSheet" type="button" class="btn btn-primary">编辑</button>
                                             <button id="delete" type="button" class="btn btn-danger">作废</button>
                                         </c:if>
+                                        <c:if test="${fn:contains(resources, '/erp/doBusiness/purchaseBookPaid')}">
+                                            <c:if test="${entity.state == 1 && entity.purchaseBookPaid == true && entity.toPayBalance == true}">
+                                                <button id="payBalance" type="button" class="btn btn-success">确认余款已付</button>
+                                            </c:if>
+                                        </c:if>
                                         <c:if test="${entity.state == 2}">
                                             <button id="editState" type="button" class="btn btn-primary">编辑</button>
                                             <button id="recover" type="button" class="btn btn-success">恢复</button>
@@ -473,15 +581,28 @@
 
     $("#type").change(function(){
         var typeValue = parseInt($("#type").val());
-        if (typeValue == 2 || typeValue == 3 || typeValue == 4) {
-            $("#accountDiv").show();
-        } else {
-            $("#accountDiv").hide();
-        }
+
         if (typeValue == 4) {
             $("#amountLabel").html("押金金额");
         } else {
             $("#amountLabel").html("采购金额");
+        }
+
+        if (typeValue == 1) {
+            $("#temporaryPurchasePayKindDiv").show();
+        } else {
+            $("#temporaryPurchasePayKindDiv").hide();
+            $("#purchaseBookDiv").hide();
+        }
+    });
+
+    $("#temporaryPurchasePayKind").change(function(){
+        var typeValue = parseInt($(this).val());
+
+        if (typeValue == 0) {
+            $("#purchaseBookDiv").hide();
+        } else {
+            $("#purchaseBookDiv").show();
         }
     });
 
@@ -497,6 +618,24 @@
     </c:if>
 
     $('#date').daterangepicker({
+        locale: {
+            format: 'YYYY-MM-DD',
+            applyLabel : '确定',
+            cancelLabel : '取消',
+            fromLabel : '起始时间',
+            toLabel : '结束时间',
+            customRangeLabel : '自定义',
+            daysOfWeek : [ '日', '一', '二', '三', '四', '五', '六' ],
+            monthNames : [ '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月' ],
+            firstDay : 1
+        },
+        singleDatePicker: true,
+        singleClasses: "picker_3"
+    }, function(start, end, label) {
+        console.log(start.toISOString(), end.toISOString(), label);
+    });
+
+    $('#purchaseBookPayDate').daterangepicker({
         locale: {
             format: 'YYYY-MM-DD',
             applyLabel : '确定',
@@ -530,10 +669,12 @@
         onSelected:function(result){
             if(result!=null){
                 setSupplierId(result.id);
+                setSupplierAccount(result);
             }
         }
     });
 
+    setPayAccountInfo();
     <c:if test="${supplierId != null}">
     setSupplierId(${supplierId});
     </c:if>
@@ -548,6 +689,70 @@
         for (var i = 0; i < suppliers.length; i++) {
             suppliers[i].value = id;
         }
+    }
+
+    function setSupplierAccount(supplier) {
+        var receiptAccountInfos =  document.getElementsByName("receiptAccountInfo");
+        for (var i = 0; i < receiptAccountInfos.length; i++) {
+            var receiptAccountInfo = $(receiptAccountInfos[i]);
+            receiptAccountInfo.html(supplier.account + "/" + supplier.branch + "/" + supplier.bank);
+
+            var receiptAccountInfoInputs = receiptAccountInfo.parent().find(":input");
+            for (var j = 0; j < receiptAccountInfoInputs.length; j++) {
+                var receiptAccountInfoInput = $(receiptAccountInfoInputs[j]);
+
+                if (receiptAccountInfoInput.attr("name") == "pays[][receiptAccount]:string") {
+                    receiptAccountInfoInput.val(supplier.account);
+                }
+
+                if (receiptAccountInfoInput.attr("name") == "pays[][receiptBranch]:string") {
+                    receiptAccountInfoInput.val(supplier.branch);
+                }
+
+                if (receiptAccountInfoInput.attr("name") == "pays[][receiptBank]:string") {
+                    receiptAccountInfoInput.val(supplier.bank);
+                }
+            }
+        }
+    }
+
+    $('#addPayItem').click(function(){addPay()});
+
+    function addPay() {
+        var trs = $("#payList tbody tr");
+        $("#payList tbody").append("<tr>" + $(trs[trs.length - 1]).html() + "</tr>");
+        setPayAccountInfo();
+    }
+
+    function setPayAccountInfo() {
+        var trs = $("#payList tbody tr");
+
+        $.each($(trs[trs.length-1]).find(":input"), function (ci, item) {
+            var name = item.name;
+            if (name != undefined && name == "payAccountInfo") {
+
+                $(item).click(function(){
+                    var payAccountInfo = $(this).val().split("/");
+
+                    $.each($(this).parent().find(":input"), function (ci, item) {
+                        var name = item.name;
+                        if (name != undefined) {
+                            if (name == "pays[][payAccount]:string") {
+                                $(item).val(payAccountInfo[0]);
+                            }
+
+                            if (name == "pays[][payBranch]:string") {
+                                $(item).val(payAccountInfo[1]);
+                            }
+
+                            if (name == "pays[][payBank]:string") {
+                                $(item).val(payAccountInfo[2]);
+                            }
+                        }
+                    });
+                });
+            }
+        });
     }
 
     $("#delete").click(function(){
@@ -569,6 +774,18 @@
     $("#edit").click(function(){
         $(".table-sheet tbody tr td input").css("border", "1px solid #ccc");
     });
+
+    <c:if test="${fn:contains(resources, '/erp/doBusiness/purchaseBookPaid')}">
+        <c:if test="${entity.state == 1 && entity.purchaseBookPaid == true && entity.toPayBalance == true}">
+            $("#payBalance").click(function(){
+                if (confirm("确认临时采购预定单余款已支付吗？")) {
+                    $("#form").sendData('<%=request.getContextPath()%>/erp/doBusiness/purchaseBookPaid', '{"entityId":"${entity.id}","sessionId":"${sessionId}"}');
+                }
+            });
+        </c:if>
+    </c:if>
+
+
 
     tableSheet.init("productList", 15-<%=detailsCount%>, "<%=request.getContextPath()%>");
     $('#addItem').click(function(){tableSheet.addRow("productList");});

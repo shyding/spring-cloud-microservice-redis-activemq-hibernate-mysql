@@ -1,13 +1,4 @@
-<%--
-**
-* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
-* 文件名: entities.jsp
-*
-* @author smjie
-* @Date  2017/4/12
-* @version 1.00
-*
---%>
+<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -62,12 +53,12 @@
                             </div>
                             </div>
                             <div id="inputItems">
-                            <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">名称</label>
-                                <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" />
+                                <div class="item form-group">
+                                    <label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">名称</label>
+                                    <div class="col-md-6 col-sm-6 col-xs-12">
+                                        <input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入名称" />
+                                    </div>
                                 </div>
-                            </div>
                             </div>
                             <div class="item form-group">
                                 <div class="col-md-6 col-md-offset-3">
@@ -103,17 +94,31 @@
 
     var visitEntitiesOptions = {};
     <c:if test="${resources != null}">
+
     <c:if test="${fn:contains(resources, '/product')}">
     visitEntitiesOptions["product"] = '<option value="product">商品</option>';
     </c:if>
+    <c:if test="${fn:contains(resources, '/productDescribe')}">
+    visitEntitiesOptions["productDescribe"] = '<option value="productDescribe">商品描述</option>';
+    </c:if>
     <c:if test="${fn:contains(resources, '/productType/')}">
     visitEntitiesOptions["productType"] = '<option value="productType">商品类型</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/productPriceChange/')}">
+    visitEntitiesOptions["productPriceChange"] = '<option value="productPriceChange">商品调价</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/productCheck/')}">
+    visitEntitiesOptions["productCheck"] = '<option value="productCheck">商品盘点</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/supplier')}">
     visitEntitiesOptions["supplier"] = '<option value="supplier">供应商</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/stock')}">
+    visitEntitiesOptions["stockInOut"] = '<option value="stockInOut">出库/入库</option>';
     visitEntitiesOptions["stock"] = '<option value="stock">库存</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/warehouse')}">
+    visitEntitiesOptions["warehouse"] = '<option value="warehouse">仓库</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/purchase')}">
     visitEntitiesOptions["purchase"] = '<option value="purchase">采购</option>';
@@ -121,11 +126,17 @@
     <c:if test="${fn:contains(resources, '/order')}">
     visitEntitiesOptions["order"] = '<option value="order">订单</option>';
     </c:if>
-    <c:if test="${fn:contains(resources, '/returnGoods')}">
-    visitEntitiesOptions["returnGoods"] = '<option value="returnGoods">退货</option>';
+    <c:if test="${fn:contains(resources, '/orderPrivate')}">
+    visitEntitiesOptions["orderPrivate"] = '<option value="orderPrivate">商品加工，私人订制</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/returnProduct')}">
+    visitEntitiesOptions["returnProduct"] = '<option value="returnProduct">退货</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/pay')}">
     visitEntitiesOptions["pay"] = '<option value="pay">支付</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/account')}">
+    visitEntitiesOptions["account"] = '<option value="account">银行账户</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/customer')}">
     visitEntitiesOptions["customer"] = '<option value="customer">顾客</option>';
@@ -148,16 +159,31 @@
     <c:if test="${fn:contains(resources, '/company')}">
     visitEntitiesOptions["company"] = '<option value="company">公司</option>';
     </c:if>
+    <c:if test="${fn:contains(resources, '/article')}">
+    visitEntitiesOptions["article"] = '<option value="article">文章</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/articleCate')}">
+    visitEntitiesOptions["articleCate"] = '<option value="articleCate">文章分类</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/voucher')}">
+    visitEntitiesOptions["voucher"] = '<option value="voucher">凭证</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/voucherCategory')}">
+    visitEntitiesOptions["voucherCategory"] = '<option value="voucherCategory">凭证类别</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/subject')}">
+    visitEntitiesOptions["subject"] = '<option value="subject">科目</option>';
+    </c:if>
     </c:if>
     visitEntitiesOptions["audit"] = '<option value="audit">事宜</option>';
 
-    $("#entity").change(function(){dataList.setQuery("<%=request.getContextPath()%>", $("#entity").val(), visitEntitiesOptions);});
+    $("#entity").change(function(){dataList.setQuery("<%=request.getContextPath()%>", "<%=FileServerInfo.imageServerUrl%>", $("#entity").val(), visitEntitiesOptions);});
     $("#send").click(function(){
         dataListQueryEntity = $("#entity").val();
         var formJson = $("#form").serializeJSON();
         delete formJson["entity"];
         dataListQueryJson = JSON.stringify(formJson);
-        dataList.query($("#dataList"),"<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
+        dataList.query($("#dataList"),"<%=request.getContextPath()%>", "<%=FileServerInfo.imageServerUrl%>", dataListQueryJson, dataListQueryEntity);
     });
 
    <c:if test="${entity != null}">
@@ -169,7 +195,7 @@
     }
     </c:if>
 
-    dataList.setQuery("<%=request.getContextPath()%>", dataListQueryEntity, visitEntitiesOptions);
+    dataList.setQuery("<%=request.getContextPath()%>", "<%=FileServerInfo.imageServerUrl%>", dataListQueryEntity, visitEntitiesOptions);
     setSelect(document.getElementById("entity"), dataListQueryEntity);
-    dataList.query($("#dataList"), "<%=request.getContextPath()%>", dataListQueryJson, dataListQueryEntity);
+    dataList.query($("#dataList"), "<%=request.getContextPath()%>", "<%=FileServerInfo.imageServerUrl%>", dataListQueryJson, dataListQueryEntity);
 </script>

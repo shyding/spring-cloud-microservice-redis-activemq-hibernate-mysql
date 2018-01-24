@@ -6,6 +6,7 @@ import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Set;
 
 @Entity(name = "hzg_product")
@@ -75,6 +76,12 @@ public class Product implements Serializable {
 
     @Transient
     private String soldUnit;
+
+    @Transient
+    private Float returnQuantity;
+
+    @Transient
+    private String returnUnit;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -216,17 +223,38 @@ public class Product implements Serializable {
         this.soldUnit = soldUnit;
     }
 
+    public Float getReturnQuantity() {
+        return returnQuantity;
+    }
+
+    public void setReturnQuantity(Float returnQuantity) {
+        this.returnQuantity = returnQuantity;
+    }
+
+    public String getReturnUnit() {
+        return returnUnit;
+    }
+
+    public void setReturnUnit(String returnUnit) {
+        this.returnUnit = returnUnit;
+    }
+
     public String getStateName() {
         switch (state) {
             case 0 : return "采购";
             case 1 : return "入库";
             case 2 : return "出库";
             case 3 : return "在售";
-            case 4 : return "售完";
+            case 4 : return "已售";
             case 10 : return "采购审核通过";
             case 11 : return "采购完成";
             case 6 : return "编辑";
             case 7 : return "多媒体文件已上传";
+            case 8 : return "已发货";
+            case 9 : return "申请退货";
+            case 91 : return "已退货";
+            case 92 : return "申请换货";
+            case 93 : return "已换货";
             default : return "";
         }
     }

@@ -21,7 +21,7 @@ public class StockInOutDetailProduct implements Serializable {
     @JoinColumn(name = "stockInOutDetailId")
     private StockInOutDetail stockInOutDetail;
 
-    @OneToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
+    @ManyToOne(cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     @JoinColumn(name = "productId")
     private Product product;
 

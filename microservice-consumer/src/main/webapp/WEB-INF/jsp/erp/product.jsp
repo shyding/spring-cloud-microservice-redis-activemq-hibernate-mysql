@@ -1,6 +1,16 @@
-﻿<%@ page import="com.hzg.tools.FileServerInfo" %>
+<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.Product" %>
 <%@ page import="com.hzg.erp.ProductOwnProperty" %>
+<%--
+**
+* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
+* 文件名: product.jsp
+*
+* @author smjie
+* @Date  2017/7/18
+* @version 1.00
+*
+--%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%--jquery ui--%>
@@ -80,23 +90,24 @@
                                 Product product = (Product)request.getAttribute("entity");
                             %>
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12">缩列图 <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">采购图 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/snapshoot.jpg" class="lightbox">
-                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/snapshoot.jpg" width="60%">
+                                    <a id="imgA" href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/snapshoot.jpg?<%=Math.random()%>" class="lightbox">
+                                        <img id="img" src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/snapshoot.jpg?<%=Math.random()%>" width="60%">
                                     </a>
                                 </div>
                             </div>
+
                             <c:if test="${entity.state == 6}">
-                            <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12">上传缩列图 <span class="required">*</span></label>
-                                <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <input id="file" type="file" name="file">
-                                    <input type="hidden" name="describe[id]" value="${entity.describe.id}">
-                                    <input type="hidden" id="imageParentDirPath" name="describe[imageParentDirPath]:string" value='${entity.describe.imageParentDirPath}' required>
-                                    <input type="hidden" id="imageTopDirPath" name="imageTopDirPath" value='<%=product.getDescribe().getImageParentDirPath().replace("/"+product.getNo(), "")%>'>
+                                <div class="item form-group">
+                                    <label class="control-label col-md-3 col-sm-3 col-xs-12">上传采购图 <span class="required">*</span></label>
+                                    <div class="col-md-6 col-sm-6 col-xs-12">
+                                        <input id="file" type="file" name="file">
+                                        <input type="hidden" name="describe[id]" value="${entity.describe.id}">
+                                        <input type="hidden" id="imageParentDirPath" name="describe[imageParentDirPath]:string" value='${entity.describe.imageParentDirPath}' required>
+                                        <input type="hidden" id="imageTopDirPath" name="imageTopDirPath" value='<%=product.getDescribe().getImageParentDirPath().replace("/"+product.getNo(), "")%>'>
+                                    </div>
                                 </div>
-                            </div>
                             </c:if>
 
                             <div class="item form-group">
@@ -114,7 +125,7 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">属性条目</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <table class="table-sheet product-property-input">
-                                        <thead><th>属性名</th><th>属性值</th></thead>
+                                        <thead><tr><th>属性名</th><th>属性值</th></tr></thead>
                                         <tbody>
                                         <c:forEach items="${entity.properties}" var="productProperty">
                                             <%
@@ -146,20 +157,93 @@
                                             %>
                                             <td><input type="text" name="propertyName"  value="形状" required></td>
                                             <td><input type="text" data-property-name="shape" data-input-type="multiple" name="propertyValue"  value="<%=values%>" required>
-                                            <%
-                                                String[] valuesArr = values.split("#");
-                                                for (String value : valuesArr) {
-                                            %>
-                                            <input type="hidden" name="properties[]:object" value='<%=product.getPropertyJson("形状", value)%>'>
-                                            <%
-                                                }
-                                            %>
+                                                <%
+                                                    String[] valuesArr = values.split("#");
+                                                    for (String value : valuesArr) {
+                                                %>
+                                                <input type="hidden" name="properties[]:object" value='<%=product.getPropertyJson("形状", value)%>'>
+                                                <%
+                                                    }
+                                                %>
                                             </td>
                                         </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+
+                            <c:if test="${entity.describe.photographer != null}">
+                            <span class="section">商品多媒体文件</span>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">摄影图 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/1.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/1.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/2.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/2.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/3.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/3.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/4.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/4.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/5.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/5.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/6.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/6.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/7.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/7.jpg" width="15%">
+                                    </a>
+                                    <a href="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/8.jpg"  class="lightbox" rel="roadtrip">
+                                        <img src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/8.jpg" width="15%">
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">视频 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <video width="320" height="240" controls>
+                                        <source src="<%=FileServerInfo.imageServerUrl%>/${entity.describe.imageParentDirPath}/${entity.no}.mp4" type="video/mp4">
+                                        您的浏览器不支持Video标签。
+                                    </video>
+                                </div>
+                            </div>
+                            </c:if>
+
+                            <c:if test="${entity.describe.editor != null}">
+                            <span class="section">商品描述</span>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="seoTitle">商品优化标题 <span class="required">*</span>
+                                </label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="seoTitle" type="text" name="seoTitle" value="${entity.describe.seoTitle}" class="form-control col-md-7 col-xs-12" required>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="seoKeyword">商品优化关键词 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="seoKeyword" type="text" name="seoKeyword" value="${entity.describe.seoKeyword}" class="form-control col-md-7 col-xs-12" required>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="seoDesc">商品优化描述 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <input id="seoDesc" type="text" name="seoDesc" value="${entity.describe.seoDesc}" class="form-control col-md-7 col-xs-12" required>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="describes">软文描述 <span class="required">*</span>
+                                </label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <textarea id="describes"  class="form-control col-md-7 col-xs-12" rows="4"  name="describes" required>${entity.describe.describes}</textarea>
+                                </div>
+                            </div>
+                            </c:if>
+
                             <c:if test="${entity != null}"><input type="hidden" id="id" name="id" value="${entity.id}"></c:if>
                             <input type="hidden" id="state" name="state:number" value="<c:choose><c:when test="${entity != null}">${entity.state}</c:when><c:otherwise>0</c:otherwise></c:choose>">
                         </form>
@@ -168,7 +252,7 @@
                     <div class="x_content">
                         <div class="form-horizontal form-label-left">
                             <div class="ln_solid"></div>
-                            <div class="col-md-6 col-md-offset-3">
+                            <div class="col-md-6 col-md-offset-3" id="submitDiv">
                                 <button id="cancel" type="button" class="btn btn-primary">取消</button>
                                 <c:if test="${entity == null}">
                                     <button id="send" type="button" class="btn btn-success">保存</button>
@@ -205,7 +289,7 @@
 
         $('#form :input').attr("readonly",false).css("border", "1px solid #ccc");
         $('.table-sheet tr :input').css("border", "0px solid #ccc");
-        $('.readonly').attr("readonly",true);
+        $('#seoTitle, #seoKeyword, #seoDesc, #describes').attr("readonly",true);
         $('#send, #delete, #recover').attr("disabled", false);
         $("#editSheet").attr("disabled", "disabled");
     });
@@ -270,14 +354,11 @@
         fd.append("file", file.files[0]);
 
         $("#form").sendFormData(uploadFilesUrl, fd, function(result){
+            if (result.result.indexOf("success") != -1) {
+                $("#imgA").attr("href", imageServerUrl + '/' + result.filePath + "?" + Math.random());
+                $("#img").attr("src", imageServerUrl + '/' + result.filePath + "?" + Math.random());
 
-            var resultTd = $(file).parent();
-            if (result.result.indexOf("success") == -1) {
-                resultTd.append("&nbsp;&nbsp;&nbsp;&nbsp;" + result.result + ',请选择文件后，点击<a href="#uploadFile" onclick="sendFormData(\'snapshoot\', $(\'#imageTopDirPath\').val() +\'/\'+$(\'#no\').val(), $(\'#file\'), \'<%=FileServerInfo.uploadFilesUrl%>\', \'<%=FileServerInfo.imageServerUrl%>\')">上传</a>');
-
-            } else {
-                resultTd.append('&nbsp;&nbsp;&nbsp;&nbsp;<a id="' + dir + '" href="' + imageServerUrl + '/' + result.filePath + '" class="lightbox">查看图片</a>');
-                $(document.getElementById(dir)).lightbox({
+                $(document.getElementById("imgA")).lightbox({
                     fitToScreen: true,
                     imageClickClose: false
                 });

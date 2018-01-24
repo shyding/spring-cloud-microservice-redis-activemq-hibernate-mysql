@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.hzg.customer.User;
 
@@ -52,7 +52,7 @@ public class Pay implements Serializable {
     @Column(name="payBranch",length=30)
     private String payBranch;
 
-    @Column(name="payBank",length=15)
+    @Column(name="payBank",length=20)
     private String payBank;
 
     @Column(name="bankBillNo",length=35)
@@ -68,11 +68,14 @@ public class Pay implements Serializable {
     @Column(name="receiptBranch",length=30)
     private String receiptBranch;
 
-    @Column(name="receiptBank",length=15)
+    @Column(name="receiptBank",length=20)
     private String receiptBank;
 
     @Column(name="inputDate")
     private Timestamp inputDate;
+
+    @Column(name="balanceType", length = 1)
+    private Integer balanceType;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -228,5 +231,13 @@ public class Pay implements Serializable {
 
     public void setInputDate(Timestamp inputDate) {
         this.inputDate = inputDate;
+    }
+
+    public Integer getBalanceType() {
+        return balanceType;
+    }
+
+    public void setBalanceType(Integer balanceType) {
+        this.balanceType = balanceType;
     }
 }

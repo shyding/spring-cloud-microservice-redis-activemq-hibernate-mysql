@@ -1,4 +1,4 @@
-package com.hzg.pay;
+﻿package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
@@ -136,6 +136,34 @@ public class PayController {
         logger.info("update end, result:" + result);
     }
 
+    /**
+     * 删除实体
+     * @param response
+     * @param entity
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/delete")
+    public void delete(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("save start, parameter:" + entity + ":" + json);
+        String result = CommonConstant.fail;
+
+        try {
+            if (entity.equalsIgnoreCase(Pay.class.getSimpleName())) {
+                Pay pay = writer.gson.fromJson(json, Pay.class);
+                result += payDao.delete(pay);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("save end, result:" + result);
+    }
+
     @RequestMapping(value = "/query", method = {RequestMethod.GET, RequestMethod.POST})
     public void query(HttpServletResponse response, String entity, @RequestBody String json){
         logger.info("query start, parameter:" + entity + ":" + json);
@@ -198,7 +226,52 @@ public class PayController {
     }
 
     /**
-     * 退款
+     * 线下支付完成接口
+     *
+     * @param response
+     * @param json
+     */
+    @Transactional
+    @PostMapping("/offlinePaid")
+    public void offlinePaid(HttpServletResponse response, @RequestBody String json){
+        logger.info("offlinePaid start, parameter:" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            List<Pay> pays = writer.gson.fromJson(json, new TypeToken<List<Pay>>(){}.getType());
+
+            for (Pay pay : pays) {
+                pay.setState(PayConstants.pay_state_success);
+                result += payDao.updateById(pay.getId(), pay);
+
+                /**
+                 * 收入
+                 */
+                if (pay.getBalanceType().compareTo(PayConstants.balance_type_income) == 0) {
+                    result += payService.setAccountAmount(pay.getReceiptBank(), pay.getReceiptAccount(), pay.getAmount());
+
+                /**
+                 * 支出
+                 */
+                } else if (pay.getBalanceType().compareTo(PayConstants.balance_type_expense) == 0) {
+                    result += payService.setAccountAmount(pay.getPayBank(), pay.getPayAccount(), -pay.getAmount());
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("offlinePaid end");
+    }
+
+    /**
+     * 退款接口
      *
      * 退款记录生成逻辑：
      * 1.如果支付是通过网上支付的（一条支付记录的支付金额为总金额），该支付记录对应的退款记录可以有多条，这多条退款
@@ -252,22 +325,37 @@ public class PayController {
 
                     result += payDao.save(refund);
 
-                    /**
-                     * 网上支付调用网上银行退款接口退款
-                     */
-                    if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
-                            pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
+                    if (pay.getBalanceType().compareTo(PayConstants.balance_type_income) == 0) {
+                        /**
+                         * 网上支付调用网上银行退款接口退款
+                         */
+                        if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
+                                pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
 
-                        if (refund.getPayBank().equals(PayConstants.bank_alipay)) {
-                            result += alipaySubmit.httpRequestRefund(refund.getNo(), "1",
-                                    refund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
-                                            PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+                            if (refund.getPayBank().equals(PayConstants.bank_alipay)) {
+                                result += alipaySubmit.httpRequestRefund(refund.getNo(), "1",
+                                        refund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
+                                                PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
 
-                        } else if (refund.getPayBank().equals(PayConstants.bank_wechat)) {
-                            result += refundService.refund(new RefundReqData(refund.getPay().getBankBillNo(),
-                                    refund.getPay().getNo(), refund.getNo(), (int)(refund.getAmount()*100F), (int)(refund.getAmount()*100F)));
+                            } else if (refund.getPayBank().equals(PayConstants.bank_wechat)) {
+                                result += refundService.refund(new RefundReqData(refund.getPay().getBankBillNo(),
+                                        refund.getPay().getNo(), refund.getNo(), (int)(refund.getAmount()*100F), (int)(refund.getAmount()*100F)));
+                            }
+
+                            /**
+                             * 线下支付设置银行账户金额(本系统网上银行退款接口已有设置银行账户金额,故不需要设置)
+                             */
+                        } else {
+                            result += payService.setAccountAmount(pay.getReceiptBank(), pay.getReceiptAccount(), -pay.getAmount());
                         }
+
+                    /**
+                     * 支出退款，账户金额增加
+                      */
+                    } else if (pay.getBalanceType().compareTo(PayConstants.balance_type_expense) == 0) {
+                        result += payService.setAccountAmount(pay.getPayBank(), pay.getPayAccount(), pay.getAmount());
                     }
+
 
                     amount = new BigDecimal(Float.toString(amount)).
                             subtract(new BigDecimal(Float.toString(pay.getAmount()))).floatValue();
@@ -292,6 +380,41 @@ public class PayController {
         writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("refund end");
     }
+
+    @RequestMapping(value = "/privateQuery", method = {RequestMethod.GET, RequestMethod.POST})
+    public void privateQuery(HttpServletResponse response, String entity, @RequestBody String json){
+        logger.info("privateQuery start, parameter:" + entity + ":" + json);
+
+        if (entity.equals(PayConstants.pay_private_query_queryRefundByPay)) {
+            Refund refund = new Refund();
+            refund.setState(PayConstants.refund_state_success);
+            refund.setPay(writer.gson.fromJson(json, Pay.class));
+            writer.writeObjectToJson(response, payDao.query(refund));
+        }
+
+        logger.info("privateQuery end");
+    }
+
+    @Transactional
+    @PostMapping("/saveSplitAmountPays")
+    public void saveSplitAmountPays(HttpServletResponse response, Float amount, @RequestBody String json){
+        logger.info("saveSplitAmountPays start, parameter:" + amount + "," + json);
+        String result = CommonConstant.fail;
+
+        try {
+            result += payService.saveSplitAmountPays(amount, writer.gson.fromJson(json, new TypeToken<List<Pay>>(){}.getType()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("saveSplitAmountPays end, result:" + result);
+    }
+
+
 
 
 

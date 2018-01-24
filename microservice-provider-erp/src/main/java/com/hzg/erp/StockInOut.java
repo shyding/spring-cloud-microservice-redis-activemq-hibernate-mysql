@@ -1,5 +1,6 @@
 package com.hzg.erp;
 
+import com.hzg.sys.Action;
 import com.hzg.sys.User;
 
 import javax.persistence.*;
@@ -61,8 +62,8 @@ public class StockInOut implements Serializable {
     @OneToMany(mappedBy = "stockInOut", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<StockInOutDetail> details;
 
-    @OneToMany(mappedBy = "stockInOut", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
-    private Set<StockInOutAction> actions;
+    @Transient
+    private Set<Action> actions;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -172,11 +173,11 @@ public class StockInOut implements Serializable {
         this.details = details;
     }
 
-    public Set<StockInOutAction> getActions() {
+    public Set<Action> getActions() {
         return actions;
     }
 
-    public void setActions(Set<StockInOutAction> actions) {
+    public void setActions(Set<Action> actions) {
         this.actions = actions;
     }
 

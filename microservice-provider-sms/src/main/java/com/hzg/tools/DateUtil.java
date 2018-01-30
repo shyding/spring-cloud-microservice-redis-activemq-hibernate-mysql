@@ -82,9 +82,9 @@ public class DateUtil {
 
         BoundValueOperations<String, Object> operation = redisTemplate.boundValueOps("sysCurrentTimeMillis");
 
-        String currentTimeMillisStr = (String)operation.get();
+        Long currentTimeMillisStr = (Long)operation.get();
         if (currentTimeMillisStr != null) {
-            sysCurrentTimeMillis = Long.valueOf(currentTimeMillisStr) + (expire_second_7_days - operation.getExpire()) * 1000L;
+            sysCurrentTimeMillis = currentTimeMillisStr + (expire_second_7_days - operation.getExpire()) * 1000L;
 
         } else {
             sysCurrentTimeMillis = sysClient.computeSysCurrentTimeMillis();

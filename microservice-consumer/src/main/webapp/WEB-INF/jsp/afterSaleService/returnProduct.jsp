@@ -178,8 +178,8 @@
                                 </c:if>
                                 <c:if test="${entity.state == 4}">
                                 <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit')}">
-                                <button id="directorAuditPass" type="button" class="btn btn-success">可退</button>
-                                <button id="directorAuditNotPass" type="button" class="btn btn-success">不可退</button>
+                                <button id="warehousingAuditPass" type="button" class="btn btn-success">可退</button>
+                                <button id="warehousingAuditNotPass" type="button" class="btn btn-success">不可退</button>
                                 </c:if>
                                 </c:if>
                                 <c:if test="${entity.state == 5}">

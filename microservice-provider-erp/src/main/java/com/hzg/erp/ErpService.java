@@ -1,6 +1,8 @@
 package com.hzg.erp;
 
 import com.google.common.reflect.TypeToken;
+import com.hzg.afterSaleService.ReturnProduct;
+import com.hzg.order.Order;
 import com.hzg.pay.Pay;
 import com.hzg.sys.*;
 import com.hzg.tools.*;
@@ -477,7 +479,7 @@ public class ErpService {
              */
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
-                detailProduct.getProduct().setState(getStockInProductState(detailProduct.getProduct()));
+                detailProduct.getProduct().setState(getProductStockInState(detailProduct.getProduct()));
                 result += erpDao.updateById(detailProduct.getProduct().getId(), detailProduct.getProduct());
             }
 
@@ -592,7 +594,7 @@ public class ErpService {
             result += erpDao.updateById(detail.getId(), detail);
 
             for (StockInOutDetailProduct detailProduct : detail.getStockInOutDetailProducts()) {
-                detailProduct.getProduct().setState(getStockOutProductState(detailProduct.getProduct()));
+                detailProduct.getProduct().setState(getProductStockOutState(detailProduct.getProduct()));
                 result += erpDao.updateById(detailProduct.getProduct().getId(), detailProduct.getProduct());
             }
 
@@ -885,6 +887,21 @@ public class ErpService {
         stateProduct.setState(state);
 
         return erpDao.updateById(stateProduct.getId(), stateProduct);
+    }
+
+    public Purchase getLastValidPurchase(Product product) {
+        PurchaseDetailProduct detailProduct = new PurchaseDetailProduct();
+        detailProduct.setProduct(product);
+        List<PurchaseDetailProduct> detailProducts = erpDao.query(detailProduct);
+
+        for (PurchaseDetailProduct ele : detailProducts) {
+            PurchaseDetail detail = (PurchaseDetail) erpDao.queryById(ele.getPurchaseDetail().getId(), PurchaseDetail.class);
+            if (detail.getPurchase().getState().compareTo(ErpConstant.purchase_state_cancel) != 0) {
+                return detail.getPurchase();
+            }
+        }
+
+        return null;
     }
 
     public String queryTargetEntity(String targetEntity, String entity, Object queryObject, int position, int rowNum) {
@@ -1540,7 +1557,7 @@ public class ErpService {
         return user;
     }
 
-    public Integer getStockInProductState(Product product) {
+    public Integer getProductStockInState(Product product) {
         Integer state;
 
         int compare = getProductStockInQuantity(product).compareTo(getProductQuantity(product));
@@ -1554,7 +1571,7 @@ public class ErpService {
         return state;
     }
 
-    public Integer getStockOutProductState(Product product) {
+    public Integer getProductStockOutState(Product product) {
         Integer state;
 
         int compare = getProductStockOutQuantity(product).compareTo(getProductQuantity(product));
@@ -1608,6 +1625,109 @@ public class ErpService {
         }
 
         return state;
+    }
+
+    /**
+     * 获取商品前一个状态
+     * 获取商品关联的业务实体，对业务实体按生成时间由近到远顺序排序，其中生成时间第二近的业务实体就是商品前一个业务
+     * 关联实体关联实体，进而根据该关联实体以及商品当前的关联实体，以及商品当前状态，可以获取商品的
+     * 前一个状态
+     * @param product
+     * @return
+     */
+    public Integer getProductPreState(Product product) {
+        List<Object> relateObjects = new ArrayList<>();
+
+        relateObjects.add(getLastValidPurchase(product));
+        relateObjects.add(getLastValidStockIn(product));
+        relateObjects.add(writer.gson.fromJson(orderClient.getLastValidOrderByProduct(writer.gson.toJson(product)), Order.class));
+        relateObjects.add(getLastValidStockOut(product));
+        relateObjects.add(getLastValidExpressDeliver(product));
+        relateObjects.add(writer.gson.fromJson(afterSaleServiceClient.getLastValidReturnProductByProduct(writer.gson.toJson(product)), ReturnProduct.class));
+
+        Iterator<Object> relateObjectIterator = relateObjects.iterator();
+        while (relateObjectIterator.hasNext()) {
+            Object relateObject = relateObjectIterator.next();
+            if (relateObject == null) {
+                relateObjectIterator.remove();
+            }
+        }
+
+        Object[] sortRelateObjects = relateObjects.toArray();
+        Object temp;
+        for (int i=0; i<sortRelateObjects.length-1; i++) {
+            for (int j=0; j<sortRelateObjects.length-i-1; j++){
+                if (getEntityInputDate(sortRelateObjects[j+1]).compareTo(getEntityInputDate(sortRelateObjects[j])) > 0) {
+                    temp = sortRelateObjects[j];
+                    sortRelateObjects[j] = sortRelateObjects[j+1];
+                    sortRelateObjects[j+1] = temp;
+                }
+            }
+        }
+
+        Integer state = -1;
+        Product dbProduct = (Product) erpDao.queryById(product.getId(), product.getClass());
+
+        if (sortRelateObjects[0] instanceof Purchase && sortRelateObjects.length == 1) {
+            if (dbProduct.getState().compareTo(ErpConstant.product_state_purchase) == 0) {
+                state = ErpConstant.product_state_purchase;
+            } else if (dbProduct.getState().compareTo(ErpConstant.product_state_purchase_pass) == 0) {
+                state = ErpConstant.product_state_purchase;
+            } else if (dbProduct.getState().compareTo(ErpConstant.product_state_purchase_close) == 0) {
+                state = ErpConstant.product_state_purchase_pass;
+            }
+
+        } else if (sortRelateObjects[0] instanceof Order && sortRelateObjects[1]  instanceof StockInOut) {
+            StockInOut stockInOut = (StockInOut) sortRelateObjects[1];
+            if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
+                state = ErpConstant.product_state_onSale;
+            }
+        }
+
+        if (state == -1) {
+            if (sortRelateObjects[1] instanceof Purchase) {
+                state = ErpConstant.product_state_purchase_close;
+
+            } else if (sortRelateObjects[1] instanceof StockInOut) {
+                StockInOut stockInOut = (StockInOut) sortRelateObjects[1];
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
+                    state = getProductStockInState(product);
+                } else {
+                    state = getProductStockOutState(product);
+                }
+
+            } else if (sortRelateObjects[1] instanceof Order) {
+                state = getProductSaleState(product);
+
+            } else if (sortRelateObjects[1] instanceof ExpressDeliver) {
+                state = getProductShippedState(product);
+
+            } else if (sortRelateObjects[1] instanceof ReturnProduct) {
+                state = getProductReturnedState(product);
+            }
+        }
+
+        return state;
+    }
+
+    public Timestamp getEntityInputDate(Object obj) {
+        if (obj instanceof Purchase) {
+            return ((Purchase)obj).getInputDate();
+
+        } else if (obj instanceof StockInOut) {
+            return ((StockInOut)obj).getInputDate();
+
+        }else if (obj instanceof ExpressDeliver) {
+            return ((ExpressDeliver)obj).getInputDate();
+
+        }else if (obj instanceof Order) {
+            return ((Order)obj).getDate();
+
+        } else if (obj instanceof ReturnProduct) {
+            return ((ReturnProduct)obj).getInputDate();
+        }
+
+        return null;
     }
 
     public Float getProductQuantity(Product product) {
@@ -1749,6 +1869,38 @@ public class ErpService {
         return productSoldQuantity.get(ErpConstant.product_returned_quantity);
     }
 
+    public StockInOut getLastValidStockIn(Product product) {
+        StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+        detailProduct.setProduct(product);
+        List<StockInOutDetailProduct> detailProducts = erpDao.query(detailProduct);
+
+        for (StockInOutDetailProduct ele : detailProducts) {
+            StockInOutDetail detail = (StockInOutDetail) erpDao.queryById(ele.getStockInOutDetail().getId(), StockInOutDetail.class);
+            if (detail.getStockInOut().getState().compareTo(ErpConstant.stockInOut_state_cancel) != 0 &&
+                    detail.getStockInOut().getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
+                return detail.getStockInOut();
+            }
+        }
+
+        return null;
+    }
+
+    public StockInOut getLastValidStockOut(Product product) {
+        StockInOutDetailProduct detailProduct = new StockInOutDetailProduct();
+        detailProduct.setProduct(product);
+        List<StockInOutDetailProduct> detailProducts = erpDao.query(detailProduct);
+
+        for (StockInOutDetailProduct ele : detailProducts) {
+            StockInOutDetail detail = (StockInOutDetail) erpDao.queryById(ele.getStockInOutDetail().getId(), StockInOutDetail.class);
+            if (detail.getStockInOut().getState().compareTo(ErpConstant.stockInOut_state_cancel) != 0 &&
+                    detail.getStockInOut().getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) >= 0) {
+                return detail.getStockInOut();
+            }
+        }
+
+        return null;
+    }
+
     public List<StockInOutDetail> getStockInOutDetails(Product product) {
         StockInOutDetailProduct queryDetailProduct = new StockInOutDetailProduct();
         queryDetailProduct.setProduct(product);
@@ -1825,10 +1977,12 @@ public class ErpService {
                 Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
 
                 if (dbProduct.getState().compareTo(ErpConstant.product_state_purchase_close) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_stockOut) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_stockOut_part) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_returnedProduct) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_returnedProduct_part) != 0) {
+                    dbProduct.getState().compareTo(ErpConstant.product_state_stockIn_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_stockOut) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_stockOut_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_onReturnProduct_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_returnedProduct) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_returnedProduct_part) != 0) {
                     if (detail.getStockInOutDetailProducts().size() > 1) {
                         result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的" + detail.getStockInOutDetailProducts().size() + "件商品中，" +
                                 "有不是采购完成、出库或已退货状态的商品，不能入库";
@@ -1852,9 +2006,12 @@ public class ErpService {
                 Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
 
                 if (dbProduct.getState().compareTo(ErpConstant.product_state_stockIn) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_stockIn_part) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_sold) != 0 &&
-                        dbProduct.getState().compareTo(ErpConstant.product_state_sold_part) != 0) {
+                    dbProduct.getState().compareTo(ErpConstant.product_state_stockIn_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_stockOut_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_sold) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_sold_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_onReturnProduct_part) != 0 &&
+                    dbProduct.getState().compareTo(ErpConstant.product_state_returnedProduct_part) != 0) {
                     result = CommonConstant.fail + ",编号：" + dbProduct.getNo() + " 的商品不是入库或已售状态，不能出库";
                     break;
                 }
@@ -2233,6 +2390,22 @@ public class ErpService {
         return sfWaybills;
     }
 
+    public ExpressDeliver getLastValidExpressDeliver(Product product) {
+        ExpressDeliverDetailProduct detailProduct = new ExpressDeliverDetailProduct();
+        detailProduct.setProduct(product);
+        List<ExpressDeliverDetailProduct> detailProducts = erpDao.query(detailProduct);
+
+        for (ExpressDeliverDetailProduct ele : detailProducts) {
+            ExpressDeliverDetail detail = (ExpressDeliverDetail) erpDao.queryById(ele.getExpressDeliverDetail().getId(), ExpressDeliverDetail.class);
+            return detail.getExpressDeliver();
+        }
+
+        return null;
+    }
+
+
+
+
     /**
      *
      *  ========================= 顺丰丰桥 bsp 接口 =======================
@@ -2474,7 +2647,7 @@ public class ErpService {
 
     /**
      *
-     *  ========================= 顺丰开发平台接口 =======================
+     *  ========================= 顺丰开放平台接口 =======================
      *
      */
 
@@ -2805,7 +2978,7 @@ public class ErpService {
         for (StockInOutDetail detail : stockOut.getDetails()) {
             StockInOutDetail dbDetail = (StockInOutDetail) erpDao.queryById(detail.getId(), detail.getClass());
             for (StockInOutDetailProduct detailProduct : dbDetail.getStockInOutDetailProducts()) {
-                detailProduct.getProduct().setState(getShippedProductState(detailProduct.getProduct()));
+                detailProduct.getProduct().setState(getProductShippedState(detailProduct.getProduct()));
                 result += erpDao.updateById(detailProduct.getProduct().getId(), detailProduct.getProduct());
             }
         }
@@ -2813,7 +2986,7 @@ public class ErpService {
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
-    public Integer getShippedProductState(Product product) {
+    public Integer getProductShippedState(Product product) {
         Integer state;
 
         int compare = getProductShippedQuantity(product).compareTo(getProductQuantity(product));
@@ -2911,25 +3084,25 @@ public class ErpService {
         Product queryProduct = ((ExpressDeliverDetailProduct)detail.getExpressDeliverDetailProducts().toArray()[0]).getProduct();
         logger.info("getExpressDeliverDetailWeight start, unit:" + detail.getUnit() + ",quantity" + detail.getQuantity() + ",productId:" + queryProduct.getId());
 
-        Float detailWeight = null;
+        Double detailWeight = null;
 
         if (detail.getUnit().equals(ErpConstant.unit_g)) {
-            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.001")).floatValue();
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.001")).doubleValue();
 
         } else if (detail.getUnit().equals(ErpConstant.unit_kg)) {
-            detailWeight = detail.getQuantity();
+            detailWeight = Double.valueOf(Float.toString(detail.getQuantity()));
 
         } else if (detail.getUnit().equals(ErpConstant.unit_ct)) {
             /**
              * 1 克拉 = 0.2 克 = 0.0002千克
              */
-            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0002")).floatValue();
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0002")).doubleValue();
 
         } else if (detail.getUnit().equals(ErpConstant.unit_oz)) {
             /**
              * 1 盎司 = 28.3495 克 = 0.0283495千克
              */
-            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0283495")).floatValue();
+            detailWeight = new BigDecimal(Float.toString(detail.getQuantity())).multiply(new BigDecimal("0.0283495")).doubleValue();
 
         } else {
             Product dbProduct = (Product) erpDao.query(queryProduct).get(0);
@@ -2948,7 +3121,7 @@ public class ErpService {
              * 商品重量单位为 克
              */
             if (productWeight != null) {
-                detailWeight = new BigDecimal(productWeight).multiply(new BigDecimal("0.001")).floatValue();
+                detailWeight = new BigDecimal(productWeight).multiply(new BigDecimal("0.001")).doubleValue();
             }
         }
 
@@ -2956,12 +3129,12 @@ public class ErpService {
          * 精确到克, 即小数点后 3 位
          */
         if (detailWeight != null) {
-            detailWeight = Float.valueOf(String.valueOf(Math.round(detailWeight * 1000)/1000));
+            detailWeight = Double.valueOf(String.valueOf(Math.round(detailWeight * 1000)/1000d));
         }
 
         logger.info("getExpressDeliverDetailWeight end, detailWeight:" + detailWeight);
 
-        return detailWeight;
+        return detailWeight == null ? 0f: Float.valueOf(Double.toString(detailWeight));
     }
 
 

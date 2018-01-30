@@ -13,6 +13,8 @@ public interface SysClient {
     @RequestMapping(value = "/getCompanyByUser", method = RequestMethod.POST)
     String getCompanyByUser(@RequestBody String json);
 
+    @RequestMapping(value = "/computeSysCurrentTimeMillis", method = RequestMethod.GET)
+    long computeSysCurrentTimeMillis();
 
     @Component
     class ErpClientFallback implements SysClient {
@@ -20,6 +22,12 @@ public interface SysClient {
         public String getCompanyByUser(String json) {
             logger.info("getCompanyByUser 异常发生，进入fallback方法，接收的参数：" + json);
             return "{}";
+        }
+
+        @Override
+        public long computeSysCurrentTimeMillis() {
+            logger.info("computeSysCurrentTimeMillis 异常发生，进入fallback方法");
+            return -1L;
         }
     }
 }

@@ -428,4 +428,11 @@ public class OrderController {
         writer.writeStringToJson(response, "{\"" + ErpConstant.product_sold_quantity +"\":\"" + orderService.getProductSoldQuantity(writer.gson.fromJson(json, Product.class)) + "\"}");
         logger.info("getProductSoldQuantity end");
     }
+
+    @RequestMapping(value = "/getLastValidOrderByProduct", method = {RequestMethod.GET, RequestMethod.POST})
+    public void getLastValidOrderByProduct(HttpServletResponse response, @RequestBody String json){
+        logger.info("getLastValidOrderByProduct start, parameter:" + json);
+        writer.writeObjectToJson(response, orderService.getLastValidOrderByProduct(writer.gson.fromJson(json, Product.class)));
+        logger.info("getLastValidOrderByProduct end");
+    }
 }

@@ -638,6 +638,21 @@ public class OrderService {
         return details;
     }
 
+    public Order getLastValidOrderByProduct(Product product) {
+        OrderDetailProduct detailProduct = new OrderDetailProduct();
+        detailProduct.setProduct(product);
+        List<OrderDetailProduct> detailProducts = orderDao.query(detailProduct);
+
+        for (OrderDetailProduct ele : detailProducts) {
+            OrderDetail detail = (OrderDetail) orderDao.queryById(ele.getOrderDetail().getId(), OrderDetail.class);
+            if (detail.getOrder().getState().compareTo(OrderConstant.order_state_cancel) != 0) {
+                return detail.getOrder();
+            }
+        }
+
+        return null;
+    }
+
 
     /**
      * 取消订单
@@ -786,11 +801,6 @@ public class OrderService {
         List<Product> products = new ArrayList<>();
         for (OrderDetail detail : order.getDetails()) {
             for (OrderDetailProduct detailProduct : detail.getOrderDetailProducts()) {
-                /**
-                 * size > 1 表示商品是按件数卖，<= 1 表示商品是按件数或者重量或者其他不可数单位卖
-                 */
-                detailProduct.getProduct().setSoldQuantity(detail.getOrderDetailProducts().size() > 1 ? 1 : detail.getQuantity());
-                detailProduct.getProduct().setSoldUnit(detail.getUnit());
                 products.add(detailProduct.getProduct());
             }
 
@@ -798,8 +808,6 @@ public class OrderService {
                 if (detail.getOrderPrivate().getAccs() != null) {
                     for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
                         for (OrderPrivateAccProduct accProduct : acc.getOrderPrivateAccProducts()) {
-                            accProduct.getProduct().setSoldQuantity(acc.getOrderPrivateAccProducts().size() > 1 ? 1 : acc.getQuantity());
-                            accProduct.getProduct().setSoldUnit(acc.getUnit());
                             products.add(accProduct.getProduct());
                         }
                     }
@@ -810,8 +818,6 @@ public class OrderService {
         if (order.getGifts() != null) {
             for (OrderGift gift : order.getGifts()) {
                 for (OrderGiftProduct giftProduct : gift.getOrderGiftProducts()) {
-                    giftProduct.getProduct().setSoldQuantity(gift.getOrderGiftProducts().size() > 1 ? 1 : gift.getQuantity());
-                    giftProduct.getProduct().setSoldUnit(gift.getUnit());
                     products.add(giftProduct.getProduct());
                 }
             }

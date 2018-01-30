@@ -93,7 +93,7 @@ hystrix:
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
 visitInterceptor:
-  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/,/print
+  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/,/print,/currentTimeMillis
   noAuthUrisAfterSignIn: /list/,/privateQuery/audit,/view/audit,/sys/audit,/customer/,/order/
   macValidateUris: /save/,/update/,/sys/audit
 

@@ -1,4 +1,4 @@
-var dataList = (function ($) {
+﻿var dataList = (function ($) {
     "use strict";
 
     var titles = {
@@ -188,7 +188,8 @@ var dataList = (function ($) {
         "account": "/pay",
         "voucher": "/finance",
         "voucherCategory": "/finance",
-        "subject": "/finance"
+        "subject": "/finance",
+        "docType": "/finance"
     };
 
     var childModules = {
@@ -224,7 +225,8 @@ var dataList = (function ($) {
         "account": "/complexQuery",
         "voucher": "/complexQuery",
         "voucherCategory": "/complexQuery",
-        "subject": "/complexQuery"
+        "subject": "/complexQuery",
+        "docType": "/complexQuery"
     };
 
     var viewActions = {
@@ -284,7 +286,8 @@ var dataList = (function ($) {
         "account": "<th>账户</th><th>所属银行</th><th>开户人</th><th>开户行</th><th>账户金额</th><th>创建时间</th>",
         "voucher": "<th>凭证编号</th><th>凭证类别</th><th>制单日期</th><th>制单人</th><th>借方合计</th><th>贷方合计</th>",
         "voucherCategory": "<th>凭证类别</th><th>凭证字</th><th>创建时间</th>",
-        "subject": "<th>科目编码</th><th>编码规则</th><th>科目名称</th><th>科目类型</th><th>余额方向</th><th>辅助核算项</th><th>停用</th><th>账面格式</th><th>创建时间</th>"
+        "subject": "<th>科目编码</th><th>编码规则</th><th>科目名称</th><th>科目类型</th><th>余额方向</th><th>辅助核算项</th><th>停用</th><th>账面格式</th><th>创建时间</th>",
+        "docType": "<th>单据类型id</th><th>单据类型名称</th>"
     };
 
     var propertiesShowSequences = {
@@ -314,7 +317,8 @@ var dataList = (function ($) {
         "account": ["account", "bank", "owner[name]", "branch", "amount", "inputDate"],
         "voucher": ["no", "voucherCategory[name]", "makeDate", "chartMaker[name]", "debit", "credit"],
         "voucherCategory": ["name", "voucherWord","inputDate"],
-        "subject": ["no","codeRule", "name", "type", "direction", "accountItems[]", "state","paperFormat","inputDate"]
+        "subject": ["no","codeRule", "name", "type", "direction", "accountItems[]", "state","paperFormat","inputDate"],
+        "docType": ["id", "name"]
     };
 
     var linkTitles = {
@@ -386,7 +390,7 @@ var dataList = (function ($) {
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
         "article": {"state": {0: "保存", 1: "发布",2:"删除"}},
-        "product": {"state": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货"}},
+        "product": {"state": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货", 94: "部分申请退货", 95: "部分已退货", 96:"部分申请换货", 97:"部分已换货"}},
         "productPriceChange": {"state": {0: "申请", 1: "在用", 2: "保存"}},
         "productCheck": {"state": {0: "保存", 1: "盘点"}},
         "purchase": {"state": {0: "申请", 1: "完成", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
@@ -486,7 +490,7 @@ var dataList = (function ($) {
         "pay": "pay",
         "voucher": "voucher",
         "voucherCategory": "voucherCategory",
-        "subject": "voucherCategory"
+        "subject": "subject"
     };
 
     var totalTableData = [];
@@ -656,7 +660,7 @@ var dataList = (function ($) {
             $("#add").show();
         }
     }
-
+    
     function query(table, rootPath, imageServerPath, queryJson, entity) {
         contextPath = rootPath;
         imageServerUrl = imageServerPath;
@@ -703,6 +707,7 @@ var dataList = (function ($) {
     }
 
     function initDataTable(table, queryJson, entity) {
+
         if (document.getElementById("dataList_filter") == null) {
             // 设置本地搜索框
             table.before('<div id="dataList_filter" class="dataTables_filter"><label>Search&nbsp;<input value="' + searchStr + '" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');

@@ -27,6 +27,9 @@ public interface SysClient {
     @RequestMapping(value = "/getUsersByUri", method = RequestMethod.POST)
     String getUsersByUri(@RequestBody String json);
 
+    @RequestMapping(value = "/computeSysCurrentTimeMillis", method = RequestMethod.GET)
+    long computeSysCurrentTimeMillis();
+
     @Component
     class SysClientFallback implements SysClient {
         @Override
@@ -56,6 +59,12 @@ public interface SysClient {
         public String getUsersByUri(String json) {
             logger.info("getUsersByUri 异常发生，进入fallback方法，接收的参数：" + json);
             return "[]";
+        }
+
+        @Override
+        public long computeSysCurrentTimeMillis() {
+            logger.info("computeSysCurrentTimeMillis 异常发生，进入fallback方法");
+            return -1L;
         }
     }
 }

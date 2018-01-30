@@ -16,6 +16,9 @@ public interface AfterSaleServiceClient {
     @RequestMapping(value = "/getProductReturnedQuantity", method = RequestMethod.POST)
     String getProductReturnedQuantity(@RequestBody String json);
 
+    @RequestMapping(value = "/getLastValidReturnProductByProduct", method = RequestMethod.POST)
+    String getLastValidReturnProductByProduct(@RequestBody String json);
+
     @Component
     class OrderClientFallback implements AfterSaleServiceClient {
         @Override
@@ -27,6 +30,12 @@ public interface AfterSaleServiceClient {
         @Override
         public String getProductReturnedQuantity(String json) {
             logger.info("getProductReturnedQuantity 异常发生，进入fallback方法，接收的参数：" + json);
+            return "{}";
+        }
+
+        @Override
+        public String getLastValidReturnProductByProduct(String json) {
+            logger.info("getLastValidReturnProductByProduct 异常发生，进入fallback方法，接收的参数：" + json);
             return "{}";
         }
     }

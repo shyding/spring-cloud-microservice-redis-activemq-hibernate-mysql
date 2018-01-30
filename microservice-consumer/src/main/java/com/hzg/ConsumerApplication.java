@@ -1,5 +1,6 @@
 package com.hzg;
 
+import com.hzg.tools.OrderConstant;
 import com.hzg.tools.VisitInterceptor;
 import org.apache.activemq.command.ActiveMQQueue;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.web.servlet.ServletComponentScan;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -44,6 +46,7 @@ import java.util.*;
 @EnableTransactionManagement
 @EnableFeignClients
 @EnableCircuitBreaker
+@ServletComponentScan
 public class ConsumerApplication extends WebMvcConfigurerAdapter {
     @Autowired
     private DataSource dataSource;
@@ -82,8 +85,8 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
      * @return
      */
     @Bean
-    public Queue queue() {
-        return new ActiveMQQueue("userQueue");
+    public Queue orderQueue() {
+        return new ActiveMQQueue(OrderConstant.queue_order);
     }
 
     @Bean
@@ -212,14 +215,12 @@ public class ConsumerApplication extends WebMvcConfigurerAdapter {
 
 
     /**
-     * 本地服务实例的信息
+     * 本地服务实例的系统时间
      * @return
      */
-    @GetMapping("/instance-info")
-    public ServiceInstance showInfo() {
-        ServiceInstance localServiceInstance = this.discoveryClient.
-                getLocalServiceInstance();
-        return localServiceInstance;
+    @GetMapping("/currentTimeMillis")
+    public long showInfo() {
+        return System.currentTimeMillis();
     }
 
     public static void main(String[] args) {

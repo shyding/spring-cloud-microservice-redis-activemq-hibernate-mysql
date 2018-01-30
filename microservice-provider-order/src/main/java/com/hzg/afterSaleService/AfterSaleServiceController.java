@@ -237,4 +237,11 @@ public class AfterSaleServiceController {
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
         logger.info("unlimitedRecordsSum end");
     }
+
+    @RequestMapping(value = "/getLastValidReturnProductByProduct", method = {RequestMethod.GET, RequestMethod.POST})
+    public void getLastValidReturnProductByProduct(HttpServletResponse response, @RequestBody String json){
+        logger.info("getLastValidReturnProductByProduct start, parameter:" + json);
+        writer.writeObjectToJson(response, afterSaleServiceService.getLastValidReturnProductByProduct(writer.gson.fromJson(json, Product.class)));
+        logger.info("getLastValidReturnProductByProduct end");
+    }
 }

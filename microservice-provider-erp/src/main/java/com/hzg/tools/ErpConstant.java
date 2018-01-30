@@ -1,4 +1,4 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 public class ErpConstant {
 
@@ -205,4 +205,5 @@ public class ErpConstant {
 
     public final static Integer purchase_action_purchaseBookPaid = 0;
     public final static String purchase_action_name_purchaseBookPaid = "purchaseBookPaid";
+    public final static String product_action_name_recoverState = "recoverState";
 }

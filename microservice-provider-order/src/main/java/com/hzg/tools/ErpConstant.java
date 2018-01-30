@@ -20,11 +20,15 @@ public class ErpConstant {
     public final static Integer stockInOut_type_normal_outWarehouse = 11;
     public final static Integer stockInOut_state_finished = 1;
 
+    public final static Integer product_state_stockOut = 2;
+    public final static Integer product_state_stockOut_part = 21;
     public final static Integer product_state_onSale = 3;
     public final static Integer product_state_sold = 4;
     public final static Integer product_state_sold_part = 41;
     public final static Integer product_state_shipped = 8;
     public final static Integer product_state_shipped_part = 81;
+    public final static Integer product_state_onReturnProduct_part = 94;
+    public final static Integer product_state_returnedProduct_part = 95;
 
     public final static String deliver_sfExpress = "顺丰快递";
     public final static String deliver_sfExpress_type = "顺丰标快";
@@ -46,6 +50,7 @@ public class ErpConstant {
     public final static String stockInOut_action_name_inProduct = "stockInProduct";
     public final static String stockInOut_action_name_outProduct = "stockOutProduct";
     public final static String product_action_name_upShelf = "upShelfProduct";
+    public final static String product_action_name_recoverState = "recoverState";
 
     public final static String unit_g = "克";
     public final static String unit_kg = "千克";

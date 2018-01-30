@@ -445,6 +445,13 @@ public class ErpController {
                 action.setInputer(erpService.getUserBySessionId(action.getSessionId()));
                 action.setInputDate(dateUtil.getSecondCurrentTimestamp());
                 result += erpDao.save(action);
+
+            } else if (name.equalsIgnoreCase(ErpConstant.product_action_name_recoverState)) {
+                List<Product> products = writer.gson.fromJson(json, new TypeToken<List<Product>>(){}.getType());
+                for (Product product : products) {
+                    product.setState(erpService.getProductPreState(product));
+                    result += erpDao.updateById(product.getId(), product);
+                }
             }
 
         } catch (Exception e) {

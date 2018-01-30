@@ -7,10 +7,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
@@ -116,6 +113,16 @@ public class SysController {
                     auditFlowNode.setAuditFlow(auditFlow);
                     sysDao.save(auditFlowNode);
                 }
+            }else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+                Article article = writer.gson.fromJson(json, Article.class);
+                article.setInputDate(inputDate);
+                result = sysDao.save(article);
+
+            }else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
+                ArticleCate articleCate = writer.gson.fromJson(json, ArticleCate.class);
+                articleCate.setInputDate(inputDate);
+                result = sysDao.save(articleCate);
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -164,7 +171,7 @@ public class SysController {
 
                     result += sysDao.updateById(user.getId(), user);
                 } else {
-                    result = CommonConstant.fail + ",用户名已经存在";
+                    result += CommonConstant.fail + ",用户名已经存在";
                 }
 
             } else if (entity.equalsIgnoreCase(Post.class.getSimpleName())) {
@@ -208,6 +215,15 @@ public class SysController {
             } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
                 AuditFlow auditFlow = writer.gson.fromJson(json, AuditFlow.class);
                 result = sysDao.updateById(auditFlow.getId(), auditFlow);
+
+            } else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+                Article article = writer.gson.fromJson(json, Article.class);
+                result = sysDao.updateById(article.getId(), article);
+
+            } else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
+                ArticleCate articleCate = writer.gson.fromJson(json, ArticleCate.class);
+                result = sysDao.updateById(articleCate.getId(), articleCate);
+
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -282,6 +298,14 @@ public class SysController {
                 }
             }
             writer.writeObjectToJson(response, auditFlows);
+        }else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+            Article article = writer.gson.fromJson(json, Article.class);
+            writer.writeObjectToJson(response, sysDao.query(article));
+
+        } else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
+            ArticleCate articleCate = writer.gson.fromJson(json, ArticleCate.class);
+            writer.writeObjectToJson(response, sysDao.query(articleCate));
+
         }
 
         logger.info("query end");
@@ -447,6 +471,14 @@ public class SysController {
             List<AuditFlow> auditFlows = sysDao.complexQuery(AuditFlow.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, auditFlows);
 
+        }else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+            List<Article> articles = sysDao.complexQuery(Article.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, articles);
+
+        }else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
+            List<ArticleCate> articleCates = sysDao.complexQuery(ArticleCate.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, articleCates);
+
         }
 
         logger.info("complexQuery end");
@@ -482,6 +514,13 @@ public class SysController {
 
         } else if (entity.equalsIgnoreCase(AuditFlow.class.getSimpleName())) {
             recordsSum =  sysDao.recordsSum(AuditFlow.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(Article.class, queryParameters);
+
+        }else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(ArticleCate.class, queryParameters);
+
         }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
@@ -652,6 +691,7 @@ public class SysController {
                     refuseAudit.setNo(dbAudit.getNo());
                     refuseAudit.setEntity(dbAudit.getEntity());
                     refuseAudit.setEntityId(dbAudit.getEntityId());
+                    refuseAudit.setEntityNo(dbAudit.getEntityNo());
 
                     refuseAudit.setCompany(dbAudit.getCompany());
                     refuseAudit.setUser(audit.getToRefuseUser());
@@ -664,6 +704,7 @@ public class SysController {
                     refuseAudit.setRefusePost(dbAudit.getPost());
                     refuseAudit.setRefuseUser(dbAudit.getUser());
                     refuseAudit.setName(dbAudit.getName());
+                    refuseAudit.setContent(dbAudit.getContent());
                     refuseAudit.setState(AuditFlowConstant.audit_state_todo);
 
 
@@ -848,33 +889,10 @@ public class SysController {
             if (user != null) {
                 //移除之前登录的用户
                 sysDao.deleteFromRedis(CommonConstant.salt + CommonConstant.underline + oldSessionId);
-                sysDao.deleteFromRedis(username + CommonConstant.underline + CommonConstant.resources);
                 signInUtil.removeUser(username);
 
-                //重新设置登录信息
-                User dbUser = (User) sysDao.queryById(user.getId(), user.getClass());
-                Set<Post> posts = new HashSet<>();
-                for (Post post : dbUser.getPosts()) {
-                    posts.add((Post)sysDao.queryById(post.getId(), Post.class));
-                }
-                dbUser.setPosts(posts);
-
-                String resources = "";
-                for (Post post : dbUser.getPosts()) {
-                    for (PrivilegeResource resource : post.getPrivilegeResources()) {
-                        resources += resource.getUri() + ",";
-                    }
-
-                    /**
-                     * 由于已经获得了权限，移除对象里的权限
-                     */
-                    post.setPrivilegeResources(null);
-                }
-
-                sysDao.storeToRedis(username, dbUser, signInUtil.sessionTime);
-                sysDao.storeToRedis(username + CommonConstant.underline + CommonConstant.resources, resources, signInUtil.sessionTime);
+                sysDao.storeToRedis(username, user, signInUtil.sessionTime);
                 signInUtil.setUser(sessionId, username);
-
 
                 //移除临时登录用户
                 sysDao.deleteFromRedis(tempUserKey);
@@ -893,7 +911,7 @@ public class SysController {
     /**
      * 根据 uri 获取用户 post
      */
-    @RequestMapping(value="/getPostByUri")
+    @PostMapping(value="/getPostByUri")
     public void getPostByUri(HttpServletResponse response,  @RequestBody String json) {
         logger.info("getPostByUri start, parameter:" + json);
 
@@ -915,5 +933,61 @@ public class SysController {
 
         writer.writeObjectToJson(response, matchPosts);
         logger.info("getPostByUri end");
+    }
+
+    /**
+     * 根据 uri 获取拥有该 uri 的用户
+     */
+    @PostMapping(value="/getUsersByUri")
+    public void getUsersByUri(HttpServletResponse response,  @RequestBody String json) {
+        logger.info("getUsersByUri start, parameter:" + json);
+
+        Post post = new Post();
+        post.setPrivilegeResources(new HashSet<>());
+        post.getPrivilegeResources().add(writer.gson.fromJson(json, PrivilegeResource.class));
+        List<Post> posts = sysDao.query(post);
+
+        List<User> users = new ArrayList<>();
+
+        for (Post ele : posts) {
+            Post queryPost = new Post();
+            queryPost.setId(ele.getId());
+
+            User user = new User();
+            user.setPosts(new HashSet<>());
+            user.getPosts().add(queryPost);
+            users.addAll(sysDao.query(user));
+        }
+
+        writer.writeObjectToJson(response, users);
+        logger.info("getUsersByUri end");
+    }
+
+    /**
+     * 根据用户获取用户所在公司
+     */
+    @PostMapping(value="/getCompanyByUser")
+    public void getCompanyByUser(HttpServletResponse response,  @RequestBody String json) {
+        logger.info("getCompanyByUser start, parameter:" + json);
+
+        User user = writer.gson.fromJson(json, User.class);
+        Post queryPost = (Post) ((User)sysDao.query(user).get(0)).getPosts().toArray()[0];
+        Post dbPost = (Post) sysDao.queryById(queryPost.getId(), queryPost.getClass());
+
+        writer.writeObjectToJson(response, dbPost.getDept().getCompany());
+        logger.info("getCompanyByUser end");
+    }
+
+    /**
+     * 计算业务系统当前时间
+     * @return
+     */
+    @GetMapping(value="/computeSysCurrentTimeMillis")
+    @ResponseBody
+    public long computeSysCurrentTimeMillis(){
+        logger.info("computeSysCurrentTimeMillis start");
+        long sysCurrentTimeMillis = dateUtil.computeSysCurrentTimeMillis();
+        logger.info("computeSysCurrentTimeMillis end:" + sysCurrentTimeMillis);
+        return sysCurrentTimeMillis;
     }
 }

@@ -117,6 +117,85 @@ public class AfterSaleServiceService {
     }
 
     /**
+     * 设置退货单
+     * @param returnProduct
+     * @return
+     */
+    public ReturnProduct setReturnProduct(ReturnProduct returnProduct) {
+        if (returnProduct.getEntity().equals(OrderConstant.order)) {
+            Order order = orderService.queryOrder(new Order(returnProduct.getEntityId())).get(0);
+
+            returnProduct.setEntityNo(order.getNo());
+            returnProduct.setUser(order.getUser());
+            returnProduct.setInputDate(dateUtil.getSecondCurrentTimestamp());
+            returnProduct.setState(AfterSaleServiceConstant.returnProduct_state_apply);
+
+            returnProduct.setAmount(0f);
+            for (ReturnProductDetail detail : returnProduct.getDetails()) {
+                for (OrderDetail orderDetail : order.getDetails()) {
+                    if (detail.getProductNo().equals(orderDetail.getProductNo())) {
+
+                        detail.setState(AfterSaleServiceConstant.returnProduct_detail_state_unReturn);
+                        detail.setUnit(orderDetail.getUnit());
+
+                        if (orderDetail.getPriceChange() == null) {
+                            detail.setPrice(orderDetail.getProductPrice());
+                        } else {
+                            detail.setPrice(orderDetail.getPriceChange().getPrice());
+                        }
+                        detail.setAmount(new BigDecimal(Float.toString(detail.getPrice())).
+                                multiply(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue());
+
+                        detail.setReturnProductDetailProducts(new HashSet<>());
+                        for (OrderDetailProduct orderDetailProduct : orderDetail.getOrderDetailProducts()) {
+                            Integer productState = orderDetailProduct.getProduct().getState();
+
+                            if (detail.getUnit().equals(ErpConstant.unit_g) || detail.getUnit().equals(ErpConstant.unit_kg) ||
+                                    detail.getUnit().equals(ErpConstant.unit_ct) || detail.getUnit().equals(ErpConstant.unit_oz)) {
+
+                                if (productState.compareTo(ErpConstant.product_state_stockOut) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_stockOut_part) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_sold) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_sold_part) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_shipped) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_shipped_part) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_onReturnProduct_part) == 0 ||
+                                    productState.compareTo(ErpConstant.product_state_returnedProduct_part) == 0) {
+                                    detail.getReturnProductDetailProducts().add(new ReturnProductDetailProduct(orderDetailProduct.getProduct()));
+                                }
+
+                            } else {
+                                if (detail.getReturnProductDetailProducts().size() <= detail.getQuantity()) {
+                                    if (productState.compareTo(ErpConstant.product_state_stockOut) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_stockOut_part) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_sold) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_sold_part) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_shipped) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_shipped_part) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_onReturnProduct_part) == 0 ||
+                                        productState.compareTo(ErpConstant.product_state_returnedProduct_part) == 0) {
+                                        detail.getReturnProductDetailProducts().add(new ReturnProductDetailProduct(orderDetailProduct.getProduct()));
+                                    }
+
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+
+                        returnProduct.setAmount(new BigDecimal(Float.toString(returnProduct.getAmount())).
+                                add(new BigDecimal(Float.toString(detail.getAmount()))).floatValue());
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return returnProduct;
+    }
+
+    /**
      * 检查是否可退货
      * @param returnProduct
      * @return
@@ -154,74 +233,57 @@ public class AfterSaleServiceService {
         return canReturnMsg;
     }
 
-    /**
-     * 设置退货单
-     * @param returnProduct
-     * @return
-     */
-    public ReturnProduct setReturnProduct(ReturnProduct returnProduct) {
+    public String checkReturnProductQuantity(ReturnProduct returnProduct) {
+        String canReturnMsg = "";
+
         if (returnProduct.getEntity().equals(OrderConstant.order)) {
-            Order order = orderService.queryOrder(new Order(returnProduct.getEntityId())).get(0);
+            Order order = (Order) orderDao.queryById(returnProduct.getEntityId(), Order.class);
 
-            returnProduct.setEntityNo(order.getNo());
-            returnProduct.setUser(order.getUser());
-            returnProduct.setInputDate(dateUtil.getSecondCurrentTimestamp());
-            returnProduct.setState(AfterSaleServiceConstant.returnProduct_state_apply);
+            ReturnProduct queryReturnProduct = new ReturnProduct();
+            queryReturnProduct.setState(AfterSaleServiceConstant.returnProduct_state_refund);
+            queryReturnProduct.setEntity(returnProduct.getEntity());
+            queryReturnProduct.setEntityId(returnProduct.getEntityId());
+            List<ReturnProduct> returnProducts = orderDao.query(queryReturnProduct);
 
-            returnProduct.setAmount(0f);
             for (ReturnProductDetail detail : returnProduct.getDetails()) {
-                for (OrderDetail orderDetail : order.getDetails()) {
-                    if (detail.getProductNo().equals(orderDetail.getProductNo())) {
 
-                        detail.setState(AfterSaleServiceConstant.returnProduct_detail_state_unReturn);
-                        detail.setUnit(orderDetail.getUnit());
+                if (detail.getReturnProductDetailProducts() == null ||
+                        detail.getReturnProductDetailProducts().isEmpty()) {
+                    canReturnMsg += "商品：" + detail.getProductNo() + "可退数量为0，不能退货。";
+                    break;
+                }
 
-                        if (orderDetail.getPriceChange() == null) {
-                            detail.setPrice(orderDetail.getProductPrice());
-                        } else {
-                            detail.setPrice(orderDetail.getPriceChange().getPrice());
+                Float returnedProductQuantity = 0f;
+                for (ReturnProduct returnedProduct : returnProducts) {
+                    for (ReturnProductDetail returnedDetail : returnedProduct.getDetails()) {
+                        if (returnedDetail.getProductNo().equals(detail.getProductNo())) {
+
+                            returnedProductQuantity = new BigDecimal(Float.toString(returnedProductQuantity)).
+                                    add(new BigDecimal(Float.toString(returnedDetail.getQuantity()))).floatValue();
+
                         }
-                        detail.setAmount(new BigDecimal(Float.toString(detail.getPrice())).
-                                multiply(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue());
-
-                        detail.setReturnProductDetailProducts(new HashSet<>());
-                        for (OrderDetailProduct orderDetailProduct : orderDetail.getOrderDetailProducts()) {
-
-                            if (detail.getUnit().equals(ErpConstant.unit_g) || detail.getUnit().equals(ErpConstant.unit_kg) ||
-                                    detail.getUnit().equals(ErpConstant.unit_ct) || detail.getUnit().equals(ErpConstant.unit_oz)) {
-
-                                if (orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_sold) == 0 ||
-                                        orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_sold_part) == 0 ||
-                                        orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_shipped) == 0 ||
-                                        orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_shipped_part) == 0) {
-                                    detail.getReturnProductDetailProducts().add(new ReturnProductDetailProduct(orderDetailProduct.getProduct()));
-                                }
-
-                            } else {
-                                if (detail.getReturnProductDetailProducts().size() <= detail.getQuantity()) {
-                                    if (orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_sold) == 0 ||
-                                            orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_sold_part) == 0 ||
-                                            orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_shipped) == 0 ||
-                                            orderDetailProduct.getProduct().getState().compareTo(ErpConstant.product_state_shipped_part) == 0) {
-                                        detail.getReturnProductDetailProducts().add(new ReturnProductDetailProduct(orderDetailProduct.getProduct()));
-                                    }
-
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-
-                        returnProduct.setAmount(new BigDecimal(Float.toString(returnProduct.getAmount())).
-                                add(new BigDecimal(Float.toString(detail.getAmount()))).floatValue());
-
-                        break;
                     }
+                }
+
+                Float canReturnProductQuantity = 0f;
+                for (OrderDetail orderDetail : order.getDetails()) {
+                    if (orderDetail.getProductNo().equals(detail.getProductNo())) {
+
+                        canReturnProductQuantity = new BigDecimal(Float.toString(orderDetail.getQuantity())).
+                                subtract(new BigDecimal(Float.toString(returnedProductQuantity))).floatValue();
+                    }
+                }
+
+
+                if (detail.getQuantity().compareTo(canReturnProductQuantity) > 0) {
+                    canReturnMsg += "商品：" + detail.getProductNo() + "申请退货数量为: " + detail.getQuantity() +
+                            "，而实际可退数量为: " + canReturnProductQuantity + "。";
+                    break;
                 }
             }
         }
 
-        return returnProduct;
+        return canReturnMsg;
     }
 
     public String doReturnProductBusinessAction(String json, Integer returnProductPassState, Integer actionPassState,
@@ -243,6 +305,8 @@ public class AfterSaleServiceService {
                 returnProductDetail.setState(AfterSaleServiceConstant.returnProduct_detail_state_cannotReturn);
                 result += afterSaleServiceDao.updateById(returnProductDetail.getId(), returnProductDetail);
             }
+
+            recoverProductState(returnProduct);
         }
 
         result += afterSaleServiceDao.updateById(returnProduct.getId(), returnProduct);
@@ -315,6 +379,23 @@ public class AfterSaleServiceService {
     }
 
     /**
+     * 还原商品状态
+     * @param returnProduct
+     * @return
+     */
+    private String recoverProductState(ReturnProduct returnProduct) {
+        List<Product> products = new ArrayList<>();
+        for (ReturnProductDetail detail : returnProduct.getDetails()) {
+            for (ReturnProductDetailProduct detailProduct : detail.getReturnProductDetailProducts()) {
+                products.add(detailProduct.getProduct());
+            }
+        }
+
+        return erpClient.business(ErpConstant.product_action_name_recoverState, writer.gson.toJson(products));
+    }
+
+
+    /**
      * 设置商品为退货状态
      * @param returnProduct
      * @return
@@ -323,11 +404,6 @@ public class AfterSaleServiceService {
         List<Product> products = new ArrayList<>();
         for (ReturnProductDetail detail : returnProduct.getDetails()) {
             for (ReturnProductDetailProduct detailProduct : detail.getReturnProductDetailProducts()) {
-                /**
-                 * size > 1 表示商品是按件数退货，<= 1 表示商品是按件数或者重量或者其他不可数单位退货
-                 */
-                detailProduct.getProduct().setReturnQuantity(detail.getReturnProductDetailProducts().size() > 1 ? 1 : detail.getQuantity());
-                detailProduct.getProduct().setSoldUnit(detail.getUnit());
                 products.add(detailProduct.getProduct());
             }
         }
@@ -428,6 +504,9 @@ public class AfterSaleServiceService {
 
     /**
      * 获取商品在退数量
+     * 商品再退数量没有重复再退数量这种情况，因为一次退货的完整过程中，退货记录的状态最终都是退货完成状态，不会存在
+     * 再退状态这种中间状态。所以同一商品多次退货，在最后一次退货未完成时，多次的退货记录中的最后一条是在退状态，其
+     * 他是退货完成状态；多次退货完成后，退货记录里就没有再退状态。
      * @param product
      * @return
      */
@@ -522,36 +601,39 @@ public class AfterSaleServiceService {
     }
 
     public List<ReturnProductDetail> getReturnedProductDetails(Product product){
-        List<ReturnProductDetail> details = getReturnProductDetails(product);
+        List<ReturnProductDetail> returnedDetail = new ArrayList<>();
 
-        Iterator<ReturnProductDetail> iterator = details.iterator();
+        Iterator<ReturnProductDetail> iterator = getReturnProductDetails(product).iterator();
         while (iterator.hasNext()) {
             ReturnProductDetail detail = iterator.next();
             if (detail.getState().compareTo(AfterSaleServiceConstant.returnProduct_detail_state_returned) == 0) {
-                iterator.remove();
+                returnedDetail.add(detail);
             }
         }
 
-        return details;
+        return returnedDetail;
     }
 
     /**
-     * 商品在退状态是指仓储审核通过申请退货的商品，商品才是在退状态
+     * 商品在退状态是指申请退货到退货完成之前的状态
      * @param product
      * @return
      */
     public List<ReturnProductDetail> getOnReturnProductDetails(Product product){
-        List<ReturnProductDetail> details = getReturnProductDetails(product);
+        List<ReturnProductDetail> onReturnDetails = new ArrayList<>();
 
-        Iterator<ReturnProductDetail> iterator = details.iterator();
+        Iterator<ReturnProductDetail> iterator = getReturnProductDetails(product).iterator();
         while (iterator.hasNext()) {
             ReturnProductDetail detail = iterator.next();
-            if (detail.getState().compareTo(AfterSaleServiceConstant.returnProduct_state_warehousingPass) == 0) {
-                iterator.remove();
+            if (detail.getReturnProduct().getState().compareTo(AfterSaleServiceConstant.returnProduct_state_apply) == 0 ||
+                detail.getReturnProduct().getState().compareTo(AfterSaleServiceConstant.returnProduct_state_salePass) == 0 ||
+                detail.getReturnProduct().getState().compareTo(AfterSaleServiceConstant.returnProduct_state_directorPass) == 0 ||
+                detail.getReturnProduct().getState().compareTo(AfterSaleServiceConstant.returnProduct_state_warehousingPass) == 0) {
+                onReturnDetails.add(detail);
             }
         }
 
-        return details;
+        return onReturnDetails;
     }
 
     public List<ReturnProductDetail> getReturnProductDetails(Product product) {
@@ -578,57 +660,18 @@ public class AfterSaleServiceService {
         return details;
     }
 
-    public String checkReturnProductQuantity(ReturnProduct returnProduct) {
-        String canReturnMsg = "";
+    public ReturnProduct getLastValidReturnProductByProduct(Product product) {
+        ReturnProductDetailProduct detailProduct = new ReturnProductDetailProduct();
+        detailProduct.setProduct(product);
+        List<ReturnProductDetailProduct> detailProducts = orderDao.query(detailProduct);
 
-        if (returnProduct.getEntity().equals(OrderConstant.order)) {
-            Order order = (Order) orderDao.queryById(returnProduct.getEntityId(), Order.class);
-
-            ReturnProduct queryReturnProduct = new ReturnProduct();
-            queryReturnProduct.setState(AfterSaleServiceConstant.returnProduct_state_refund);
-            queryReturnProduct.setEntity(returnProduct.getEntity());
-            queryReturnProduct.setEntityId(returnProduct.getEntityId());
-            List<ReturnProduct> returnProducts = orderDao.query(queryReturnProduct);
-
-            for (ReturnProductDetail detail : returnProduct.getDetails()) {
-
-                if (detail.getReturnProductDetailProducts() == null ||
-                        detail.getReturnProductDetailProducts().isEmpty()) {
-                    canReturnMsg += "商品：" + detail.getProductNo() + "可退数量为0，不能退货。";
-                    break;
-                }
-
-                Float returnedProductQuantity = 0f;
-                for (ReturnProduct returnedProduct : returnProducts) {
-                    for (ReturnProductDetail returnedDetail : returnedProduct.getDetails()) {
-                        if (returnedDetail.getProductNo().equals(detail.getProductNo())) {
-
-                            returnedProductQuantity = new BigDecimal(Float.toString(returnedProductQuantity)).
-                                    add(new BigDecimal(Float.toString(returnedDetail.getQuantity()))).floatValue();
-
-                        }
-                    }
-                }
-
-                Float canReturnProductQuantity = 0f;
-                for (OrderDetail orderDetail : order.getDetails()) {
-                    if (orderDetail.getProductNo().equals(detail.getProductNo())) {
-
-                        canReturnProductQuantity = new BigDecimal(Float.toString(orderDetail.getQuantity())).
-                                subtract(new BigDecimal(Float.toString(returnedProductQuantity))).floatValue();
-
-                    }
-                }
-
-
-                if (detail.getQuantity().compareTo(canReturnProductQuantity) > 0) {
-                    canReturnMsg += "商品：" + detail.getProductNo() + "申请退货数量为: " + detail.getQuantity() +
-                            "，而实际可退数量为: " + canReturnProductQuantity + "。";
-                    break;
-                }
+        for (ReturnProductDetailProduct ele : detailProducts) {
+            ReturnProductDetail detail = (ReturnProductDetail) orderDao.queryById(ele.getReturnProductDetail().getId(), ReturnProductDetail.class);
+            if (detail.getReturnProduct().getState().compareTo(AfterSaleServiceConstant.returnProduct_state_cancel) != 0) {
+                return detail.getReturnProduct();
             }
         }
 
-        return canReturnMsg;
+        return null;
     }
 }

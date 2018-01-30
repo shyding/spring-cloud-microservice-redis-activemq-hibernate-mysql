@@ -187,14 +187,12 @@ public class PayApplication {
     }
 
     /**
-     * 本地服务实例的信息
+     * 本地服务实例的系统时间
      * @return
      */
-    @GetMapping("/instance-info")
-    public ServiceInstance showInfo() {
-        ServiceInstance localServiceInstance = this.discoveryClient.
-                getLocalServiceInstance();
-        return localServiceInstance;
+    @GetMapping("/currentTimeMillis")
+    public long showInfo() {
+        return System.currentTimeMillis();
     }
 
     public static void main(String[] args) {

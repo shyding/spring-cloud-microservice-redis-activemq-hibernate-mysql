@@ -131,17 +131,17 @@ public class DateUtil {
             startTime = System.currentTimeMillis();
             String currentTimeMillisStr = httpUtil.get("http://" + serviceInstance.getInstanceInfo().getIPAddr() +
                     ":" + serviceInstance.getPort() + currentTimeMillis_path);
+            onceDelay = System.currentTimeMillis() - startTime;
 
             if (currentTimeMillisStr != null) {
                 serversCurrentTimeMillis[i] = Long.valueOf(currentTimeMillisStr);
-                onceDelay = System.currentTimeMillis() - startTime;
-
                 serversCurrentTimeMillis[i] = serversCurrentTimeMillis[i] - delay - onceDelay/2L;
-                delay += onceDelay;
                 validServersCount++;
             } else {
                 serversCurrentTimeMillis[i] = -1;
             }
+
+            delay += onceDelay;
         }
 
         int k = 0;

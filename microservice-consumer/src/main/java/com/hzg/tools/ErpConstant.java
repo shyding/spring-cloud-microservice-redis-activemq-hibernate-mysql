@@ -56,6 +56,7 @@ public class ErpConstant {
     public final static Integer stockInOut_type_deposit = 4;
     public final static Integer stockInOut_type_repair = 5;
     public final static Integer stockInOut_type_changeWarehouse = 6;
+    public final static Integer stockInOut_type_returnProduct = 7;
     public final static Integer stockInOut_type_virtual_outWarehouse = 10;
     public final static Integer stockInOut_type_normal_outWarehouse = 11;
     public final static Integer stockInOut_type_breakage_outWarehouse = 12;

@@ -1,4 +1,4 @@
-﻿<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%--jquery ui--%>
@@ -136,6 +136,11 @@
                         </c:if>
                     </div>
 
+                    <c:if test="${(fn:contains(resources, '/afterSaleService/doBusiness/returnProductSaleAudit') && entity.state == 0) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/returnProductDirectorAudit') && entity.state == 3) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit') && entity.state == 4) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund') && entity.state == 5) ||
+                    entity.state == null}">
                     <div class="x_content">
                         <span class="section" style="margin-top: 40px">审核</span>
                         <div class="item form-group" style="margin-top:20px;">
@@ -143,7 +148,7 @@
                                 <form id="actionForm">
                                     <div class="item form-group">
                                         <label class="control-label col-md-3 col-sm-3 col-xs-12" style="width: 80px" for="remark">批语 <span class="required">*</span></label>
-                                        <div class="col-md-6 col-sm-6 col-xs-12"><textarea class="form-control col-md-7 col-xs-12" style="width: 600px" id="remark" name="remark"></textarea></div>
+                                        <div class="col-md-6 col-sm-6 col-xs-12"><textarea class="form-control col-md-7 col-xs-12" style="width: 600px" id="remark" name="remark" required></textarea></div>
                                     </div>
                                     <input type="hidden" name="auditResult" id="auditResult">
                                     <input type="hidden" name="entityId:number" id="entityId" value="${entity.id}">
@@ -152,6 +157,7 @@
                             </div>
                         </div>
                     </div>
+                    </c:if>
 
                     <div class="x_content">
                         <div class="form-horizontal form-label-left">
@@ -204,6 +210,9 @@
     <c:if test="${entity.state == null}">
         <c:if test="${fn:contains(resources, '/afterSaleService/save/returnProduct')}">
             $("#returnProduct").click(function(){
+                if (!validator.checkAll($("#actionForm"))) {
+                    return;
+                }
                 returnProduct.save('<%=request.getContextPath()%>/afterSaleService/save/returnProduct');
             });
         </c:if>

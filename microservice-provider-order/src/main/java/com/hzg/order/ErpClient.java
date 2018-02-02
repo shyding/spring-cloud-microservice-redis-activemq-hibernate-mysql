@@ -56,13 +56,13 @@ public interface ErpClient {
         @Override
         public String save(String entity, String json) {
             logger.info("save 异常发生，进入fallback方法，接收的参数：" + entity + ":" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，保存出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，保存出错\"}";
         }
 
         @Override
         public String business(String name, String json) {
             logger.info("business 异常发生，进入fallback方法，接收的参数：" + name + ":" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，执行业务出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，执行业务出错\"}";
         }
 
         @Override
@@ -80,7 +80,7 @@ public interface ErpClient {
         @Override
         public String sfExpressOrder(String json) {
             logger.info("sfExpressOrder 异常发生，进入fallback方法，接收的参数：" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，执行顺丰下单出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，执行顺丰下单出错\"}";
         }
 
         @Override

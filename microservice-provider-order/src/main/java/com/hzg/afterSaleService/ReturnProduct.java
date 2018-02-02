@@ -60,6 +60,9 @@ public class ReturnProduct implements Serializable {
     @Column(name="inputDate")
     private Timestamp inputDate;
 
+    @Column(name="type", length = 1)
+    private Integer type;
+
     @OneToMany(mappedBy = "returnProduct", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<ReturnProductDetail> details;
 
@@ -159,6 +162,14 @@ public class ReturnProduct implements Serializable {
 
     public void setInputDate(Timestamp inputDate) {
         this.inputDate = inputDate;
+    }
+
+    public Integer getType() {
+        return type;
+    }
+
+    public void setType(Integer type) {
+        this.type = type;
     }
 
     public Set<ReturnProductDetail> getDetails() {

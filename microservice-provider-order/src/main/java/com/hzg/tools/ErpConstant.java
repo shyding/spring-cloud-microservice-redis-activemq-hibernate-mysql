@@ -16,7 +16,7 @@ public class ErpConstant {
     public final static Integer product_price_change_state_use = 1;
 
     public final static String no_stockInOut_perfix = "RC";
-    public final static Integer stockInOut_type_returnProduct = 51;
+    public final static Integer stockInOut_type_returnProduct = 7;
     public final static Integer stockInOut_type_normal_outWarehouse = 11;
     public final static Integer stockInOut_state_finished = 1;
 
@@ -51,6 +51,7 @@ public class ErpConstant {
     public final static String stockInOut_action_name_outProduct = "stockOutProduct";
     public final static String product_action_name_upShelf = "upShelfProduct";
     public final static String product_action_name_recoverState = "recoverState";
+    public final static String product_action_name_setProductEdit = "setProductEdit";
 
     public final static String unit_g = "克";
     public final static String unit_kg = "千克";

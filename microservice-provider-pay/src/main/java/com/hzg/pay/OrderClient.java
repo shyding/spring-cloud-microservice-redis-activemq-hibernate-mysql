@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.hzg.tools.CommonConstant;
 import org.springframework.cloud.netflix.feign.FeignClient;
@@ -29,7 +29,7 @@ public interface OrderClient {
         @Override
         public String business(String name, String json) {
             logger.info("business 异常发生，进入fallback方法，接收的参数：" + name + ":" + json);
-            return "{\"" + CommonConstant.result + "\":\"系统异常，执行业务出错\"}";
+            return "{\"" + CommonConstant.result + "\":\"" + CommonConstant.fail + ",系统异常，执行业务出错\"}";
         }
     }
 }

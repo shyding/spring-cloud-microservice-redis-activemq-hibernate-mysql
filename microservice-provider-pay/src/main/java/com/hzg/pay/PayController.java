@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;
@@ -299,69 +299,74 @@ public class PayController {
 
                 List<Pay> pays = payService.queryBalancePay(writer.gson.fromJson(json, Pay.class));
 
-                for (Pay pay : pays) {
-                    Refund refund = new Refund();
-                    refund.setNo(payDao.getNo(PayConstants.no_prefix_refund));
-                    refund.setPay(pay);
-                    refund.setPayBank(pay.getPayBank());
+                if (!pays.isEmpty()) {
+                    for (Pay pay : pays) {
+                        Refund refund = new Refund();
+                        refund.setNo(payDao.getNo(PayConstants.no_prefix_refund));
+                        refund.setPay(pay);
+                        refund.setPayBank(pay.getPayBank());
 
-                    refund.setBankBillNo(pay.getBankBillNo());
-                    refund.setEntity(entity);
-                    refund.setEntityId(entityId);
-                    refund.setInputDate(dateUtil.getSecondCurrentTimestamp());
+                        refund.setBankBillNo(pay.getBankBillNo());
+                        refund.setEntity(entity);
+                        refund.setEntityId(entityId);
+                        refund.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
-                    if (pay.getAmount().compareTo(amount) >= 0) {
-                        refund.setAmount(amount);
-                    } else {
-                        refund.setAmount(pay.getAmount());
-                    }
+                        if (pay.getAmount().compareTo(amount) >= 0) {
+                            refund.setAmount(amount);
+                        } else {
+                            refund.setAmount(pay.getAmount());
+                        }
 
-                    if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
-                            pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
-                        refund.setState(PayConstants.refund_state_apply);
-                    } else {
-                        refund.setState(PayConstants.pay_state_success);
-                    }
-
-                    result += payDao.save(refund);
-
-                    if (pay.getBalanceType().compareTo(PayConstants.balance_type_income) == 0) {
-                        /**
-                         * 网上支付调用网上银行退款接口退款
-                         */
                         if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
                                 pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
+                            refund.setState(PayConstants.refund_state_apply);
+                        } else {
+                            refund.setState(PayConstants.pay_state_success);
+                            refund.setRefundDate(dateUtil.getSecondCurrentTimestamp());
+                        }
 
-                            if (refund.getPayBank().equals(PayConstants.bank_alipay)) {
-                                result += alipaySubmit.httpRequestRefund(refund.getNo(), "1",
-                                        refund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
-                                                PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+                        result += payDao.save(refund);
 
-                            } else if (refund.getPayBank().equals(PayConstants.bank_wechat)) {
-                                result += refundService.refund(new RefundReqData(refund.getPay().getBankBillNo(),
-                                        refund.getPay().getNo(), refund.getNo(), (int)(refund.getAmount()*100F), (int)(refund.getAmount()*100F)));
+                        if (pay.getBalanceType().compareTo(PayConstants.balance_type_income) == 0) {
+                            /**
+                             * 网上支付调用网上银行退款接口退款
+                             */
+                            if (pay.getPayType().compareTo(PayConstants.pay_type_net) == 0 ||
+                                    pay.getPayType().compareTo(PayConstants.pay_type_qrcode) == 0) {
+
+                                if (refund.getPayBank().equals(PayConstants.bank_alipay)) {
+                                    result += alipaySubmit.httpRequestRefund(refund.getNo(), "1",
+                                            refund.getBankBillNo() + PayConstants.alipay_refund_detail_splitor + refund.getAmount() +
+                                                    PayConstants.alipay_refund_detail_splitor + refund.getEntity() + CommonConstant.underline + refund.getEntityId());
+
+                                } else if (refund.getPayBank().equals(PayConstants.bank_wechat)) {
+                                    result += refundService.refund(new RefundReqData(refund.getPay().getBankBillNo(),
+                                            refund.getPay().getNo(), refund.getNo(), (int)(refund.getAmount()*100F), (int)(refund.getAmount()*100F)));
+                                }
+
+                                /**
+                                 * 线下支付设置银行账户金额(本系统网上银行退款接口已有设置银行账户金额,故不需要设置)
+                                 */
+                            } else {
+                                result += payService.setAccountAmount(pay.getReceiptBank(), pay.getReceiptAccount(), -pay.getAmount());
                             }
 
                             /**
-                             * 线下支付设置银行账户金额(本系统网上银行退款接口已有设置银行账户金额,故不需要设置)
+                             * 支出退款，账户金额增加
                              */
-                        } else {
-                            result += payService.setAccountAmount(pay.getReceiptBank(), pay.getReceiptAccount(), -pay.getAmount());
+                        } else if (pay.getBalanceType().compareTo(PayConstants.balance_type_expense) == 0) {
+                            result += payService.setAccountAmount(pay.getPayBank(), pay.getPayAccount(), pay.getAmount());
                         }
 
-                    /**
-                     * 支出退款，账户金额增加
-                      */
-                    } else if (pay.getBalanceType().compareTo(PayConstants.balance_type_expense) == 0) {
-                        result += payService.setAccountAmount(pay.getPayBank(), pay.getPayAccount(), pay.getAmount());
-                    }
 
-
-                    amount = new BigDecimal(Float.toString(amount)).
-                            subtract(new BigDecimal(Float.toString(pay.getAmount()))).floatValue();
-                    if (amount.compareTo(0f) <= 0) {
-                        break;
+                        amount = new BigDecimal(Float.toString(amount)).
+                                subtract(new BigDecimal(Float.toString(pay.getAmount()))).floatValue();
+                        if (amount.compareTo(0f) <= 0) {
+                            break;
+                        }
                     }
+                } else {
+                    result += CommonConstant.fail + ",无余额可退";
                 }
 
                 payDao.deleteFromRedis(processKey);

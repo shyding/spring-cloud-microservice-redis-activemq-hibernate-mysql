@@ -15,9 +15,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.util.*;
 
 @Service
@@ -109,7 +107,7 @@ public class AfterSaleServiceService {
 
             Action action = new Action();
             action.setEntity(AfterSaleServiceConstant.returnProduct);
-            action.setEntityId(ele.getEntityId());
+            action.setEntityId(ele.getId());
             ele.setActions(afterSaleServiceDao.query(action));
         }
 
@@ -227,7 +225,7 @@ public class AfterSaleServiceService {
 
         if (!canReturnMsg.equals("")) {
             canReturnMsg = "尊敬的顾客你好，你提交的退货申请单 " + returnProduct.getNo() + "申请退货失败。具体原因是：" +
-                    canReturnMsg + "。如有帮助需要，请联系我公司客服人员处理";
+                    canReturnMsg + "如有帮助需要，请联系我公司客服人员处理";
         }
 
         return canReturnMsg;
@@ -291,7 +289,7 @@ public class AfterSaleServiceService {
         String result = CommonConstant.fail;
 
         Action action = writer.gson.fromJson(json, Action.class);
-        ReturnProduct returnProduct = (ReturnProduct) afterSaleServiceDao.queryById(action.getEntityId(), ReturnProduct.class);
+        ReturnProduct returnProduct = queryReturnProductById(action.getEntityId());
 
         if (action.getAuditResult().equals(CommonConstant.Y)) {
             returnProduct.setState(returnProductPassState);
@@ -306,7 +304,7 @@ public class AfterSaleServiceService {
                 result += afterSaleServiceDao.updateById(returnProductDetail.getId(), returnProductDetail);
             }
 
-            recoverProductState(returnProduct);
+            result += recoverProductState(returnProduct);
         }
 
         result += afterSaleServiceDao.updateById(returnProduct.getId(), returnProduct);
@@ -317,6 +315,18 @@ public class AfterSaleServiceService {
         result += afterSaleServiceDao.save(action);
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public ReturnProduct queryReturnProductById(Integer id) {
+        ReturnProduct returnProduct = (ReturnProduct) afterSaleServiceDao.queryById(id, ReturnProduct.class);
+        for (ReturnProductDetail detail : returnProduct.getDetails()) {
+            ReturnProductDetailProduct detailProduct = new ReturnProductDetailProduct();
+            detailProduct.setReturnProductDetail(detail);
+            List<ReturnProductDetailProduct> detailProducts = afterSaleServiceDao.query(detailProduct);
+            detail.setReturnProductDetailProducts(new HashSet<>(detailProducts));
+        }
+
+        return returnProduct;
     }
 
     public User getUserBySessionId(String sessionId){
@@ -365,13 +375,20 @@ public class AfterSaleServiceService {
         pay.setEntity(returnProduct.getEntity());
         pay.setEntityId(returnProduct.getEntityId());
         pay.setState(PayConstants.pay_state_success);
-        result += payClient.refund(AfterSaleServiceConstant.returnProduct, returnProduct.getId(), returnProduct.getAmount(), writer.gson.toJson(pay));
+        result += ((Map<String, String>)writer.gson.fromJson(
+                payClient.refund(AfterSaleServiceConstant.returnProduct, returnProduct.getId(), returnProduct.getAmount(), writer.gson.toJson(pay)),
+                new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.result);
 
         /**
          * 商品入库，商品状态调整为在售状态
          */
         if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
             result += stockIn(returnProduct);
+        }
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
+            result += setProductEdit(returnProduct);
+        }
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
             result += upShelf(returnProduct);
         }
 
@@ -408,7 +425,8 @@ public class AfterSaleServiceService {
             }
         }
 
-        return erpClient.business(productsReturnStateAction, writer.gson.toJson(products));
+        return ((Map<String, String>)writer.gson.fromJson(erpClient.business(productsReturnStateAction, writer.gson.toJson(products)),
+                new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.result);
     }
 
     /**
@@ -541,9 +559,14 @@ public class AfterSaleServiceService {
 
         if (saveResult.get(CommonConstant.result).equals(CommonConstant.success)) {
             Action action = new Action();
-            action.setEntityId((Integer) saveResult.get(CommonConstant.id));
+            /**
+             * gson 默认将数字转换为 Double 类型
+             */
+            action.setEntityId(((Double)saveResult.get(CommonConstant.id)).intValue());
             action.setSessionId(returnProduct.getSessionId());
-            result += erpClient.business(ErpConstant.stockInOut_action_name_inProduct, writer.gson.toJson(action));
+            result += ((Map<String, String>)writer.gson.fromJson(
+                    erpClient.business(ErpConstant.stockInOut_action_name_inProduct, writer.gson.toJson(action)),
+                    new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.result);
         }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
@@ -585,6 +608,19 @@ public class AfterSaleServiceService {
         return  erpClient.save(stockIn.getClass().getSimpleName(), writer.gson.toJson(stockIn));
     }
 
+    public String setProductEdit(ReturnProduct returnProduct) {
+        List<Product> products = new ArrayList<>();
+        for (ReturnProductDetail detail : returnProduct.getDetails()) {
+            for (ReturnProductDetailProduct detailProduct : detail.getReturnProductDetailProducts()) {
+                products.add(detailProduct.getProduct());
+            }
+        }
+
+        return ((Map<String, String>)writer.gson.fromJson(
+                erpClient.business(ErpConstant.product_action_name_setProductEdit, writer.gson.toJson(products)),
+                new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.result);
+    }
+
     public String upShelf(ReturnProduct returnProduct) {
         List<Integer> productIds = new ArrayList<>();
         for (ReturnProductDetail detail : returnProduct.getDetails()) {
@@ -597,7 +633,9 @@ public class AfterSaleServiceService {
         action.setEntityIds(productIds);
         action.setSessionId(returnProduct.getSessionId());
 
-        return erpClient.business(ErpConstant.product_action_name_upShelf, writer.gson.toJson(action));
+        return ((Map<String, String>)writer.gson.fromJson(
+                erpClient.business(ErpConstant.product_action_name_upShelf, writer.gson.toJson(action)),
+                new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.result);
     }
 
     public List<ReturnProductDetail> getReturnedProductDetails(Product product){

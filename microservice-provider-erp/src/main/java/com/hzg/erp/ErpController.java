@@ -351,13 +351,13 @@ public class ErpController {
 
             } else if (name.equalsIgnoreCase(ErpConstant.stockInOut_action_name_inProduct)) {
                 Action action = writer.gson.fromJson(json, Action.class);
-                StockInOut stockOut = erpService.queryStockInOut(action.getEntityId());
-                stockOut.setState(ErpConstant.stockInOut_state_finished);
+                StockInOut stockIn = erpService.queryStockInOut(action.getEntityId());
+                stockIn.setState(ErpConstant.stockInOut_state_finished);
 
                 /**
                  * 入库，设置库存
                  */
-                 result += erpService.stockIn(stockOut);
+                 result += erpService.stockIn(stockIn);
 
                 action.setEntity(ErpConstant.stockInOut);
                 action.setType(ErpConstant.stockInOut_action_inProduct);
@@ -366,9 +366,9 @@ public class ErpController {
                 result += erpDao.save(action);
 
                 result = "{\"" + CommonConstant.result + "\":\"" + transcation.dealResult(result) + "\"" +
-                        ",\"" + CommonConstant.id + "\":" + stockOut.getId() +
-                        ",\"" + CommonConstant.type + "\":" + stockOut.getType() +
-                        ",\"" + CommonConstant.state + "\":" + stockOut.getState() + "}";
+                        ",\"" + CommonConstant.id + "\":" + stockIn.getId() +
+                        ",\"" + CommonConstant.type + "\":" + stockIn.getType() +
+                        ",\"" + CommonConstant.state + "\":" + stockIn.getState() + "}";
                 writer.writeStringToJson(response, result);
                 logger.info("business end, result:" + result);
                 return;
@@ -450,6 +450,13 @@ public class ErpController {
                 List<Product> products = writer.gson.fromJson(json, new TypeToken<List<Product>>(){}.getType());
                 for (Product product : products) {
                     product.setState(erpService.getProductPreState(product));
+                    result += erpDao.updateById(product.getId(), product);
+                }
+
+            } else if (name.equalsIgnoreCase(ErpConstant.product_action_name_setProductEdit)) {
+                List<Product> products = writer.gson.fromJson(json, new TypeToken<List<Product>>(){}.getType());
+                for (Product product : products) {
+                    product.setState(ErpConstant.product_state_edit);
                     result += erpDao.updateById(product.getId(), product);
                 }
             }

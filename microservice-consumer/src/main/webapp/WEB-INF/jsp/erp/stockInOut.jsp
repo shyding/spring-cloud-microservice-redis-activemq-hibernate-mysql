@@ -60,6 +60,9 @@
                                     <option value="<%=ErpConstant.stockInOut_type_deposit%>">押金入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_repair%>">修补入库</option>
                                     <option value="<%=ErpConstant.stockInOut_type_changeWarehouse%>">调仓入库</option>
+                                    <c:if test="${entity != null && entity.type == 7}">
+                                        <option value="<%=ErpConstant.stockInOut_type_returnProduct%>">系统自动出库</option>
+                                    </c:if>
                                     <option value="<%=ErpConstant.stockInOut_type_virtual_outWarehouse%>">虚拟出库</option>
                                     <c:if test="${entity != null && entity.type == 11}">
                                         <option value="<%=ErpConstant.stockInOut_type_normal_outWarehouse%>">系统自动出库</option>

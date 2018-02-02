@@ -1784,7 +1784,7 @@ public class ErpService {
                     itemQuantity = 1f;
                 }
 
-                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) <= 0) {
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
                     quantity = new BigDecimal(Float.toString(quantity)).add(new BigDecimal(Float.toString(itemQuantity))).floatValue();
                 } else {
                     quantity = new BigDecimal(Float.toString(quantity)).subtract(new BigDecimal(Float.toString(itemQuantity))).floatValue();
@@ -1818,8 +1818,8 @@ public class ErpService {
              */
             if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) >= 0) {
                 startPosition = i;
+                break;
             }
-            break;
         }
 
         Float quantity = 0f;
@@ -2039,7 +2039,7 @@ public class ErpService {
 
                 Product dbProduct = (Product) erpDao.queryById(detailProduct.getProduct().getId(), detailProduct.getProduct().getClass());
 
-                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_changeWarehouse) <= 0) {
+                if (stockInOut.getType().compareTo(ErpConstant.stockInOut_type_virtual_outWarehouse) < 0) {
                     Float totalStockInQuantity = new BigDecimal(Float.toString(getProductStockInQuantity(detailProduct.getProduct()))).
                             add(new BigDecimal(Float.toString(detail.getQuantity()))).floatValue();
 

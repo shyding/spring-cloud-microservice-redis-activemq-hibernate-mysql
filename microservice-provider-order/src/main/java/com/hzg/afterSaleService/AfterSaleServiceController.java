@@ -149,6 +149,10 @@ public class AfterSaleServiceController {
             } else if (name.equals(AfterSaleServiceConstant.returnProduct_action_name_refund)) {
                 Action action = writer.gson.fromJson(json, Action.class);
                 ReturnProduct returnProduct = (ReturnProduct) afterSaleServiceDao.queryById(action.getEntityId(), ReturnProduct.class);
+                /**
+                 * 设置sessionId，后面入库用到
+                 */
+                returnProduct.setSessionId(action.getSessionId());
 
                 result += afterSaleServiceService.refundReturnProduct(returnProduct);
 

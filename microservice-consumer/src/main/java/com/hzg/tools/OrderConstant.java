@@ -30,8 +30,8 @@ public class OrderConstant {
     public final static Integer order_type_assist_process  = 4;
     public final static Integer order_type_private = 2;
     public final static Integer order_type_book = 3;
-
-
+    public final static Integer order_type_returnProduct = 5;
+    
     public final static String queue_order = "queue_order";
     public final static String order_no = "orderNo";
 

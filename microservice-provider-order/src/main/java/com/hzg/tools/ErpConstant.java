@@ -3,13 +3,17 @@ package com.hzg.tools;
 public class ErpConstant {
 
     public final static String product = "product";
+    public final static String purchase = "purchase";
 
     public final static String product_id = "productId";
     public final static String product_no = "productNo";
     public final static String stock_quantity = "stockQuantity";
+    public final static String product_onSale_quantity = "productOnSaleQuantity";
     public final static String product_sold_quantity = "productSoldQuantity";
     public final static String product_onReturn_quantity = "productOnReturnQuantity";
     public final static String product_returned_quantity = "productReturnedQuantity";
+    public final static String product_onChange_quantity = "productOnChangeQuantity";
+    public final static String product_changed_quantity = "productChangedQuantity";
 
     public final static String price = "price";
 
@@ -20,6 +24,9 @@ public class ErpConstant {
     public final static Integer stockInOut_type_normal_outWarehouse = 11;
     public final static Integer stockInOut_state_finished = 1;
 
+    public final static Integer product_state_stockIn = 1;
+    public final static Integer product_state_stockIn_part = 12;
+    public final static Integer product_state_purchase_close = 11;
     public final static Integer product_state_stockOut = 2;
     public final static Integer product_state_stockOut_part = 21;
     public final static Integer product_state_onSale = 3;
@@ -28,7 +35,11 @@ public class ErpConstant {
     public final static Integer product_state_shipped = 8;
     public final static Integer product_state_shipped_part = 81;
     public final static Integer product_state_onReturnProduct_part = 94;
+    public final static Integer product_state_onChangeOnReturnProduct_part = 99;
+    public final static Integer product_state_returnedProduct = 91;
     public final static Integer product_state_returnedProduct_part = 95;
+
+    public final static String product_use_type_acc = "acc";
 
     public final static String deliver_sfExpress = "顺丰快递";
     public final static String deliver_sfExpress_type = "顺丰标快";
@@ -47,6 +58,11 @@ public class ErpConstant {
     public final static String product_action_name_setProductsSold = "setProductsSold";
     public final static String product_action_name_setProductsOnReturn = "setProductsOnReturn";
     public final static String product_action_name_setProductsReturned = "setProductsReturned";
+    public final static String product_action_name_setPurchaseProductsOnReturn = "setPurchaseProductsOnReturn";
+    public final static String product_action_name_setPurchaseProductsReturned = "setPurchaseProductsReturned";
+    public final static String product_action_name_setProductsOnChange = "setProductsOnChange";
+    public final static String product_action_name_setProductsOnChangeOnReturn = "setProductsOnChangeOnReturn";
+    public final static String product_action_name_setProductsChanged = "setProductsChanged";
     public final static String stockInOut_action_name_inProduct = "stockInProduct";
     public final static String stockInOut_action_name_outProduct = "stockOutProduct";
     public final static String product_action_name_upShelf = "upShelfProduct";

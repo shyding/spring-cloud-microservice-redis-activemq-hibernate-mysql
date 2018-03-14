@@ -173,6 +173,21 @@ function render(url){
     });
 }
 
+function renderQuery(url,json){
+    $.ajax({
+        type: "post",
+        url:  url,
+        data: {json: json},
+
+        success: function (pageContent) {
+            if (isValid(pageContent, url.substring(0, url.indexOf("/")))) {
+                setHisUrls(url);
+                $("#pageContent").empty().html(pageContent);
+            }
+        }
+    });
+}
+
 function renderAudit(element, url){
     $("#cancel, #return").unbind("click").click(function(){
         render(getPreUrls());

@@ -15,6 +15,7 @@ import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -54,6 +55,7 @@ public class OrderService {
     @Autowired
     private AfterSaleServiceService afterSaleServiceService;
 
+
     /**
      * 根据订单类型保存订单
      * @param order
@@ -64,6 +66,7 @@ public class OrderService {
 
         logger.info("saveOrder start");
 
+        order = setOrderUnit(order);
         String isAmountRight = checkAmount(order);
         if (!isAmountRight.equals("")) {
             return CommonConstant.fail + isAmountRight;
@@ -101,10 +104,7 @@ public class OrderService {
             result += result1.get(CommonConstant.result);
 
         } else {
-            if (order.getType().compareTo(OrderConstant.order_type_assist) == 0) {
-                result += saveBaseOrder(order);
-
-            } else if (order.getType().compareTo(OrderConstant.order_type_assist_process) == 0) {
+            if (order.getType().compareTo(OrderConstant.order_type_assist_process) == 0) {
                 result += saveAssistProcessOrder(order);
 
             } else if (order.getType().compareTo(OrderConstant.order_type_private) == 0) {
@@ -112,6 +112,9 @@ public class OrderService {
 
             } else if (order.getType().compareTo(OrderConstant.order_type_book) == 0) {
                 result += saveOrderBook(order);
+
+            } else {
+                result += saveBaseOrder(order);
             }
 
             /**
@@ -285,13 +288,29 @@ public class OrderService {
 
             if (detailAmount.floatValue() != detail.getPayAmount() || detailAmount.floatValue() == 0f) {
                 result += "商品" + detail.getProductNo() + "支付金额不对;";
+                break;
             } else {
                 amount = amount.add(detailAmount);
             }
         }
 
-        if (amount.floatValue() != order.getPayAmount()) {
-            result =  "订单支付金额不对";
+        if (result.equals("")) {
+            if (amount.floatValue() != order.getPayAmount()) {
+                result =  "订单金额不对";
+            }
+        }
+
+        if (result.equals("")) {
+            if (order.getType().compareTo(OrderConstant.order_type_book) != 0) {
+                BigDecimal paysAmount = new BigDecimal(0);
+                for (Pay pay : order.getPays()) {
+                    paysAmount = paysAmount.add(new BigDecimal(Float.toString(pay.getAmount())));
+                }
+
+                if (paysAmount.floatValue() != order.getPayAmount()) {
+                    result =  "支付记录的总支付金额与订单支付金额不符";
+                }
+            }
         }
 
         return result;
@@ -317,7 +336,6 @@ public class OrderService {
             BigDecimal detailDiscount = new BigDecimal(Float.toString(detail.getPayAmount())).
                     divide(new BigDecimal(Float.toString(detail.getAmount())), 2, BigDecimal.ROUND_HALF_UP);
             detail.setDiscount(detailDiscount.floatValue());
-
 
             if (order.getType().compareTo(OrderConstant.order_type_book) == 0) {
                 detail.setState(OrderConstant.order_detail_state_book);
@@ -353,7 +371,7 @@ public class OrderService {
 
         if (order.getGifts() != null) {
             for (OrderGift gift : order.getGifts()) {
-                gift.setOrder(order);
+                gift.setOrder(new Order(order.getId()));
                 result += orderDao.save(gift);
 
                 /**
@@ -365,9 +383,15 @@ public class OrderService {
                 List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
                         new TypeToken<List<Product>>(){}.getType());
 
-                for (Product product : products) {
+                int giftQuantity = gift.getQuantity().intValue();
+                if (gift.getUnit().equals(ErpConstant.unit_g) || gift.getUnit().equals(ErpConstant.unit_kg) ||
+                        gift.getUnit().equals(ErpConstant.unit_ct) || gift.getUnit().equals(ErpConstant.unit_oz)) {
+                    giftQuantity = 1;
+                }
+
+                for (int i = 0; i < giftQuantity; i++) {
                     OrderGiftProduct giftProduct = new OrderGiftProduct();
-                    giftProduct.setProduct(product);
+                    giftProduct.setProduct(products.get(i));
                     giftProduct.setOrderGift(gift);
 
                     result += orderDao.save(giftProduct);
@@ -428,13 +452,20 @@ public class OrderService {
                  */
                 Product queryProduct = new Product();
                 queryProduct.setNo(acc.getProductNo());
-                queryProduct.setState(ErpConstant.product_state_onSale);
+                queryProduct.setState(ErpConstant.product_state_stockIn);
+                queryProduct.setUseType(ErpConstant.product_use_type_acc);
                 List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
                         new TypeToken<List<Product>>(){}.getType());
 
-                for (Product product : products) {
+                int accQuantity = acc.getQuantity().intValue();
+                if (acc.getUnit().equals(ErpConstant.unit_g) || acc.getUnit().equals(ErpConstant.unit_kg) ||
+                        acc.getUnit().equals(ErpConstant.unit_ct) || acc.getUnit().equals(ErpConstant.unit_oz)) {
+                    accQuantity = 1;
+                }
+
+                for (int i = 0; i < accQuantity; i++) {
                     OrderPrivateAccProduct accProduct = new OrderPrivateAccProduct();
-                    accProduct.setProduct(product);
+                    accProduct.setProduct(products.get(i));
                     accProduct.setOrderPrivateAcc(acc);
 
                     result += orderDao.save(accProduct);
@@ -466,6 +497,49 @@ public class OrderService {
     }
 
     /**
+     * 设置订单明细商品单位
+     * @param order
+     * @return
+     */
+    public Order setOrderUnit(Order order) {
+        for (OrderDetail detail : order.getDetails()) {
+            Product queryProduct = new Product();
+            queryProduct.setNo(detail.getProductNo());
+            queryProduct.setState(ErpConstant.product_state_onSale);
+
+            detail.setUnit(((Map<String, String>)writer.gson.fromJson(
+                    erpClient.getProductUnit(writer.gson.toJson(queryProduct)), new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.unit));
+
+            if (detail.getOrderPrivate() != null) {
+                if (detail.getOrderPrivate().getAccs() != null) {
+                    for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
+                        Product accQueryProduct = new Product();
+                        accQueryProduct.setNo(acc.getProductNo());
+                        accQueryProduct.setState(ErpConstant.product_state_stockIn);
+                        accQueryProduct.setUseType(ErpConstant.product_use_type_acc);
+
+                        acc.setUnit(((Map<String, String>)writer.gson.fromJson(
+                                erpClient.getProductUnit(writer.gson.toJson(accQueryProduct)), new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.unit));
+                    }
+                }
+            }
+        }
+
+        if (order.getGifts() != null) {
+            for (OrderGift gift : order.getGifts()) {
+                Product giftQueryProduct = new Product();
+                giftQueryProduct.setNo(gift.getProductNo());
+                giftQueryProduct.setState(ErpConstant.product_state_onSale);
+
+                gift.setUnit(((Map<String, String>)writer.gson.fromJson(
+                        erpClient.getProductUnit(writer.gson.toJson(giftQueryProduct)), new TypeToken<Map<String, String>>(){}.getType())).get(CommonConstant.unit));
+            }
+        }
+
+        return order;
+    }
+
+    /**
      * 检查是否可销售
      * @param order
      * @return
@@ -474,7 +548,7 @@ public class OrderService {
         String canSellMsg = "";
 
         for (OrderDetail detail : order.getDetails()) {
-            Float sellableQuantity = getOnSaleQuantity(detail.getProductNo());
+            Float sellableQuantity = getProductOnSaleQuantity(detail.getProductNo());
 
             if (sellableQuantity.compareTo(detail.getQuantity()) < 0) {
                 canSellMsg += detail.getQuantity() + detail.getUnit() + "编号为:" + detail.getProductNo() +
@@ -484,7 +558,7 @@ public class OrderService {
             if (detail.getOrderPrivate() != null) {
                 if (detail.getOrderPrivate().getAccs() != null) {
                     for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
-                        sellableQuantity = getOnSaleQuantity(acc.getProductNo());
+                        sellableQuantity = getProductOnSaleQuantity(acc.getProductNo());
 
                         if (sellableQuantity.compareTo(acc.getQuantity()) < 0) {
                             canSellMsg += "；配饰:" + acc.getProductNo() + "数量为：" + acc.getQuantity() + acc.getUnit() +
@@ -497,7 +571,7 @@ public class OrderService {
 
         if (order.getGifts() != null) {
             for (OrderGift gift : order.getGifts()) {
-                Float sellableQuantity = getOnSaleQuantity(gift.getProductNo());
+                Float sellableQuantity = getProductOnSaleQuantity(gift.getProductNo());
 
                 if (sellableQuantity.compareTo(gift.getQuantity()) < 0) {
                     canSellMsg += "；赠品:" + gift.getProductNo() + "数量为：" + gift.getQuantity() + gift.getUnit() +
@@ -558,21 +632,14 @@ public class OrderService {
     }
 
     /**
-     * 获取可销售数量
+     * 获取商品在售数量
      * @param productNo
      * @return
      */
-    public Float getOnSaleQuantity(String productNo) {
-        Map<String, Float> stockQuantity = writer.gson.fromJson(erpClient.getStockQuantity("{\"" + ErpConstant.product_no + "\":\"" + productNo +"\"}"),
+    public Float getProductOnSaleQuantity(String productNo) {
+        Map<String, Float> stockQuantity = writer.gson.fromJson(erpClient.getProductOnSaleQuantity("{\"" + CommonConstant.no + "\":\"" + productNo +"\"}"),
                 new com.google.gson.reflect.TypeToken<Map<String, Float>>() {}.getType());
-        List<Object> lockQuantities = orderDao.getValuesFromList(OrderConstant.lock_product_quantity + CommonConstant.underline + productNo);
-
-        Float sellableQuantity = stockQuantity.get(ErpConstant.stock_quantity);
-        for (Object lockQuantity : lockQuantities) {
-            sellableQuantity = new BigDecimal(Float.toString(sellableQuantity)).subtract(new BigDecimal(Float.toString((Float) lockQuantity))).floatValue();
-        }
-
-        return sellableQuantity;
+        return stockQuantity.get(ErpConstant.product_onSale_quantity);
     }
 
     /**
@@ -601,13 +668,12 @@ public class OrderService {
     }
 
     public List<OrderDetail> getOrderSoldDetails(Product product) {
-        List<OrderDetail> details = getOrderDetails(product);
+        List<OrderDetail> details = new ArrayList<>();
 
-        Iterator<OrderDetail> iterator = details.iterator();
-        while (iterator.hasNext()) {
-            OrderDetail detail = iterator.next();
+        List<OrderDetail> dbDetails = getOrderDetails(product);
+        for (OrderDetail detail : dbDetails) {
             if (detail.getState().compareTo(OrderConstant.order_detail_state_sold) == 0) {
-                iterator.remove();
+                details.add(detail);
             }
         }
 
@@ -691,7 +757,9 @@ public class OrderService {
      */
     public String paidOfflineOrder(Order order) {
         String result = paidOrder(order);
-        result += payClient.offlinePaid(writer.gson.toJson(order.getPays()));
+        Map<String, String> paidResult = writer.gson.fromJson(payClient.offlinePaid(writer.gson.toJson(order.getPays())),
+                new TypeToken<Map<String, String>>(){}.getType());
+        result += paidResult.get(CommonConstant.result);
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
@@ -734,9 +802,20 @@ public class OrderService {
         order.setSoldDate(dateUtil.getSecondCurrentTimestamp());
         result += orderDao.updateById(order.getId(), order);
 
+        /**
+         * 这里提交事务，使得在设置商品已售状态时，获取的已售商品数量包括当前正在设置为已售的商品数量
+         */
+        sessionFactory.getCurrentSession().getTransaction().commit();
+        sessionFactory.getCurrentSession().getTransaction().begin();
+
         result += setProductsSold(order);
-        result += stockOut(order);
-        sfExpressOrder(order);
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
+            result += stockOut(order);
+        }
+
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
+            sfExpressOrder(order);
+        }
 
         /**
          * 移除订购时锁定的商品
@@ -772,7 +851,9 @@ public class OrderService {
 
         Order dbOrder = (Order) orderDao.queryById(order.getId(), order.getClass());
 
-        if (dbOrder.getAmount().compareTo(refundAmount) > 0) {
+        System.out.println("order pay amount:" + dbOrder.getPayAmount() + ", refund amount:" + refundAmount);
+
+        if (dbOrder.getPayAmount().compareTo(refundAmount) > 0) {
             dbOrder.setState(OrderConstant.order_state_refund_part);
         } else {
             dbOrder.setState(OrderConstant.order_state_refund);
@@ -823,7 +904,9 @@ public class OrderService {
             }
         }
 
-        return erpClient.business(ErpConstant.product_action_name_setProductsSold, writer.gson.toJson(products));
+        Map<String, String> result = writer.gson.fromJson(erpClient.business(ErpConstant.product_action_name_setProductsSold, writer.gson.toJson(products)),
+                new TypeToken<Map<String, String>>(){}.getType());
+        return result.get(CommonConstant.result);
     }
 
 
@@ -838,7 +921,9 @@ public class OrderService {
             String entityIdStr = String.valueOf(saveResult.get(CommonConstant.id));
             action.setEntityId(Integer.parseInt(entityIdStr.substring(0, entityIdStr.indexOf("."))));
             action.setSessionId(order.getSessionId());
-            result += erpClient.business(ErpConstant.stockInOut_action_name_outProduct, writer.gson.toJson(action));
+            Map<String, String> outProductResult = writer.gson.fromJson(erpClient.business(ErpConstant.stockInOut_action_name_outProduct, writer.gson.toJson(action)),
+                    new TypeToken<Map<String, String>>(){}.getType());
+            result += outProductResult.get(CommonConstant.result);
         }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
@@ -1014,6 +1099,7 @@ public class OrderService {
     /**
      * 每隔 2 个小时，查询出订金 < 50% 的预定订单，如果这些订单未支付时间超过 2 天，则修改订单状态为取消状态
      */
+    @Transactional
     @Scheduled(cron = "0 0 0/" + OrderConstant.order_session_time/CommonConstant.hour_seconds + " * * ?")
     public void clearMap(){
         Map<String, String> parameters = new HashMap<String, String>();
@@ -1128,5 +1214,101 @@ public class OrderService {
         }
 
         return sql;
+    }
+
+    public String authorizeOrderPrivateAmount(OrderPrivate orderPrivate) {
+        String result = CommonConstant.fail;
+
+        com.hzg.sys.User user = (com.hzg.sys.User)orderDao.getFromRedis(
+                (String) orderDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + orderPrivate.getAuthorize().getSessionId()));
+
+        if (user != null) {
+            orderPrivate.getAuthorize().setUser(user);
+            orderPrivate.getAuthorize().setDate(dateUtil.getSecondCurrentTimestamp());
+
+            OrderPrivate dbOrderPrivate = (OrderPrivate) orderDao.queryById(orderPrivate.getId(), orderPrivate.getClass());
+            OrderDetail orderDetail = (OrderDetail)orderDao.queryById(orderPrivate.getDetail().getId(), orderPrivate.getDetail().getClass());
+            Order order = orderDetail.getOrder();
+
+            if (orderDetail.getState().compareTo(OrderConstant.order_detail_state_unSale) == 0) {
+                /**
+                 * 加工费、私人订制费用核定生成支付记录
+                 */
+                result += saveAuthorizeAmountPay(order, orderPrivate.getAuthorize().getAmount(), dbOrderPrivate.getAuthorize() == null ? 0f : dbOrderPrivate.getAuthorize().getAmount());
+
+                if (dbOrderPrivate.getAuthorize() == null) {
+                    order.setAmount(new BigDecimal(Float.toString(order.getAmount())).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
+                    order.setPayAmount(new BigDecimal(Float.toString(order.getPayAmount())).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
+
+                } else {
+                    order.setAmount(new BigDecimal(Float.toString(order.getAmount())).
+                            subtract(new BigDecimal(Float.toString(dbOrderPrivate.getAuthorize().getAmount()))).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
+                    order.setPayAmount(new BigDecimal(Float.toString(order.getPayAmount())).
+                            subtract(new BigDecimal(Float.toString(dbOrderPrivate.getAuthorize().getAmount()))).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
+                }
+
+                result += orderDao.save(orderPrivate.getAuthorize());
+                result += orderDao.updateById(orderPrivate.getId(), orderPrivate);
+                result += orderDao.updateById(order.getId(), order);
+
+            } else {
+                result += CommonConstant.fail + ",已售商品不能核定金额，核定金额失败";
+            }
+        } else {
+            result += CommonConstant.fail + ",查询不到核定金额的用户，核定金额失败";
+        }
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public String saveAuthorizeAmountPay(Order order, Float authorizeAmount, Float oldAuthorizeAmount) {
+        String result = CommonConstant.fail;
+
+        Float detailAmount = new BigDecimal(Float.toString(order.getPayAmount())).subtract(new BigDecimal(Float.toString(oldAuthorizeAmount))).floatValue();
+        List<Pay> pays = getPaysByEntity(order.getClass().getSimpleName(), order.getId());
+
+        /**
+         * 这里设置支付记录根据 id 由小到大排序，以便找到订单明细支付记录
+         */
+        pays.sort(new Comparator<Pay>() {
+            @Override
+            public int compare(Pay o1, Pay o2) {
+                if (o1.getId().compareTo(o2.getId()) > 0) {
+                    return 1;
+                } else if (o1.getId().compareTo(o2.getId()) < 0) {
+                    return -1;
+                }
+
+                return 0;
+            }
+        });
+
+        Pay authorizeAmountPay = null;
+        Float sumAmount = 0f;
+        for (int i = 0;i < pays.size(); i++) {
+            sumAmount = new BigDecimal(Float.toString(sumAmount)).add(new BigDecimal(Float.toString(pays.get(i).getAmount()))).floatValue();
+
+            if (sumAmount.compareTo(detailAmount) == 0) {
+                authorizeAmountPay = writer.gson.fromJson(writer.gson.toJson(pays.get(i)), pays.get(i).getClass());
+
+            } else if (sumAmount.compareTo(detailAmount) > 0) {
+                result += payClient.delete(pays.get(i).getClass().getSimpleName(), writer.gson.toJson(pays.get(i)));
+            }
+        }
+
+        authorizeAmountPay.setId(null);
+        authorizeAmountPay.setAmount(authorizeAmount);
+        authorizeAmountPay.setInputDate(dateUtil.getSecondCurrentTimestamp());
+        result += payClient.save(authorizeAmountPay.getClass().getSimpleName(), writer.gson.toJson(authorizeAmountPay));
+
+        return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
+    }
+
+    public List<Pay> getPaysByEntity(String entity, Integer entityId) {
+        Pay pay = new Pay();
+        pay.setEntity(entity);
+        pay.setEntityId(entityId);
+
+        return writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)), new com.google.common.reflect.TypeToken<List<Pay>>(){}.getType());
     }
 }

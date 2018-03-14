@@ -96,14 +96,14 @@ hystrix:
        execution:
           isolation:
             thread:
-              timeoutInMilliseconds: 5000
+              timeoutInMilliseconds: 10000
 
 
 
 ### 参考：https://spring.io/guides/gs/client-side-load-balancing/
 
 visitInterceptor:
-  noAuthUris: /user/,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/,/print,/currentTimeMillis
+  noAuthUris: /user/signIn,/user/signOut,/user/hasLoginDeal,/sys/user/signResult,/customer/user/getValidateCode,/sys/suggest/user,/isValueRepeat,/authorize,/save/customer,/alipay/,/wechat/,/unionpay/,/print,/currentTimeMillis
   noAuthUrisAfterSignIn: /list/,/privateQuery/audit,/view/audit,/sys/audit,/customer/,/order/
   macValidateUris: /save/,/update/,/sys/audit
 

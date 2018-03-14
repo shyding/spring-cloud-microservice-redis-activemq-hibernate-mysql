@@ -5,7 +5,7 @@
     <!-- Meta, title, CSS, favicons, etc. -->
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
 
     <!-- Bootstrap -->
     <link href="../../res/gentelella/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,6 +31,8 @@
     <link href="../../res/gentelella/vendors/datatables.net-scroller-bs/css/scroller.bootstrap.min.css" rel="stylesheet">
     <!-- custom -->
     <link href="../../res/css/custom.css" rel="stylesheet">
+    <%--smartMenu--%>
+    <link type="text/css" href="../../res/css/smartMenu.css" rel="stylesheet">
 </head>
 <body class="nav-md">
 <div class="container body">
@@ -79,6 +81,7 @@
 <script src="../../res/js/jquery.coolautosuggest.m.js"></script>
 <%--jquery lightbox--%>
 <script src="../../res/js/jquery.lightbox.js"></script>
+<script src="../../res/js/jquery.lightbox.m.js"></script>
 <%-- custom --%>
 <script src="../../res/js/custom.js"></script>
 <!-- form submit -->
@@ -90,4 +93,17 @@
 <script src="../../res/js/jquery.cookie.js"></script>
 <script src="../../res/js/jquery-ui-1.10.0.custom.min.js"></script>
 <script src="../../res/js/tableSheet.js"></script>
+<script src="../../res/js/assistBook.js"></script>
+<script src="../../res/js/returnProduct.js"></script>
+<script src="../../res/js/changeProduct.js"></script>
+<!-- ckEditor -->
+<script src="../../res/ckeditor/ckeditor.js"></script>
+<!-- productCheck -->
+<script src="../../res/js/productCheck.js"></script>
+<%--smartMenu--%>
+<script src="../../res/js/jquery-smartMenu.js"></script>
+<%--finance--%>
+<script src="../../res/js/finance.js"></script>
+<%--tableCheckbox--%>
+<script src="../../res/js/jquery.tableCheckbox.js"></script>
 </html>

@@ -10,6 +10,8 @@ var returnProduct = (function ($) {
         $('[data-entity-no-a="entityNoA"]').click(function(){
             if (this.dataset.entityNo.indexOf("FR") == 0) {
                 render(contextPath + "/orderManagement/view/order/" + this.dataset.entityId);
+            } else if (this.dataset.entityNo.indexOf("CG") == 0) {
+                render(contextPath + "/erp/view/purchase/" + this.dataset.entityId);
             }
         });
 
@@ -26,7 +28,11 @@ var returnProduct = (function ($) {
                     theICheck.iCheck('check');
                 }
 
-                returnProduct.calculateReturnProductAmounts(theICheck.parent());
+                calculateReturnProductAmounts(theICheck.parent());
+            });
+
+            $("#fee").attr("readonly",false).css("border", "1px solid #ccc").blur(function(){
+                calculateReturnProductAmounts($($('[data-property-name="quantity"]')[0]).parent());
             });
 
             $("#reason").attr("readonly",false).css("border", "1px solid #ccc");
@@ -98,7 +104,13 @@ var returnProduct = (function ($) {
             }
         });
 
-        $("#amount").val(amount);
+        var feeStr = $.trim($("#fee").val());
+        var fee = 0;
+        if (feeStr != "") {
+            fee = parseFloat(feeStr);
+        }
+
+        $("#amount").val(Math.formatFloat(amount - fee, 2));
     }
 
     function audit(auditResult, url) {
@@ -106,7 +118,7 @@ var returnProduct = (function ($) {
         $("#actionForm").submitForm(url);
     }
 
-    function save(url) {
+    function save(url, auditUrl) {
         var $form = $("#form");
         if (!validator.checkAll($form)) {
             return;
@@ -148,7 +160,7 @@ var returnProduct = (function ($) {
         $form.sendData(url, json, function(result){
             if (result.result.indexOf("success") != -1) {
                 $("#entityId").val(result.id);
-                audit('Y', contextPath + '/afterSaleService/doBusiness/returnProductSaleAudit');
+                audit('Y', auditUrl);
             }
         }, false);
     }
@@ -158,10 +170,7 @@ var returnProduct = (function ($) {
         calculateReturnProductDetailAmount: calculateReturnProductDetailAmount,
         calculateReturnProductAmount: calculateReturnProductAmount,
         save: save,
-        saleAudit: audit,
-        directorAudit: audit,
-        warehousingAudit: audit,
-        refund: audit,
+        audit: audit,
         init: init
     }
 })(jQuery);

@@ -147,4 +147,78 @@ public class Controller {
         writer.writeStringToJson(response, client.recover(entity, json));
         logger.info("recover end");
     }
+
+    @GetMapping("/unlimitedQuery/{entity}")
+    public void unlimitedQuery(HttpServletResponse response, String json, @PathVariable("entity") String entity) {
+        logger.info("query start, entity:" + entity + ", json:" + json);
+        writer.writeStringToJson(response, client.unlimitedQuery(entity, json));
+        logger.info("query end");
+    }
+
+    @GetMapping("/unlimitedSuggest/{entity}/{properties}/{word}")
+    public void unlimitedSuggest(HttpServletResponse response, @PathVariable("entity") String entity,
+                                 @PathVariable("properties") String properties, @PathVariable("word") String word) {
+        logger.info("unlimitedSuggest start, entity:" + entity + ",properties:" + properties + ", word:" + word);
+
+        String json = "";
+        String[] propertiesArr = properties.split("#");
+        for (String property:propertiesArr) {
+            if (property.trim().length() > 0)
+                json += "\"" + property + "\":\"" + word + "\",";
+        }
+        json = "{" + json.substring(0, json.length()-1) + "}";
+
+        writer.writeStringToJson(response, client.unlimitedSuggest(entity, json));
+        logger.info("unlimitedSuggest end");
+    }
+
+
+    /**
+     * dataTable 分页查询
+     * @param response
+     * @param dataTableParameters
+     * @param json
+     * @param entity
+     */
+    @PostMapping("/unlimitedComplexQuery/{entity}")
+    public void unlimitedComplexQuery(HttpServletResponse response, String dataTableParameters, String json, Integer recordsSum, @PathVariable("entity") String entity) {
+        logger.info("unlimitedComplexQuery start, entity:" + entity + ", dataTableParameters:" + dataTableParameters + ", json:" + json + ",recordsSum" + recordsSum);
+
+        int sEcho = 0;// 记录操作的次数  每次加1
+        int iDisplayStart = 0;// 起始
+        int iDisplayLength = 30;// 每页显示条数
+        String sSearch = "";// 搜索的关键字
+
+        List<Map<String, String>> dtParameterMaps = writer.gson.fromJson(dataTableParameters, new com.google.gson.reflect.TypeToken<List<Map<String, String>>>(){}.getType());
+        //分别为关键的参数赋值
+        for(Map dtParameterMap : dtParameterMaps) {
+            if (dtParameterMap.get("name").equals("sEcho"))
+                sEcho = Integer.parseInt(dtParameterMap.get("value").toString());
+
+            if (dtParameterMap.get("name").equals("iDisplayLength"))
+                iDisplayLength = Integer.parseInt(dtParameterMap.get("value").toString());
+
+            if (dtParameterMap.get("name").equals("iDisplayStart"))
+                iDisplayStart = Integer.parseInt(dtParameterMap.get("value").toString());
+
+            if (dtParameterMap.get("name").equals("sSearch"))
+                sSearch = dtParameterMap.get("value").toString();
+        }
+
+        sEcho += 1; //为操作次数加1
+        String result = client.unlimitedComplexQuery(entity, json, iDisplayStart, iDisplayLength);
+
+        if (recordsSum == -1) {
+            recordsSum = ((Map<String, Integer>)writer.gson.fromJson(client.unlimitedRecordsSum(entity, json), new com.google.gson.reflect.TypeToken<Map<String, Integer>>(){}.getType())).get(CommonConstant.recordsSum);
+        }
+
+        Map<String, String> dataMap = new HashMap<>();
+        dataMap.put("sEcho", sEcho+"");
+        dataMap.put("iTotalRecords", String.valueOf(recordsSum)); //实际的行数
+        dataMap.put("iTotalDisplayRecords", String.valueOf(recordsSum)); ////显示的行数,这个要和 iTotalRecords 一样
+        dataMap.put("aaData", result); //数据
+
+        writer.writeObjectToJson(response, dataMap);
+        logger.info("unlimitedComplexQuery end");
+    }
 }

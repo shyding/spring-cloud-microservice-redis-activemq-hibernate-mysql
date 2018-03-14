@@ -1,16 +1,6 @@
 <%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page import="com.hzg.erp.Product" %>
 <%@ page import="com.hzg.erp.ProductOwnProperty" %>
-<%--
-**
-* Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
-* 文件名: product.jsp
-*
-* @author smjie
-* @Date  2017/7/18
-* @version 1.00
-*
---%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%--jquery ui--%>
@@ -67,11 +57,7 @@
                                 <div class="col-md-6 col-sm-6 col-xs-12"><input name="fatePrice:number" type="text" value="${entity.fatePrice}" class="form-control col-md-7 col-xs-12" required></div>
                             </div>
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12">成本价 <span class="required">*</span></label>
-                                <div class="col-md-6 col-sm-6 col-xs-12"><input name="costPrice:number" type="text" value="${entity.costPrice}" class="form-control col-md-7 col-xs-12" required></div>
-                            </div>
-                            <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12">单价（成本价/库存量） <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">采购单价 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12"><input name="unitPrice:number" type="text" value="${entity.unitPrice}" class="form-control col-md-7 col-xs-12" required></div>
                             </div>
                              <div class="item form-group">
@@ -253,7 +239,7 @@
                         <div class="form-horizontal form-label-left">
                             <div class="ln_solid"></div>
                             <div class="col-md-6 col-md-offset-3" id="submitDiv">
-                                <button id="cancel" type="button" class="btn btn-primary">取消</button>
+                                <button id="cancel" type="button" class="btn btn-primary">返回</button>
                                 <c:if test="${entity == null}">
                                     <button id="send" type="button" class="btn btn-success">保存</button>
                                 </c:if>

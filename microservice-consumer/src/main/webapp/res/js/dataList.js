@@ -1,4 +1,4 @@
-﻿var dataList = (function ($) {
+var dataList = (function ($) {
     "use strict";
 
     var titles = {
@@ -22,10 +22,14 @@
         "warehouse": "仓库",
         "order": "订单",
         "returnProduct": "退货",
+        "changeProduct": "换货",
         "orderPrivate": "商品加工，私人订制",
         "pay": "支付记录",
+        "refund": "退款记录",
         "account": "账户",
         "audit": "事宜",
+        "customer": "客户",
+        "customerUser": "用户",
         "voucher":"凭证",
         "voucherCategory":"凭证类别",
         "subject":"科目"
@@ -52,10 +56,14 @@
         "warehouse": "录入时间",
         "order": "生成时间",
         "returnProduct": "申请时间",
+        "changeProduct": "申请时间",
         "orderPrivate": "订单时间",
         "pay": "支付时间",
+        "refund": "退款时间",
         "account": "注册时间",
         "audit": "办理时间",
+        "customer": "注册时间",
+        "customerUser": "注册时间",
         "voucher": "制单日期",
         "voucherCategory": "创建时间",
         "subject": "创建时间"
@@ -82,10 +90,14 @@
         "warehouse": "inputDate",
         "order": "date",
         "returnProduct": "inputDate",
+        "changeProduct": "inputDate",
         "orderPrivate": "date",
         "pay": "payDate",
+        "refund": "refundDate",
         "account": "inputDate",
         "audit": "dealDate",
+        "customer": "inputDate",
+        "customerUser": "inputDate",
         "voucher": "voucher[makeDate]",
         "voucherCategory": "inputDate"
     };
@@ -110,10 +122,14 @@
         "warehouse": "类别",
         "order": "类别",
         "returnProduct": "类别",
+        "changeProduct": "类别",
         "orderPrivate": "类别",
         "pay": "类别",
+        "refund": "类别",
         "account": "类别",
         "audit": "状态",
+        "customer": "类别",
+        "customerUser": "类别",
         "voucher": "类别",
         "voucherCategory": "类别",
         "subject": "类别"
@@ -136,12 +152,14 @@
         "stockInOut": "/view",
         "warehouse": "/view",
         "account": "/view",
+        "customer": "/view",
+        "customerUser": "/view",
         "voucherCategory": "/view",
         "subject": "/view"
     };
 
     var urlTitles = {
-        "user": "注册用户",
+        "user": "注册后台用户",
         "post": "注册岗位",
         "dept": "注册部门",
         "company": "注册公司",
@@ -156,6 +174,8 @@
         "purchase": "采购申请",
         "warehouse": "添加仓库",
         "account": "注册银行账户",
+        "customer": "注册客户",
+        "customerUser": "注册用户",
         "stockInOut": "商品入库、出库",
         "voucherCategory": "添加凭证类别",
         "subject": "添加科目"
@@ -183,9 +203,13 @@
         "warehouse": "/erp",
         "order": "/orderManagement",
         "returnProduct": "/afterSaleService",
+        "changeProduct": "/afterSaleService",
         "orderPrivate": "/orderManagement",
         "pay": "/pay",
+        "refund": "/pay",
         "account": "/pay",
+        "customer": "/customerManagement",
+        "customerUser": "/customerManagement",
         "voucher": "/finance",
         "voucherCategory": "/finance",
         "subject": "/finance",
@@ -220,9 +244,13 @@
         "warehouse": "/complexQuery",
         "order": "/unlimitedComplexQuery",
         "returnProduct": "/unlimitedComplexQuery",
+        "changeProduct": "/unlimitedComplexQuery",
         "orderPrivate": "/unlimitedComplexQuery",
         "pay": "/complexQuery",
+        "refund": "/complexQuery",
         "account": "/complexQuery",
+        "customer": "/unlimitedComplexQuery",
+        "customerUser": "/unlimitedComplexQuery",
         "voucher": "/complexQuery",
         "voucherCategory": "/complexQuery",
         "subject": "/complexQuery",
@@ -251,9 +279,13 @@
         "warehouse": "/view",
         "order": "/view",
         "returnProduct": "/view",
+        "changeProduct": "/view",
         "orderPrivate": "/view",
         "pay": "/view",
+        "refund": "/view",
         "account": "/view",
+        "customer": "/view",
+        "customerUser": "/view",
         "voucher": "/view",
         "voucherCategory": "/view",
         "subject": "/view"
@@ -269,7 +301,7 @@
         "auditFlow": "<th>名称</th><th>业务类型</th><th>所属公司</th><th>状态</th>",
         "article": "<th>标题</th><th>分类</th><th>摘要</th><th>阅读量</th><th>发布人</th><th>创建时间</th><th>状态</th><th>文章优化关键词</th>",
         "articleCate": "<th>文章分类名称</th><th>分类名称简写</th><th>文章分类优化关键词</th>",
-        "product": "<th>名称</th><th>编号</th><th>类别</th><th>结缘价</th><th>市场价</th><th>成本价</th><th>特性</th><th>供应商</th><th>图片</th><th>状态</th>",
+        "product": "<th>名称</th><th>编号</th><th>类别</th><th>结缘价</th><th>市场价</th><th>采购单价</th><th>特性</th><th>供应商</th><th>图片</th><th>状态</th>",
         "productDescribe": "<th>标题</th><th>关键词</th><th>编辑时间</th>",
         "productType": "<th>名称</th><th>缩写</th><th>优化标题</th><th>优化关键字</th><th>优化描述</th><th>所属父类</th>",
         "productPriceChange": "<th>编号</th><th>商品编号</th><th>商品名称</th><th>商品价格</th><th>调整后价格</th><th>状态</th>",
@@ -281,9 +313,13 @@
         "warehouse": "<th>名称</th><th>负责人</th><th>地址</th><th>所属公司</th>",
         "order": "<th>订单编号</th><th>状态</th><th>类型</th><th>金额</th><th>实际支付金额</th><th>折扣</th><th>创建时间</th><th>订单所有人</th><th>销售人</th>",
         "returnProduct": "<th>退货单编号</th><th>状态</th><th>金额</th><th>退货人</th><th>申请时间</th><th>退款时间</th>",
+        "changeProduct": "<th>换货单编号</th><th>状态</th><th>金额</th><th>换货人</th><th>申请时间</th><th>换货时间</th>",
         "orderPrivate": "<th>商品名称</th><th>商品编号</th><th>订单编号</th><th>类型</th><th>加工、订制描述</th><th>加工、订制核定金额</th><th>核定描述</th><th>核定时间</th><th>核定人</th>",
-        "pay": "<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付银行</th><th>收款账户</th><th>单号</th>",
+        "pay": "<th>支付号</th><th>状态</th><th>金额</th><th>支付时间</th><th>支付类型</th><th>支付账户</th><th>支付银行</th><th>收款账户</th><th>银行流水号</th><th>关联单号</th><th>收支类型</th>",
+        "refund": "<th>退款编号</th><th>状态</th><th>金额</th><th>退款时间</th><th>退款银行</th><th>收款银行</th><th>退款支付号</th><th>银行流水号</th><th>关联单号</th><th>收支类型</th>",
         "account": "<th>账户</th><th>所属银行</th><th>开户人</th><th>开户行</th><th>账户金额</th><th>创建时间</th>",
+        "customer": "<th>姓名</th><th>性别</th><th>创建时间</th>",
+        "customerUser": "<th>用户名</th><th>昵称</th><th>最近登录时间</th><th>在线时长</th><th>登录次数</th><th>点击次数</th><th>用户积分</th><th>状态</th>",
         "voucher": "<th>凭证编号</th><th>凭证类别</th><th>制单日期</th><th>制单人</th><th>借方合计</th><th>贷方合计</th>",
         "voucherCategory": "<th>凭证类别</th><th>凭证字</th><th>创建时间</th>",
         "subject": "<th>科目编码</th><th>编码规则</th><th>科目名称</th><th>科目类型</th><th>余额方向</th><th>辅助核算项</th><th>停用</th><th>账面格式</th><th>创建时间</th>",
@@ -300,7 +336,7 @@
         "auditFlow": ["name", "entity", "company[name]", "state"],
         "article": ["title","articleCate[name]", "shortContent", "hits", "author[name]", "inputDate", "state", "seoKeyword"],
         "articleCate": ["name", "nickname", "articleKeyword"],
-        "product": ["name", "no", "type[name]", "fatePrice", "price", "costPrice", "feature", "supplier[name]", "describe[imageParentDirPath]", "state"],
+        "product": ["name", "no", "type[name]", "fatePrice", "price", "unitPrice", "feature", "supplier[name]", "describe[imageParentDirPath]", "state"],
         "productDescribe": ["seoTitle", "seoKeyword", "date"],
         "productType": ["name", "abbreviate", "title", "keyword", "describes", "parent[name]"],
         "productPriceChange": ["no", "product[name]", "product[no]", "product[fatePrice]", "price", "state"],
@@ -311,10 +347,14 @@
         "stock": ["no", "product[name]", "productNo", "quantity", "unit", "date", "warehouse[name]"],
         "warehouse": ["name", "charger[name]", "address", "company[name]"],
         "order": ["no", "state", "type", "amount", "payAmount", "discount", "date", "user[username]", "saler[name]"],
-        "returnProduct": ["no", "state", "amount", "user[username]", "inputDate", "date"],
+        "returnProduct": ["no", "state", "amount", "returnProductUsername", "inputDate", "date"],
+        "changeProduct": ["no", "state", "amount", "user[username]", "inputDate", "date"],
         "orderPrivate": ["product[name]", "product[no]", "order[no]", "orderPrivate[type]", "orderPrivate[describes]", "orderPrivate[authorize[amount]]", "orderPrivate[authorize[describes]]", "orderPrivate[authorize[date]]", "orderPrivate[authorize[user[name]]]"],
-        "pay": ["no", "state", "amount", "payDate", "payType", "payAccount", "payBank", "receiptAccount", "entityNo"],
+        "pay": ["no", "state", "amount", "payDate", "payType", "payAccount", "payBank", "receiptAccount", "bankBillNo", "entityNo", "balanceType"],
+        "refund": ["no", "state", "amount", "refundDate", "refundBank", "payBank", "pay[no]", "bankBillNo", "entityNo", "balanceType"],
         "account": ["account", "bank", "owner[name]", "branch", "amount", "inputDate"],
+        "customer": ["name", "gender", "inputDate"],
+        "customerUser": ["username", "nickname", "lastLoginDate", "onlineTime", "loginCount", "clickCount", "points", "state"],
         "voucher": ["no", "voucherCategory[name]", "makeDate", "chartMaker[name]", "debit", "credit"],
         "voucherCategory": ["name", "voucherWord","inputDate"],
         "subject": ["no","codeRule", "name", "type", "direction", "accountItems[]", "state","paperFormat","inputDate"],
@@ -343,9 +383,13 @@
         "warehouse": "name",
         "order": "no",
         "returnProduct": "no",
+        "changeProduct": "no",
         "pay": "no",
+        "refund": "no",
         "orderPrivate": "product[name]",
         "account": "account",
+        "customer": "name",
+        "customerUser": "username",
         "voucher": "no",
         "voucherCategory": "name",
         "subject": "no"
@@ -373,9 +417,13 @@
         "warehouse": "id",
         "order": "id",
         "returnProduct": "id",
+        "changeProduct": "id",
         "orderPrivate": "orderPrivate[id]",
         "pay": "id",
+        "refund": "id",
         "account": "id",
+        "customer": "id",
+        "customerUser": "id",
         "voucher": "id",
         "voucherCategory": "id",
         "subject": "id"
@@ -390,7 +438,7 @@
         "audit": {"state": {0: "待办", 1: "已办"}},
         "auditFlow": {"state": {0: "在用", 1: "没用"}},
         "article": {"state": {0: "保存", 1: "发布",2:"删除"}},
-        "product": {"state": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 9: "申请退货", 91: "已退货", 92: "申请换货", 93: "已换货", 94: "部分申请退货", 95: "部分已退货", 96:"部分申请换货", 97:"部分已换货"}},
+        "product": {"state": {0: "采购", 10: "采购审核通过", 11: "采购完成", 1: "入库", 12:"部分入库", 2: "出库", 21:"部分出库", 3: "在售", 4: "售完", 41: "部分已售", 5: "无效", 6: "编辑", 7: "多媒体文件已上传", 8: "已发货", 81:"部分发货", 82:"申请采购退货", 83:"采购退货完成", 84:"部分申请采购退货", 85:"部分采购退货完成", 9:"申请退货", 91:"已退货", 92:"申请换货", 93:"已换货", 94:"部分申请退货", 95:"部分已退货", 96:"部分申请换货", 97:"部分已换货", 98:"换货申请退货", 99:"换货部分申请退货"}},
         "productPriceChange": {"state": {0: "申请", 1: "在用", 2: "保存"}},
         "productCheck": {"state": {0: "保存", 1: "盘点"}},
         "purchase": {"state": {0: "申请", 1: "完成", 2: "作废"}, "type": {0: "正常采购", 1: "临时采购", 2: "应急采购", 3: "现金采购", 4: "押金采购"}},
@@ -421,10 +469,12 @@
                 1: "代下单",
                 2: "私人订制",
                 3: "预定",
-                4: "代下单加工"
+                4: "代下单加工",
+                5: "换货订单"
             }
         },
-        "returnProduct": {"state": {0: "申请", 1: "已退款", 2:"取消", 3:"销售确认可退", 31:"销售确认不可退", 4:"销售总监确认可退", 41:"销售总监确认不可退", 5:"仓储确认可退", 51:"仓储确认不可退"}},
+        "returnProduct": {"state": {0: "申请", 1: "已退款", 2:"取消", 3:"销售确认可退", 31:"销售确认不可退", 4:"销售总监确认可退", 41:"销售总监确认不可退", 5:"仓储确认可退", 51:"仓储确认不可退", 6:"采购退货申请", 61:"采购退货已退款", 63:"采购退货取消", 7:"采购确认退货", 8:"仓储确认已邮寄货物", 9:"供应商确认收货"}},
+        "changeProduct": {"state": {0: "申请", 1: "已换", 2:"取消", 3:"销售确认要退商品要退商品可退", 31:"销售确认要退商品不可退", 4:"销售总监确认要退商品可退", 41:"销售总监确认要退商品不可退", 5:"仓储确认要退商品可退", 51:"仓储确认要退商品不可退", 6:"采购退货申请",61:"采购退货已退款", 63:"采购退货取消", 7:"采购确认退货", 8:"仓储确认已邮寄货物", 9:"供应商确认收货"}},
         "orderPrivate": {"orderPrivate[type]": { 0: "商品加工", 1: "私人订制"}},
         "supplier": {
             "level": {"A": "A级", "B": "B级", "C": "C级", "D": "D级"},
@@ -442,7 +492,22 @@
                 5:"其他",
                 6:"付宝转账",
                 7:"微信转账"
+            },
+            "balanceType":{
+                0:"收入",
+                1:"支出"
             }
+        },
+        "refund": {
+            "state": {0: "未退", 1: "已退", 2: "退款失败"},
+            "entity": {"returnProduct": "退货单", "purchaseDeposit": "押金采购单"},
+            "balanceType":{
+                0:"支出",
+                1:"收入"
+            }
+        },
+        "customerUser": {
+            "state": {0: "在用", 1: "注销"}
         },
         "voucher": {"state": {0: "保存", 1: "审核"}},
         "subject": {
@@ -486,8 +551,12 @@
         "stock": "stock",
         "order": "order",
         "returnProduct": "returnProduct",
+        "changeProduct": "returnProduct",
         "orderPrivate": "orderPrivate",
         "pay": "pay",
+        "refund": "refund",
+        "customer": "customer",
+        "customerUser": "customerUser",
         "voucher": "voucher",
         "voucherCategory": "voucherCategory",
         "subject": "subject"
@@ -584,11 +653,17 @@
         } else if (modules[entity] == "/pay") {
             $("#entity").empty()
                 .append(visitEntitiesOptions["pay"])
+                .append(visitEntitiesOptions["refund"])
                 .append(visitEntitiesOptions["account"]);
 
             if (entity == "pay") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">支付号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入支付号" /></div></div>');
+            }
+
+            if (entity == "refund") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">退货编号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入退货编号" /></div></div>');
             }
 
             if (entity == "account") {
@@ -613,11 +688,30 @@
 
         } else if (modules[entity] == "/afterSaleService") {
             $("#entity").empty()
-                .append(visitEntitiesOptions["returnProduct"]);
+                .append(visitEntitiesOptions["returnProduct"])
+                .append(visitEntitiesOptions["changeProduct"]);
 
             if (entity == "returnProduct") {
                 $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">退货单编号</label>' +
                     '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入退货单编号" /></div></div>');
+            }
+            if (entity == "changeProduct") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="no">换货单编号</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="no" name="no" class="form-control col-md-7 col-xs-12" placeholder="输入换货单编号" /></div></div>');
+            }
+
+        } else if (modules[entity] == "/customerManagement") {
+            $("#entity").empty()
+                .append(visitEntitiesOptions["customer"])
+                .append(visitEntitiesOptions["customerUser"]);
+
+            if (entity == "customer") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="name">姓名</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="name" name="name" class="form-control col-md-7 col-xs-12" placeholder="输入客户姓名" /></div></div>');
+            }
+            if (entity == "customerUser") {
+                $("#inputItems").html('<div class="item form-group"><label class="control-label col-md-3 col-sm-3 col-xs-12" for="username">用户名</label>' +
+                    '<div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="username" name="username" class="form-control col-md-7 col-xs-12" placeholder="输入用户名" /></div></div>');
             }
 
         } else if (childModules[entity] == "/voucher"){
@@ -651,11 +745,7 @@
 
         } else {
             $("#add").html(urlTitles[entity]).unbind().click(function () {
-                if (entity=="productCheck"){
-                    render(rootPath + modules[entity] + addActions[entity] + "/productCheckInput/-1")
-                } else {
-                    render(rootPath + modules[entity] + addActions[entity] + "/" + entity + "/-1")
-                }
+                render(rootPath + modules[entity] + addActions[entity] + "/" + getActualEntity(entity) + "/-1");
             });
             $("#add").show();
         }
@@ -713,7 +803,7 @@
             table.before('<div id="dataList_filter" class="dataTables_filter"><label>Search&nbsp;<input value="' + searchStr + '" id="columnSearch" class="" placeholder="" aria-controls="dataList" type="search"></label></div>');
         }
 
-        table.initDataTable(contextPath + modules[entity] + queryActions[entity] + "/" + entity,
+        table.initDataTable(contextPath + modules[entity] + queryActions[entity] + "/" + getActualEntity(entity),
             queryJson,
             "<thead><tr>" + tHeaders[entity] + "</tr></thead><tbody></tbody>",
             typeof(propertiesShowSequences[entity]) == "undefined" ? [] : propertiesShowSequences[entity],
@@ -922,7 +1012,7 @@
                                     }
 
                                     if (propertiesShowSequence[i] == linkTitles[entity]) {
-                                        var queryUrl = contextPath + modules[entity] + viewActions[entity] + "/" + entity + "/" + getPropertiesValue(dataList[key], idColumns[entity]);
+                                        var queryUrl = contextPath + modules[entity] + viewActions[entity] + "/" + getActualEntity(entity) + "/" + getPropertiesValue(dataList[key], idColumns[entity]);
                                         tdData = "<a href='#" + queryUrl + "' onclick='render(\"" + queryUrl + "\")'>" + tdData + "</a>";
                                     }
 
@@ -1033,6 +1123,16 @@
         }
 
         return newJson;
+    }
+
+    function getActualEntity(entity) {
+        if (entity=="productCheck"){
+            return "productCheckInput";
+        } else if (entity=="customerUser"){
+            return "user";
+        }
+
+        return entity;
     }
 
 

@@ -66,11 +66,21 @@ public class ReturnProduct implements Serializable {
     @OneToMany(mappedBy = "returnProduct", cascade=CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<ReturnProductDetail> details;
 
+    @Column(name="fee", length = 32)
+    @Type(type = "com.hzg.tools.FloatDesType")
+    private Float fee;
+
     @Transient
     private List<Action> actions;
 
     @Transient
     private String sessionId;
+
+    @Transient
+    private com.hzg.sys.User sysUser;
+
+    @Transient
+    private String returnProductUsername;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -180,6 +190,14 @@ public class ReturnProduct implements Serializable {
         this.details = details;
     }
 
+    public Float getFee() {
+        return fee;
+    }
+
+    public void setFee(Float fee) {
+        this.fee = fee;
+    }
+
     public List<Action> getActions() {
         return actions;
     }
@@ -196,6 +214,26 @@ public class ReturnProduct implements Serializable {
         this.sessionId = sessionId;
     }
 
+    public com.hzg.sys.User getSysUser() {
+        return sysUser;
+    }
+
+    public void setSysUser(com.hzg.sys.User sysUser) {
+        this.sysUser = sysUser;
+    }
+
+    public void setReturnProductUsername(String returnProductUsername) {
+        this.returnProductUsername = returnProductUsername;
+    }
+
+    public String getReturnProductUsername() {
+        if (sysUser != null) {
+            return sysUser.getUsername();
+        } else {
+            return user.getUsername();
+        }
+    }
+
     public String getStateName() {
         switch (state) {
             case 0 : return "未退款";
@@ -203,15 +241,16 @@ public class ReturnProduct implements Serializable {
             case 2 : return "取消";
             case 3 : return "销售确认可退";
             case 31 : return ":销售确认不可退";
-            case 32 : return "销售确认换货";
-            case 33 : return "销售确认不换货";
-            case 34 : return "销售确认修补货物";
-            case 35 : return "销售确认不修补货物";
             case 4 : return "销售总监确认可退";
             case 41 : return "销售总监确认不可退";
             case 5 : return "仓储确认可退";
             case 51 : return "仓储确认不可退";
-            case 6 : return "财务确认已收到修补货物款项";
+            case 6 : return "采购退货申请";
+            case 61 : return "采购退货已退款";
+            case 62 : return "采购退货取消";
+            case 7 : return "采购确认退货";
+            case 8 : return "仓储确认已邮寄货物";
+            case 9 : return "供应商确认收货";
             default : return "";
         }
     }

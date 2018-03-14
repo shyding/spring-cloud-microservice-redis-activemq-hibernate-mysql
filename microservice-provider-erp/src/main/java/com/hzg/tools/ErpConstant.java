@@ -1,4 +1,4 @@
-package com.hzg.tools;
+﻿package com.hzg.tools;
 
 public class ErpConstant {
 
@@ -34,14 +34,20 @@ public class ErpConstant {
     public final static Integer product_state_mediaFiles_uploaded = 7;
     public final static Integer product_state_shipped = 8;
     public final static Integer product_state_shipped_part = 81;
+    public final static Integer product_state_purchase_onReturnProduct = 82;
+    public final static Integer product_state_purchase_returnedProduct = 83;
+    public final static Integer product_state_purchase_onReturnProduct_part = 84;
+    public final static Integer product_state_purchase_returnedProduct_part = 85;
     public final static Integer product_state_onReturnProduct = 9;
     public final static Integer product_state_onReturnProduct_part = 94;
     public final static Integer product_state_returnedProduct = 91;
     public final static Integer product_state_returnedProduct_part = 95;
     public final static Integer product_state_onChangeProduct = 92;
     public final static Integer product_state_onChangeProduct_part = 96;
-    public final static Integer product_state_onChangedProduct = 93;
-    public final static Integer product_state_onChangedProduct_part = 97;
+    public final static Integer product_state_onChangeOnReturnProduct = 98;
+    public final static Integer product_state_onChangeOnReturnProduct_part = 99;
+    public final static Integer product_state_changedProduct = 93;
+    public final static Integer product_state_changedProduct_part = 97;
 
 
     public final static String no_purchase_perfix = "CG";
@@ -86,9 +92,12 @@ public class ErpConstant {
     public final static String no = "no";
     public final static String stock = "stock";
     public final static String stock_quantity = "stockQuantity";
+    public final static String product_onSale_quantity = "productOnSaleQuantity";
     public final static String product_sold_quantity = "productSoldQuantity";
     public final static String product_onReturn_quantity = "productOnReturnQuantity";
     public final static String product_returned_quantity = "productReturnedQuantity";
+    public final static String product_onChange_quantity = "productOnChangeQuantity";
+    public final static String product_changed_quantity = "productChangedQuantity";
 
     public final static String stockIn = "stockIn";
     public final static String stockOut = "stockOut";
@@ -177,6 +186,7 @@ public class ErpConstant {
     public final static String unit_oz = "盎司";
 
     public final static String unit_piece = "件";
+    public final static String unit_other = "其他";
 
     public final static String stockInOut_action_name_print_barcode = "barcode";
     public final static String stockInOut_action_name_print_stockOutBills = "stockOutBills";
@@ -199,6 +209,11 @@ public class ErpConstant {
     public final static String product_action_name_setProductsSold = "setProductsSold";
     public final static String product_action_name_setProductsOnReturn = "setProductsOnReturn";
     public final static String product_action_name_setProductsReturned = "setProductsReturned";
+    public final static String product_action_name_setPurchaseProductsOnReturn = "setPurchaseProductsOnReturn";
+    public final static String product_action_name_setPurchaseProductsReturned = "setPurchaseProductsReturned";
+    public final static String product_action_name_setProductsOnChange = "setProductsOnChange";
+    public final static String product_action_name_setProductsOnChangeOnReturn = "setProductsOnChangeOnReturn";
+    public final static String product_action_name_setProductsChanged = "setProductsChanged";
     public final static String product_action_name_upShelf = "upShelfProduct";
     public final static String product_action_name_downShelf = "downShelfProduct";
     public final static String product_action_name_generateSfExpressOrderByReceiverAndStockOut = "generateSfExpressOrderByReceiverAndStockOut";

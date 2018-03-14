@@ -63,12 +63,16 @@
                                 </div>
                             </div>
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="amount">退款金额 <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="amount">退货费 <span class="required">*</span></label>
+                                <div class="col-md-6 col-sm-6 col-xs-12"><input id="fee" name="fee" type="text" value="<c:if test="${entity.fee != null}">${entity.fee}</c:if><c:if test="${entity.fee == null}">0</c:if>" class="form-control col-md-7 col-xs-12" required></div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="amount">退款金额(退货商品金额 - 退货费) <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12"><input id="amount" type="text" value="${entity.amount}" class="form-control col-md-7 col-xs-12"></div>
                             </div>
                             <div class="item form-group">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="username">退货人 <span class="required">*</span></label>
-                                <div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="username" value="${entity.user.username}" class="form-control col-md-7 col-xs-12" readonly></div>
+                                <div class="col-md-6 col-sm-6 col-xs-12"><input type="text" id="username" value="${entity.returnProductUsername}" class="form-control col-md-7 col-xs-12" readonly></div>
                             </div>
                             <c:if test="${entity.inputDate != null}">
                             <div class="item form-group">
@@ -102,9 +106,9 @@
                                             <td style="width:200px"><input type="text" value="${detail.product.name}" readonly></td>
                                             <c:if test="${entity.state != null}"><td><input type="text" value="${detail.stateName}"></td></c:if>
                                             <td><input type="text" data-property-name="quantity" name="details[][quantity]:number" value="${detail.quantity}" required></td>
-                                            <td><input type="text" value="${detail.unit}" required readonly></td>
-                                            <td><input type="text" name="details[][price]:number" value="${detail.price}" required readonly></td>
-                                            <td><input type="text" name="details[][amount]:number" value="${detail.amount}" required readonly></td>
+                                            <td><input type="text" value="${detail.unit}" readonly></td>
+                                            <td><input type="text" name="details[][price]:number" value="${detail.price}" readonly></td>
+                                            <td><input type="text" name="details[][amount]:number" value="${detail.amount}" readonly></td>
                                         </tr>
                                     </c:forEach>
                                     </tbody>
@@ -140,6 +144,10 @@
                     (fn:contains(resources, '/afterSaleService/doBusiness/returnProductDirectorAudit') && entity.state == 3) ||
                     (fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit') && entity.state == 4) ||
                     (fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund') && entity.state == 5) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductAudit') && entity.state == 6) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductWarehouseAudit') && entity.state == 7) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductSupplierReceived') && entity.state == 8) ||
+                    (fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund') && entity.state == 9) ||
                     entity.state == null}">
                     <div class="x_content">
                         <span class="section" style="margin-top: 40px">审核</span>
@@ -169,28 +177,41 @@
                                 <button id="returnProduct" type="button" class="btn btn-success">提交退货申请</button>
                                 </c:if>
                                 </c:if>
+
                                 <c:if test="${entity.state != null}">
                                 <c:if test="${entity.state == 0}">
                                 <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductSaleAudit')}">
-                                <button id="saleAuditPass" type="button" class="btn btn-success">可以退货</button>
-                                <button id="saleAuditNotPass" type="button" class="btn btn-success">不可退</button>
+                                <button id="saleAuditPass" type="button" style="margin-right: 2%" class="btn btn-success">可以退货</button>
+                                <button id="saleAuditNotPass" type="button" class="btn btn-danger">不可退</button>
                                 </c:if>
                                 </c:if>
                                 <c:if test="${entity.state == 3}">
                                 <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductDirectorAudit')}">
-                                <button id="directorAuditPass" type="button" class="btn btn-success">可退</button>
-                                <button id="directorAuditNotPass" type="button" class="btn btn-success">不可退</button>
+                                <button id="directorAuditPass" type="button" style="margin-right: 2%" class="btn btn-success">可退</button>
+                                <button id="directorAuditNotPass" type="button" class="btn btn-danger">不可退</button>
                                 </c:if>
                                 </c:if>
                                 <c:if test="${entity.state == 4}">
                                 <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit')}">
-                                <button id="warehousingAuditPass" type="button" class="btn btn-success">可退</button>
-                                <button id="warehousingAuditNotPass" type="button" class="btn btn-success">不可退</button>
+                                <button id="warehousingAuditPass" type="button" style="margin-right: 2%" class="btn btn-success">可退</button>
+                                <button id="warehousingAuditNotPass" type="button" class="btn btn-danger">不可退</button>
                                 </c:if>
                                 </c:if>
-                                <c:if test="${entity.state == 5}">
+
+                                <c:if test="${entity.state == 7}">
+                                <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductWarehouseAudit')}">
+                                <button id="purchaseReturnProductWarehouseAudit" type="button" style="margin-right: 2%" class="btn btn-success">确认已寄货物</button>
+                                </c:if>
+                                </c:if>
+                                <c:if test="${entity.state == 8}">
+                                <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductSupplierReceived')}">
+                                <button id="purchaseReturnProductSupplierReceived" type="button" style="margin-right: 2%" class="btn btn-success">供应商确认收货</button>
+                                </c:if>
+                                </c:if>
+
+                                <c:if test="${entity.state == 5 || entity.state == 9}">
                                 <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund')}">
-                                <button id="refund" type="button" class="btn btn-success">确认退款</button>
+                                <button id="refund" type="button" class="btn btn-success">确认收款</button>
                                 </c:if>
                                 </c:if>
                                 </c:if>
@@ -213,7 +234,11 @@
                 if (!validator.checkAll($("#actionForm"))) {
                     return;
                 }
-                returnProduct.save('<%=request.getContextPath()%>/afterSaleService/save/returnProduct');
+                var auditUrl = '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductSaleAudit';
+                if ('<c:out value="${entity.entity}"/>' == 'purchase') {
+                    auditUrl = '<%=request.getContextPath()%>/afterSaleService/doBusiness/purchaseReturnProductAudit';
+                }
+                returnProduct.save('<%=request.getContextPath()%>/afterSaleService/save/returnProduct', auditUrl);
             });
         </c:if>
     </c:if>
@@ -222,11 +247,11 @@
         <c:if test="${entity.state == 0}">
             <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductSaleAudit')}">
                 $("#saleAuditPass").click(function(){
-                    returnProduct.saleAudit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductSaleAudit');
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductSaleAudit');
                 });
 
                 $("#saleAuditNotPass").click(function(){
-                    returnProduct.saleAudit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductSaleAudit');
+                    returnProduct.audit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductSaleAudit');
                 });
             </c:if>
         </c:if>
@@ -234,11 +259,11 @@
         <c:if test="${entity.state == 3}">
             <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductDirectorAudit')}">
                 $("#directorAuditPass").click(function(){
-                    returnProduct.directorAudit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductDirectorAudit');
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductDirectorAudit');
                 });
 
                 $("#directorAuditNotPass").click(function(){
-                    returnProduct.directorAudit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductDirectorAudit');
+                    returnProduct.audit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductDirectorAudit');
                 });
             </c:if>
         </c:if>
@@ -246,19 +271,35 @@
         <c:if test="${entity.state == 4}">
             <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit')}">
                 $("#warehousingAuditPass").click(function(){
-                    returnProduct.warehousingAudit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductWarehousingAudit');
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductWarehousingAudit');
                 });
 
                 $("#warehousingAuditNotPass").click(function(){
-                    returnProduct.warehousingAudit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductWarehousingAudit');
+                    returnProduct.audit('N', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductWarehousingAudit');
                 });
             </c:if>
         </c:if>
 
-        <c:if test="${entity.state == 5}">
+        <c:if test="${entity.state == 7}">
+            <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductWarehouseAudit')}">
+                $("#purchaseReturnProductWarehouseAudit").click(function(){
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/purchaseReturnProductWarehouseAudit');
+                });
+            </c:if>
+        </c:if>
+
+        <c:if test="${entity.state == 8}">
+            <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductSupplierReceived')}">
+                $("#purchaseReturnProductSupplierReceived").click(function(){
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/purchaseReturnProductSupplierReceived');
+                });
+            </c:if>
+        </c:if>
+
+        <c:if test="${entity.state == 5 || entity.state == 9}">
             <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund')}">
                 $("#refund").click(function(){
-                    returnProduct.refund('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductRefund');
+                    returnProduct.audit('Y', '<%=request.getContextPath()%>/afterSaleService/doBusiness/returnProductRefund');
                 });
             </c:if>
         </c:if>

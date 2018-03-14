@@ -147,13 +147,13 @@
                                 <div class="item form-group" style="margin-top:20px;">
                                     <div class="col-md-6 col-sm-6 col-xs-12" style="width:1400px;margin-left: 150px;margin-top: 10px">
                                         <table class="table-sheet">
-                                            <thead><tr><th>赠品编号</th><th>赠品名称</th><th>采购价</th><th>结缘价</th><th>数量</th><th>计量单位</th></tr></thead>
+                                            <thead><tr><th>赠品编号</th><th>赠品名称</th><th>采购单价</th><th>结缘价</th><th>数量</th><th>计量单位</th></tr></thead>
                                             <tbody>
                                             <c:forEach items="${entity.gifts}" var="gift">
                                                 <tr>
                                                     <td style="width: 120px"><a href="#<%=request.getContextPath()%>/erp/view/product/${gift.product.id}" onclick="render('<%=request.getContextPath()%>/erp/view/product/${gift.product.id}')">${gift.product.no}</a></td>
                                                     <td style="width: 120px">${gift.product.name}</td>
-                                                    <td>${gift.product.costPrice}</td>
+                                                    <td>${gift.product.unitPrice}</td>
                                                     <td>${gift.product.fatePrice}</td>
                                                     <td>${gift.quantity}</td>
                                                     <td>${gift.unit}</td>
@@ -237,6 +237,11 @@
                                         <button id="returnProduct" type="button" class="btn btn-danger">申请退货</button>
                                     </c:if>
                                 </c:if>
+                                <c:if test="${entity.state == 4}">
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/business/changeProduct')}">
+                                        <button id="changeProduct" type="button" class="btn btn-info">申请换货</button>
+                                    </c:if>
+                                </c:if>
                             </div>
                         </div>
                     </div>
@@ -278,5 +283,9 @@
 
     <c:if test="${entity.state == 4 && fn:contains(resources, '/afterSaleService/business/returnProduct')}">
         $("#returnProduct").click(function(){render("<%=request.getContextPath()%>/afterSaleService/business/returnProduct?json=" + encodeURI('{"entityId":${entity.id}, "entity":"order"}'));});
+    </c:if>
+
+    <c:if test="${entity.state == 4 && fn:contains(resources, '/afterSaleService/business/changeProduct')}">
+        $("#changeProduct").click(function(){render("<%=request.getContextPath()%>/afterSaleService/business/changeProduct?json=" + encodeURI('{"entityId":${entity.id}, "entity":"order"}'));});
     </c:if>
 </script>

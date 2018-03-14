@@ -1,4 +1,3 @@
-<%@ page import="com.hzg.tools.FileServerInfo" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
@@ -132,17 +131,26 @@
     <c:if test="${fn:contains(resources, '/returnProduct')}">
     visitEntitiesOptions["returnProduct"] = '<option value="returnProduct">退货</option>';
     </c:if>
+    <c:if test="${fn:contains(resources, '/changeProduct')}">
+    visitEntitiesOptions["changeProduct"] = '<option value="changeProduct">换货</option>';
+    </c:if>
     <c:if test="${fn:contains(resources, '/pay')}">
     visitEntitiesOptions["pay"] = '<option value="pay">支付</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/refund')}">
+    visitEntitiesOptions["refund"] = '<option value="refund">退款</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/account')}">
     visitEntitiesOptions["account"] = '<option value="account">银行账户</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/customer')}">
-    visitEntitiesOptions["customer"] = '<option value="customer">顾客</option>';
+    visitEntitiesOptions["customer"] = '<option value="customer">客户</option>';
     </c:if>
-    <c:if test="${fn:contains(resources, '/save/user')}">
-    visitEntitiesOptions["user"] = '<option value="user">用户</option>';
+    <c:if test="${fn:contains(resources, '/customerManagement/unlimitedComplexQuery/user')}">
+    visitEntitiesOptions["customerUser"] = '<option value="customerUser">用户</option>';
+    </c:if>
+    <c:if test="${fn:contains(resources, '/sys/save/user')}">
+    visitEntitiesOptions["user"] = '<option value="user">后台用户</option>';
     </c:if>
     <c:if test="${fn:contains(resources, '/privilegeResource')}">
     visitEntitiesOptions["privilegeResource"] = '<option value="privilegeResource">权限</option>';

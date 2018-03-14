@@ -156,6 +156,24 @@
         });
     },
 
+    //生成凭证时条件查询的ajax请求
+    $.fn.ajaxPost1 = function (url, json,position, callback) {
+        var mac = faultylabs.MD5(json + localStorage.getItem("hzg_sys_user_pin"));
+        $.ajax({
+            type: "post",
+            url: url+"?"+Math.random(),
+            contentType: "application/x-www-form-urlencoded; charset=utf-8",
+            data: {json: json,position:position, mac: mac},
+            dataType: "json",
+
+            success: function(result){
+                if (callback != undefined) {
+                    callback(result);
+                }
+            }
+        });
+    },
+
      //jQuery 方式发送 FormData 请求
      $.fn.sendFormData = function(url, formData, callBack) {
          $.ajax({

@@ -138,7 +138,8 @@
         /**
          * pin 的值不能和在网络上传输的加密的密码值一样
          */
-        localStorage.setItem('pin', faultylabs.MD5("${salt}"+faultylabs.MD5(jQuery.trim($("#password").val()))));
+        localStorage.removeItem('hzg_sys_user_pin');
+        localStorage.setItem('hzg_sys_user_pin', faultylabs.MD5("${salt}"+faultylabs.MD5(jQuery.trim($("#password").val()))));
 
         $("#encryptPassword").val(faultylabs.MD5(faultylabs.MD5(jQuery.trim($("#password").val()))+"${salt}"));
         $("#password").attr("disabled","disabled");

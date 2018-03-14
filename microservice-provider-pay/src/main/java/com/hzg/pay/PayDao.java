@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.hzg.base.Dao;
 import com.hzg.tools.DateUtil;

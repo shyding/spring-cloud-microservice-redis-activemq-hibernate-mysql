@@ -51,7 +51,7 @@
                             </div>
                         </div>
                         <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="amount">采购标题 <span class="required">*</span>
+                            <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="name">采购标题 <span class="required">*</span>
                             </label>
                             <div class="col-md-6 col-sm-6 col-xs-12">
                                 <input id="name" name="name" value="${entity.name}" data-validate-length-range="5,30" data-validate-words="1" class="form-control col-md-7 col-xs-12" required>
@@ -391,7 +391,7 @@
                                         <input type="hidden" name="details[][product[properties[]]]:object" value='<%=detail.getProduct().getPropertyJson("产地")%>' required>
                                     </td>
                                     <td><input type="text" name="details[][product[certificate]]:string" value="${detail.product.certificate}"></td>
-                                    <td><input type="text" name="details[][product[costPrice]]:number" value="${detail.product.costPrice}" required></td>
+                                    <td><input type="text" name="details[][amount]:number" value="${detail.amount}" required></td>
                                     <td><input type="text" name="details[][product[unitPrice]]:number" value="${detail.product.unitPrice}" required></td>
                                     <td><input type="text" name="details[][product[price]]:number" value="${detail.product.price}"></td>
                                     <td><input type="text" name="details[][product[fatePrice]]:number" value="${detail.product.fatePrice}"></td>
@@ -499,7 +499,7 @@
                                         <input type="hidden" name="details[][product[properties[]]]:object" required>
                                     </td>
                                     <td><input type="text" name="details[][product[certificate]]:string"></td>
-                                    <td><input type="text" name="details[][product[costPrice]]:number" required></td>
+                                    <td><input type="text" name="details[][amount]:number" required></td>
                                     <td><input type="text" name="details[][product[unitPrice]]:number" required></td>
                                     <td><input type="text" name="details[][product[price]]:number"></td>
                                     <td><input type="text" name="details[][product[fatePrice]]:number"></td>
@@ -528,7 +528,7 @@
                             <div class="ln_solid"></div>
                             <div class="form-group" id="submitDiv">
                                 <div class="col-md-6 col-md-offset-10">
-                                    <button id="cancel" type="button" class="btn btn-primary">取消</button>
+                                    <button id="cancel" type="button" class="btn btn-primary">返回</button>
                                     <c:if test="${entity == null}">
                                         <button id="send" type="button" class="btn btn-success">保存</button>
                                     </c:if>
@@ -541,6 +541,11 @@
                                         <c:if test="${fn:contains(resources, '/erp/doBusiness/purchaseBookPaid')}">
                                             <c:if test="${entity.state == 1 && entity.purchaseBookPaid == true && entity.toPayBalance == true}">
                                                 <button id="payBalance" type="button" class="btn btn-success">确认余款已付</button>
+                                            </c:if>
+                                        </c:if>
+                                        <c:if test="${fn:contains(resources, '/afterSaleService/business/purchaseReturnProduct')}">
+                                            <c:if test="${entity.state == 1}">
+                                                <button id="purchaseReturnProduct" type="button" class="btn btn-danger">申请退货</button>
                                             </c:if>
                                         </c:if>
                                         <c:if test="${entity.state == 2}">
@@ -785,6 +790,9 @@
         </c:if>
     </c:if>
 
+    <c:if test="${entity.state == 1 && fn:contains(resources, '/afterSaleService/business/purchaseReturnProduct')}">
+        $("#purchaseReturnProduct").click(function(){render("<%=request.getContextPath()%>/afterSaleService/business/purchaseReturnProduct?json=" + encodeURI('{"entityId":${entity.id}, "entity":"purchase","sessionId":"${sessionId}"}'));});
+    </c:if>
 
 
     tableSheet.init("productList", 15-<%=detailsCount%>, "<%=request.getContextPath()%>");

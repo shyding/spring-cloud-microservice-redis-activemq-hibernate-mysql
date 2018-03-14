@@ -197,7 +197,7 @@
 
                     <div class="x_content" style="overflow: auto;margin-top: 30px">
                         <table id="stockInOutProductList" class="table-sheet" width="100%">
-                            <thead><tr><th>商品名称</th><th>编号</th><th>状态</th><th>种类</th><th>数量</th><th>计量单位</th><th>采购价</th><th>图片</th></tr></thead>
+                            <thead><tr><th>商品名称</th><th>编号</th><th>状态</th><th>种类</th><th>数量</th><th>计量单位</th><th>采购单价</th><th>图片</th></tr></thead>
                             <tbody id="tbody">
                             <c:forEach items="${entity.details}" var="detail">
                                 <tr id="tr${detail.product.no}">
@@ -243,7 +243,7 @@
                             <div class="ln_solid"></div>
                             <div class="form-group" id="submitDiv">
                                 <div class="col-md-6 col-md-offset-8">
-                                    <button id="cancel" type="button" class="btn btn-primary">取消</button>
+                                    <button id="cancel" type="button" class="btn btn-primary">返回</button>
                                     <c:if test="${entity == null}">
                                         <button id="send" type="button" class="btn btn-success">保存</button>
                                         <button id="doBusiness" type="button" class="btn btn-success">入库</button>
@@ -289,7 +289,7 @@
                             </div>
                             <div class="clearfix" style="margin-bottom: 15px"></div>
                             <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="date">发送时间 <span class="required">*</span></label>
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12"  for="expressDate">发送时间 <span class="required">*</span></label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <input id="expressDate" name="date" class="form-control col-md-7 col-xs-12" data-validate-length-range="1,20" data-validate-words="1" required type="text">
                                 </div>
@@ -644,13 +644,14 @@
 
             if ($("#type").val() < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
                 queryJson["purchase"]["state"] = <%=ErpConstant.purchase_state_close%>;
-                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_purchase_close%> + "," + <%=ErpConstant.product_state_stockOut%> +
-                        "," + <%=ErpConstant.product_state_stockOut_part%> + "," + <%=ErpConstant.product_state_returnedProduct%> +
+                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_purchase_close%> + "," + <%=ErpConstant.product_state_stockIn_part%> + "," + <%=ErpConstant.product_state_stockOut%> +
+                        "," + <%=ErpConstant.product_state_stockOut_part%> + "," + <%=ErpConstant.product_state_onReturnProduct_part%> + "," + <%=ErpConstant.product_state_returnedProduct%> +
                         "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
             } else {
                 queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于出库单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
-                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_stockIn%> + "," + <%=ErpConstant.product_state_stockIn_part%> +
-                        "," + <%=ErpConstant.product_state_sold%> + "," + <%=ErpConstant.product_state_sold_part%> + ")";
+                queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_stockIn%> + "," + <%=ErpConstant.product_state_stockIn_part%> + "," + <%=ErpConstant.product_state_stockOut_part%> +
+                        "," + <%=ErpConstant.product_state_sold%> + "," + <%=ErpConstant.product_state_sold_part%> + "," + <%=ErpConstant.product_state_onReturnProduct_part%> +
+                        "," + <%=ErpConstant.product_state_returnedProduct%> + "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
                 queryJson["product"]["stockInOut"] = '{"warehouse":{"id":' + parseInt(document.getElementById("warehouse[id]").value) + '}}';
             }
 

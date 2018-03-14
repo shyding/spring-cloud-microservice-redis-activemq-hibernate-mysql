@@ -173,6 +173,9 @@ public class PayController {
 
         } else if (entity.equalsIgnoreCase(Account.class.getSimpleName())) {
             writer.writeObjectToJson(response, payDao.query(writer.gson.fromJson(json, Account.class)));
+
+        } else if (entity.equalsIgnoreCase(Refund.class.getSimpleName())) {
+            writer.writeObjectToJson(response, payDao.query(writer.gson.fromJson(json, Refund.class)));
         }
 
         logger.info("query end");
@@ -198,6 +201,8 @@ public class PayController {
         } else if (entity.equalsIgnoreCase(Account.class.getSimpleName())) {
             writer.writeObjectToJson(response, payDao.complexQuery(Account.class, queryParameters, position, rowNum));
 
+        } else if (entity.equalsIgnoreCase(Refund.class.getSimpleName())) {
+            writer.writeObjectToJson(response, payDao.complexQuery(Refund.class, queryParameters, position, rowNum));
         }
 
         logger.info("complexQuery end");
@@ -218,6 +223,9 @@ public class PayController {
 
         if (entity.equalsIgnoreCase(Pay.class.getSimpleName())) {
             recordsSum =  payDao.recordsSum(Pay.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(Refund.class.getSimpleName())) {
+            recordsSum =  payDao.recordsSum(Refund.class, queryParameters);
         }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.recordsSum + "\":" + recordsSum + "}");
@@ -282,12 +290,13 @@ public class PayController {
      * @param response
      * @param entity
      * @param entityId
+     * @param entityNo
      * @param amount
      * @param json
      */
     @Transactional
     @PostMapping("/refund")
-    public void refund(HttpServletResponse response, String entity, Integer entityId, Float amount, @RequestBody String json){
+    public void refund(HttpServletResponse response, String entity, Integer entityId, String entityNo, Float amount, @RequestBody String json){
         logger.info("refund start, parameter:" + json);
 
         String result = CommonConstant.fail;
@@ -305,10 +314,12 @@ public class PayController {
                         refund.setNo(payDao.getNo(PayConstants.no_prefix_refund));
                         refund.setPay(pay);
                         refund.setPayBank(pay.getPayBank());
+                        refund.setRefundBank(pay.getReceiptBank());
 
                         refund.setBankBillNo(pay.getBankBillNo());
                         refund.setEntity(entity);
                         refund.setEntityId(entityId);
+                        refund.setEntityNo(entityNo);
                         refund.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
                         if (pay.getAmount().compareTo(amount) >= 0) {
@@ -323,6 +334,12 @@ public class PayController {
                         } else {
                             refund.setState(PayConstants.pay_state_success);
                             refund.setRefundDate(dateUtil.getSecondCurrentTimestamp());
+                        }
+
+                        if (pay.getBalanceType().compareTo(PayConstants.balance_type_income) == 0) {
+                            refund.setBalanceType(PayConstants.refund_balance_type_expense);
+                        }  else if (pay.getBalanceType().compareTo(PayConstants.balance_type_expense) == 0) {
+                            refund.setBalanceType(PayConstants.refund_balance_type_income);
                         }
 
                         result += payDao.save(refund);

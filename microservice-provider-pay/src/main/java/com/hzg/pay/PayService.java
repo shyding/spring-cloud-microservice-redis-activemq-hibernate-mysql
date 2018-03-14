@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import com.boyuanitsm.pay.alipay.bean.AyncNotify;
 import com.boyuanitsm.pay.alipay.bean.RefundAyncNotify;

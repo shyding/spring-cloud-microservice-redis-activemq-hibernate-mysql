@@ -1,4 +1,4 @@
-﻿package com.hzg.pay;
+package com.hzg.pay;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -39,6 +39,9 @@ public class Refund implements Serializable {
     @Column(name="payBank",length=15)
     private String payBank;
 
+    @Column(name="refundBank",length=15)
+    private String refundBank;
+
     @Column(name="inputDate")
     private Timestamp inputDate;
 
@@ -47,6 +50,12 @@ public class Refund implements Serializable {
 
     @Column(name="entityId", length = 11)
     private Integer entityId;
+
+    @Column(name="entityNo", length = 16)
+    private String entityNo;
+
+    @Column(name="balanceType", length = 1)
+    private Integer balanceType;
 
     public static long getSerialVersionUID() {
         return serialVersionUID;
@@ -116,6 +125,14 @@ public class Refund implements Serializable {
         this.payBank = payBank;
     }
 
+    public String getRefundBank() {
+        return refundBank;
+    }
+
+    public void setRefundBank(String refundBank) {
+        this.refundBank = refundBank;
+    }
+
     public Timestamp getInputDate() {
         return inputDate;
     }
@@ -138,5 +155,21 @@ public class Refund implements Serializable {
 
     public void setEntityId(Integer entityId) {
         this.entityId = entityId;
+    }
+
+    public String getEntityNo() {
+        return entityNo;
+    }
+
+    public void setEntityNo(String entityNo) {
+        this.entityNo = entityNo;
+    }
+
+    public Integer getBalanceType() {
+        return balanceType;
+    }
+
+    public void setBalanceType(Integer balanceType) {
+        this.balanceType = balanceType;
     }
 }

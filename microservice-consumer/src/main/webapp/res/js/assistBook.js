@@ -77,7 +77,7 @@ var assistBook = (function ($) {
 
     function suggestBookUser(contextPath){
         $("#bookUser").coolautosuggest({
-            url:contextPath + "/customerManagement/suggest/user/username/",
+            url:contextPath + "/customerManagement/unlimitedSuggest/user/username/",
             showProperty: 'username',
 
             onSelected:function(result){
@@ -313,6 +313,10 @@ var assistBook = (function ($) {
 
                                     if (name == "details[][productPrice]:number") {
                                         inputs[x].value = result.fatePrice;
+                                    }
+
+                                    if (name == "details[][unit]:string") {
+                                        inputs[x].value = result.soldUnit;
                                     }
 
                                     if (name == "details[][quantity]:number") {
@@ -567,8 +571,9 @@ var assistBook = (function ($) {
                 if(result!=null){
                     var tr = $(this).parent().parent();
                     tr.find('[name="giftNo"]')[0].value = result.no;
-                    tr.find('[name="giftCostPrice"]')[0].value = result.costPrice;
+                    tr.find('[name="giftUnitPrice"]')[0].value = result.unitPrice;
                     tr.find('[name="giftFatePrice"]')[0].value = result.fatePrice;
+                    tr.find('[name="giftUnit"]')[0].value = result.soldUnit;
                     tr.find('[name="giftId"]')[0].value = result.id;
                 }
             }
@@ -729,6 +734,7 @@ var assistBook = (function ($) {
                     var tr = $(this).parent().parent();
                     tr.find('[name="accNo"]')[0].value = result.no;
                     tr.find('[name="accId"]')[0].value = result.id;
+                    tr.find('[name="accUnit"]')[0].value = result.soldUnit;
                 }
             }
         });
@@ -885,7 +891,9 @@ var assistBook = (function ($) {
         var payItemAmounts = document.getElementsByName("pays[][amount]:number");
         var totalPayItemAmount = 0;
         for (var i = 0; i < payItemAmounts.length; i++) {
-            totalPayItemAmount = Math.formatFloat(totalPayItemAmount + parseFloat(payItemAmounts[i].value), 2);
+            if ($.trim(payItemAmounts[i].value) != "") {
+                totalPayItemAmount = Math.formatFloat(totalPayItemAmount + parseFloat(payItemAmounts[i].value), 2);
+            }
         }
 
         if (totalPayItemAmount != Math.formatFloat(parseFloat($("#payAmount").val()), 2)) {
@@ -899,7 +907,18 @@ var assistBook = (function ($) {
             return;
         }
 
-        var json = JSON.stringify($form.serializeJSON());
+        var formData = $form.serializeJSON();
+        var pays = formData.pays;
+        var validPays = new Array(), k = 0;
+        formData.pays = [];
+        for (var i = 0; i < pays.length; i++) {
+            if ($.trim(pays[i].amount) != "" && parseInt(pays[i].amount) != 0) {
+                validPays[k++] = pays[i];
+            }
+        }
+        formData.pays = validPays;
+
+        var json = JSON.stringify(formData);
         json = json.substring(0, json.length-1) + ',"details":[';
 
 
@@ -1004,6 +1023,7 @@ var assistBook = (function ($) {
         init: init,
         addRow: addRow,
         saveOrder: saveOrder,
-        addPay: addPay
+        addPay: addPay,
+        setReceiptAccountInfo: setReceiptAccountInfo
     }
 })(jQuery);

@@ -385,7 +385,9 @@ var tableSheet = (function ($) {
         var payItemAmounts = document.getElementsByName("pays[][amount]:number");
         var totalPayItemAmount = 0;
         for (var i = 0; i < payItemAmounts.length; i++) {
-            totalPayItemAmount = Math.formatFloat(totalPayItemAmount + parseFloat(payItemAmounts[i].value), 2);
+            if ($.trim(payItemAmounts[i].value) != "") {
+                totalPayItemAmount = Math.formatFloat(totalPayItemAmount + parseFloat(payItemAmounts[i].value), 2);
+            }
         }
 
         if (totalPayItemAmount != Math.formatFloat(parseFloat($("#amount").val()), 2)) {
@@ -394,7 +396,18 @@ var tableSheet = (function ($) {
             return false;
         }
 
-        var json = JSON.stringify($form.serializeJSON());
+        var formData = $form.serializeJSON();
+        var pays = formData.pays;
+        var validPays = new Array(), k = 0;
+        formData.pays = [];
+        for (var i = 0; i < pays.length; i++) {
+            if ($.trim(pays[i].amount) != "" && parseInt(pays[i].amount) != 0) {
+                validPays[k++] = pays[i];
+            }
+        }
+        formData.pays = validPays;
+
+        var json = JSON.stringify(formData);
         json = json.substring(0, json.length-1) + ',"details":[';
 
 

@@ -4,7 +4,7 @@
 <%@ page import="com.hzg.pay.Pay" %>
 <%@ page import="com.hzg.finance.Voucher" %>
 <%@ page import="com.hzg.finance.Subject" %>
-<%@ page import="com.hzg.tools.ErpConstant" %>
+<%@ page import="com.hzg.pay.Refund" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
@@ -82,7 +82,7 @@
                         </c:if>
 
                         <c:if test="${fn:contains(resources, '/afterSaleService/')}">
-                            <li><a><i class="fa fa-edit"></i> 商品退货 <span class="fa fa-chevron-down"></span></a>
+                            <li><a><i class="fa fa-edit"></i> 售后服务 <span class="fa fa-chevron-down"></span></a>
                                 <ul class="nav child_menu">
                                     <li><a href="#/afterSaleService/list/returnProduct/{}">管理</a></li>
                                     <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductSaleAudit')}">
@@ -92,10 +92,36 @@
                                         <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:3%7D">销售总监审核退货单</a></li>
                                     </c:if>
                                     <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductWarehousingAudit')}">
-                                        <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:4%7D">仓储审核退货单</a></li>
+                                        <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:%22%20in%20(4,7)%22%7D">仓储审核退货单</a></li>
+                                    </c:if>
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/purchaseReturnProductSupplierReceived')}">
+                                        <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:8%7D">供应商确认收货</a></li>
                                     </c:if>
                                     <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/returnProductRefund')}">
-                                        <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:5%7D">财务审核退货单</a></li>
+                                        <li><a href="#/afterSaleService/list/returnProduct/%7B%22state%22:%22%20in%20(5,9)%22%7D">财务审核退货单</a></li>
+                                    </c:if>
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/changeProductSaleAudit')}">
+                                        <li><a href="#/afterSaleService/list/changeProduct/%7B%22state%22:0%7D">销售审核换货单</a></li>
+                                    </c:if>
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/changeProductDirectorAudit')}">
+                                        <li><a href="#/afterSaleService/list/changeProduct/%7B%22state%22:3%7D">销售总监审核换货单</a></li>
+                                    </c:if>
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/changeProductWarehousingAudit')}">
+                                        <li><a href="#/afterSaleService/list/changeProduct/%7B%22state%22:4%7D">仓储审核换货单</a></li>
+                                    </c:if>
+                                    <c:if test="${fn:contains(resources, '/afterSaleService/doBusiness/changeProductComplete')}">
+                                        <li><a href="#/afterSaleService/list/changeProduct/%7B%22state%22:5%7D">财务审核换货单</a></li>
+                                    </c:if>
+                                </ul>
+                            </li>
+                        </c:if>
+
+                        <c:if test="${fn:contains(resources, '/customerManagement/')}">
+                            <li><a><i class="fa fa-edit"></i> 客户服务 <span class="fa fa-chevron-down"></span></a>
+                                <ul class="nav child_menu">
+                                    <li><a href="#/customerManagement/list/customer/{}">管理</a></li>
+                                    <c:if test="${fn:contains(resources, '/customerManagement/save/customer')}">
+                                        <li><a href="#/customerManagement/view/customer/-1">添加客户</a></li>
                                     </c:if>
                                 </ul>
                             </li>
@@ -105,6 +131,9 @@
                             <li><a><i class="fa fa-edit"></i> 支付 <span class="fa fa-chevron-down"></span></a>
                                 <ul class="nav child_menu">
                                     <li><a href="#/pay/list/<%=Pay.class.getSimpleName().toLowerCase()%>/{}">管理</a></li>
+                                    <c:if test="${fn:contains(resources, '/refund')}">
+                                        <li><a href="#/pay/list/<%=Refund.class.getSimpleName().toLowerCase()%>/{}">退款记录</a></li>
+                                    </c:if>
                                     <c:if test="${fn:contains(resources, '/pay/save/account')}">
                                         <li><a href="#/pay/view/account/-1">添加账户</a></li>
                                     </c:if>

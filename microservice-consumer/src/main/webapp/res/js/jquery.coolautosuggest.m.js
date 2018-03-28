@@ -56,132 +56,28 @@
                 }
               }
 
-              var queryJson = {};
-              if(typeof settings.getQueryData == "function"){
-                   queryJson = settings.getQueryData.call(this, settings.paramName);
-              }
-
-              $.ajax({
-                type: "post",
-                url:settings.url,
-                contentType: "application/x-www-form-urlencoded; charset=utf-8",
-                data: {json: JSON.stringify(queryJson)},
-                dataType: "json",
-
-                success:function(data){
-                  try{
-                    if (typeof data == 'string')
-                      arrData=$.parseJSON(data);
-                    else if (typeof data == 'object')
-                      arrData=data;
-
-                    var arr=arrData;
-                    var html="";
-
-                    currRow=0;
-
-                    if(arr==null){
-                      me.hide();
-                    }
-                    else{
-                      if(arr.length>0){
-                        for(i=0;i<arr.length;i++){
-                          cssClass=suggestItem;
-
-                          if(i==0){
-                            cssClass+=" first";
-                          }
-                          if(i==(arr.length-1)){
-                            cssClass+=" last";
-                          }
-
-                          var id_field='';
-                          if(settings.idField!=null){
-                            id_field=' id_field="' + arr[i].id + '"';
-                          }
-
-                          var thumb="";
-                          if(settings.showThumbnail==true){
-                            var style="";
-                            if(arr[i].thumbnail!=undefined){
-                              style=' style="background-image:url(' + arr[i].thumbnail + ');"';
-                            }
-                            thumb='<div class="' + settings.rowThumbnailClass + '"' + style + '></div>';
-                          }
-
-                          var desc="";
-                          if(settings.showDescription==true){
-                            if(arr[i].description!=undefined){
-                              desc='<div class="' + settings.rowDescriptionClass + '">' + arr[i].description + '</div>';
-                            }
-                          }
-
-                          var isSet = false;
-                          $.each(arr[i], function (propertyName, propertyValue){
-                              if (settings.showProperty != null && settings.showProperty == propertyName) {
-                                  isSet = true;
-                                  html+='<div id="' + suggestRow + (i+1) + '" class="' + cssClass + '"' + id_field + ' seq_id="' + i + '" >' + thumb + '<div class="' + suggestText + '">' + propertyValue.replace(new RegExp('(' + escapeRegExp(textField.val()) + ')', 'gi'), "<b>$1</b>") + '</div>' + desc + '</div>';
-                              }
-                          });
-                          if (!isSet) {
-                             html+='<div id="' + suggestRow + (i+1) + '" class="' + cssClass + '"' + id_field + ' seq_id="' + i + '" >' + thumb + '<div class="' + suggestText + '">' + arr[i].data.replace(new RegExp('(' + escapeRegExp(textField.val()) + ')', 'gi'), "<b>$1</b>") + '</div>' + desc + '</div>';
-                          }
-                        }
-
-                        holder.html('<div  style="position:absolute;z-index:9">' + html + '</div>');
-
-                        for(i=1;i<=arr.length;i++){
-                          var target=holder.find("#" + suggestRow + i);
-                          target.mouseover(function(e){
-                            if (mouseStopped == false) {
-                              hovered=true;
-                              me.unSelectAll(this);
-                              var t = $(this);
-                              highlightmultiple(t, "mouseover");
-                            }
-                          });
-
-                          target.mouseout(function(e){
-                            hovered=false;
-                            me.unSelectAll(this);
-                          });
-
-                          target.on("click touchstart", function(e){
-                            var t = $(this);
-                            highlightmultiple(t, "click");
-
-                            // Callback function
-                            if(typeof settings.onSelected == "function"){
-                              settings.onSelected.call(textField, arrData[t.attr("seq_id")]);
-                            }
-                          });
-
-                          target.mousemove(function(e){
-                            mouseStopped = false;
-                            clearTimeout(timer);
-                            timer = setTimeout(mouseStop, 200);
-                          });
-                        }
-
-                        me.show(holder.find("." + suggestItem).height() * arr.length);
-                      }
-                      else{
-                        me.hide();
-                      }
-                    }
+              if (settings.staticData == null) {
+                  var queryJson = {};
+                  if(typeof settings.getQueryData == "function"){
+                      queryJson = settings.getQueryData.call(this, settings.paramName);
                   }
-                  catch(e){
-                    if(typeof settings.onError === "function"){
-                      settings.onError.call();
-                    }
-                  }
-              },
-              error: function(xhr, status, ex){
-                if(typeof settings.onError === "function"){
-                  settings.onError.call();
-                }
+
+                  $.ajax({
+                      type: "post",
+                      url:settings.url,
+                      contentType: "application/x-www-form-urlencoded; charset=utf-8",
+                      data: {json: JSON.stringify(queryJson)},
+                      dataType: "json",
+                      success: function(data){renderData(data)},
+                      error: function(xhr, status, ex){
+                          if(typeof settings.onError === "function"){
+                              settings.onError.call();
+                          }
+                      }
+                  });
+              } else {
+                renderData(settings.staticData);
               }
-            });
           }
           else{
             me.hide();
@@ -194,6 +90,135 @@
         }
       }
     );
+
+    function renderData(data){
+        try{
+            if (typeof data == 'string')
+                arrData=$.parseJSON(data);
+            else if (typeof data == 'object')
+                arrData=data;
+
+            var arr=arrData;
+            var html="";
+
+            currRow=0;
+
+            if(arr==null){
+                me.hide();
+            }
+            else{
+                if(arr.length>0){
+                    for(i=0;i<arr.length;i++){
+                        cssClass=suggestItem;
+
+                        if(i==0){
+                            cssClass+=" first";
+                        }
+                        if(i==(arr.length-1)){
+                            cssClass+=" last";
+                        }
+
+                        var id_field='';
+                        if(settings.idField!=null){
+                            id_field=' id_field="' + arr[i].id + '"';
+                        }
+
+                        var thumb="";
+                        if(settings.showThumbnail==true){
+                            var style="";
+                            if(arr[i].thumbnail!=undefined){
+                                style=' style="background-image:url(' + arr[i].thumbnail + ');"';
+                            }
+                            thumb='<div class="' + settings.rowThumbnailClass + '"' + style + '></div>';
+                        }
+
+                        var desc="";
+                        if(settings.showDescription==true){
+                            if(arr[i].description!=undefined){
+                                desc='<div class="' + settings.rowDescriptionClass + '">' + arr[i].description + '</div>';
+                            }
+                        }
+
+                        var isSet = false;
+                        $.each(arr[i], function (propertyName, propertyValue){
+                            if (settings.showProperty != null) {
+                                var showPropertyArr = [];
+                                if (Object.prototype.toString.call(settings.showProperty) === "[object String]") {
+                                    showPropertyArr = settings.showProperty.split("#");
+                                } else {
+                                    showPropertyArr = settings.showProperty;
+                                }
+
+                                for (var k = 0; k < showPropertyArr.length; k++) {
+                                    if (showPropertyArr[k] == propertyName) {
+
+                                        var showText = propertyValue;
+                                        isSet = true;
+                                        if (settings.relateShowProperty && settings.relateShowProperty[showPropertyArr[k]] != undefined) {
+                                            var relateShowPropertyArr = settings.relateShowProperty[showPropertyArr[k]];
+                                            for (var z = 0; z < relateShowPropertyArr.length; z++) {
+                                                showText += " " + getPropertiesValue(arr[i], relateShowPropertyArr[z]);
+                                            }
+                                        }
+
+                                        html+='<div id="' + suggestRow + (i+1) + '" class="' + cssClass + '"' + id_field + ' seq_id="' + i + '" >' + thumb + '<div class="' + suggestText + '">' + showText + '</div>' + desc + '</div>';
+                                    }
+                                }
+                            }
+                        });
+                        if (!isSet) {
+                            html+='<div id="' + suggestRow + (i+1) + '" class="' + cssClass + '"' + id_field + ' seq_id="' + i + '" >' + thumb + '<div class="' + suggestText + '">' + arr[i].data.replace(new RegExp('(' + escapeRegExp(textField.val()) + ')', 'gi'), "<b>$1</b>") + '</div>' + desc + '</div>';
+                        }
+                    }
+
+                    holder.html('<div style="position:absolute;z-index:9;' + (settings.marginTop == null ? "" : settings.marginTop) + '">' + html + '</div>');
+
+                    for(i=1;i<=arr.length;i++){
+                        var target=holder.find("#" + suggestRow + i);
+                        target.mouseover(function(e){
+                            if (mouseStopped == false) {
+                                hovered=true;
+                                me.unSelectAll(this);
+                                var t = $(this);
+                                highlightmultiple(t, "mouseover");
+                            }
+                        });
+
+                        target.mouseout(function(e){
+                            hovered=false;
+                            me.unSelectAll(this);
+                        });
+
+                        target.on("click touchstart", function(e){
+                            var t = $(this);
+                            highlightmultiple(t, "click");
+
+                            // Callback function
+                            if(typeof settings.onSelected == "function"){
+                                settings.onSelected.call(textField, arrData[t.attr("seq_id")]);
+                            }
+                        });
+
+                        target.mousemove(function(e){
+                            mouseStopped = false;
+                            clearTimeout(timer);
+                            timer = setTimeout(mouseStop, 200);
+                        });
+                    }
+
+                    me.show(holder.find("." + suggestItem).height() * arr.length);
+                }
+                else{
+                    me.hide();
+                }
+            }
+        }
+        catch(e){
+            if(typeof settings.onError === "function"){
+                settings.onError.call();
+            }
+        }
+    }
 
     textField.bind(
       "blur",
@@ -351,6 +376,39 @@
     function mouseStop(){
       mouseStopped = true;
     }
+
+      function getPropertiesValue(json, propertiesStr) {
+          return getValue(json, getProperties(propertiesStr));
+      }
+
+      function getProperties(propertiesStr) {
+          var properties = new Array();
+
+          var tempProperties = propertiesStr.replace(/]/g, "").split("[");
+          var j = 0;
+          for (var i = 0; i < tempProperties.length; i++) {
+              if (tempProperties[i] != "") {
+                  properties[j++] = tempProperties[i];
+              }
+          }
+
+          return properties;
+      }
+
+      function getValue(json, properties) {
+          var newJson = null;
+
+          for (var i = 0; i < properties.length; i++) {
+              if (json[properties[i]] != undefined && json[properties[i]] != null) {
+                  newJson = json[properties[i]];
+                  json = newJson;
+              } else {
+                  return null;
+              }
+          }
+
+          return newJson;
+      }
   }
 
   $.fn.coolautosuggestm = function(options) {
@@ -359,9 +417,12 @@
       getQueryData : null,
       paramName : null,
       width : null,
+      marginTop : null,
+      staticData : null,
       minChars : 1,
       idField : null,
       showProperty: null,
+      relateShowProperty: null,
       submitOnSelect : false,
       showThumbnail : false,
       showDescription : false,

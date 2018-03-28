@@ -629,7 +629,8 @@
         url:"<%=request.getContextPath()%>/erp/entitiesSuggest/" + encodeURIComponent('purchase#purchaseDetail') + "/" +  encodeURIComponent('purchase#product'),
         marginTop: "margin-top:34px",
         width: 312,
-        showProperty: "no#productNo",
+        showProperty: ["no","productNo"],
+        relateShowProperty: {"productNo" : ["product[id]"]},
 
         getQueryData: function(paramName){
             var queryJson = {};
@@ -642,16 +643,21 @@
                 queryJson["product"]["no"] = suggestWord;
             }
 
-            if ($("#type").val() < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+            if ($("#type").val() == <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
+                queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于出库单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
+                queryJson["product"]["stockInOut"] = '{"warehouse":{"id":' + parseInt(document.getElementById("warehouse[id]").value) + '}}';
+
+            } else if ($("#type").val() < <%=ErpConstant.stockInOut_type_virtual_outWarehouse%>) {
                 queryJson["purchase"]["state"] = <%=ErpConstant.purchase_state_close%>;
                 queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_purchase_close%> + "," + <%=ErpConstant.product_state_stockIn_part%> + "," + <%=ErpConstant.product_state_stockOut%> +
                         "," + <%=ErpConstant.product_state_stockOut_part%> + "," + <%=ErpConstant.product_state_onReturnProduct_part%> + "," + <%=ErpConstant.product_state_returnedProduct%> +
                         "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
+
             } else {
-                queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于出库单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
+                queryJson["purchase"]["state"] = -1;      //不能出库采购单里的商品，由于采购单没有 -1 状态，所以设置为 -1，使得查询不到采购单里的商品
                 queryJson["product"]["state"] = " in (" + <%=ErpConstant.product_state_stockIn%> + "," + <%=ErpConstant.product_state_stockIn_part%> + "," + <%=ErpConstant.product_state_stockOut_part%> +
                         "," + <%=ErpConstant.product_state_sold%> + "," + <%=ErpConstant.product_state_sold_part%> + "," + <%=ErpConstant.product_state_onReturnProduct_part%> +
-                        "," + <%=ErpConstant.product_state_returnedProduct%> + "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
+                        "," + <%=ErpConstant.product_state_returnedProduct_part%> + ")";
                 queryJson["product"]["stockInOut"] = '{"warehouse":{"id":' + parseInt(document.getElementById("warehouse[id]").value) + '}}';
             }
 
@@ -961,7 +967,6 @@
                 function(result) {
                     if (result.result.indexOf("success") != -1) {
                         $("#entityId").val(result.id);
-                        console.log($("#entityId").val());
 
                         if (callBack != undefined) {
                             callBack();
@@ -1008,17 +1013,21 @@
                 return false;
             }
         }
-        if (parseInt($("#type").val()) == <%=ErpConstant.stockInOut_type_repair%>) {
-            var stockInOutDetailProducts = document.getElementsByName("details[][stockInOutDetailProducts]:array");
+        if (parseInt($("#type").val()) == <%=ErpConstant.stockInOut_type_process%>) {
+            var stockInOutDetailProducts = document.getElementsByName("details[][productNo]:string");
             if (stockInOutDetailProducts.length > 1) {
-                alert("修补入库是对单件商品做入库");
+                alert("加工入库是对单类商品做入库");
                 return false;
 
-            } else if (stockInOutDetailProducts.length == 1) {
-                if (stockInOutDetailProducts[0].value.indexOf(",") != -1) {
-                    alert("修补入库是对单件商品做入库");
-                    return false;
-                }
+            }
+        }
+
+        if (parseInt($("#type").val()) == <%=ErpConstant.stockInOut_type_repair%>) {
+            var stockInOutDetailProducts = document.getElementsByName("details[][productNo]:string");
+            if (stockInOutDetailProducts.length > 1) {
+                alert("修补入库是对单类商品做入库");
+                return false;
+
             }
         }
 

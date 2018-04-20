@@ -21,14 +21,13 @@ import org.apache.http.*;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.AbortableHttpRequest;
 import org.apache.http.client.utils.URIUtils;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.message.BasicHttpEntityEnclosingRequest;
-import org.apache.http.message.BasicHttpRequest;
-import org.apache.http.message.HeaderGroup;
+import org.apache.http.message.*;
 import org.apache.http.util.EntityUtils;
 
 import javax.servlet.ServletException;
@@ -113,7 +112,7 @@ public class ProxyServlet extends HttpServlet {
   protected static Map<String, String> srcToTargetUriMap = new HashedMap();
 
   static {
-     srcToTargetUriMap.put("/httpProxy/gateway.do", "https://mapi.alipay.com/gateway.do");
+     srcToTargetUriMap.put("/httpProxy/gateway.do", "https://mapi.alipay.com");
 
      srcToTargetUriMap.put("/httpProxy/pay/unifiedorder", "https://api.mch.weixin.qq.com");
      srcToTargetUriMap.put("/httpProxy/pay/micropay", "https://api.mch.weixin.qq.com");
@@ -123,6 +122,8 @@ public class ProxyServlet extends HttpServlet {
      srcToTargetUriMap.put("/httpProxy/secapi/pay/reverse", "https://api.mch.weixin.qq.com");
      srcToTargetUriMap.put("/httpProxy/pay/downloadbill", "https://api.mch.weixin.qq.com");
      srcToTargetUriMap.put("/httpProxy/payitil/report", "https://api.mch.weixin.qq.com");
+
+     srcToTargetUriMap.put("/httpProxy/bsp-oisp/sfexpressService", "http://bsp-oisp.sf-express.com");
   }
 
   /**
@@ -367,7 +368,7 @@ public class ProxyServlet extends HttpServlet {
     return proxyClient.execute(getTargetHost(servletRequest), proxyRequest);
   }
 
-  protected HttpRequest newProxyRequestWithEntity(String method, String proxyRequestUri,
+/*  protected HttpRequest newProxyRequestWithEntity(String method, String proxyRequestUri,
                                                   HttpServletRequest servletRequest)
           throws IOException {
     HttpEntityEnclosingRequest eProxyRequest =
@@ -376,6 +377,68 @@ public class ProxyServlet extends HttpServlet {
     //  note: we don't bother ensuring we close the servletInputStream since the container handles it
     eProxyRequest.setEntity(
             new InputStreamEntity(servletRequest.getInputStream(), getContentLength(servletRequest)));
+    return eProxyRequest;
+  }*/
+
+  /**
+   * Override the newProxyRequestWithEntity() method.
+   *
+   * Smiley's HTTP Proxy Servlet handle POST will hang。It may be the case that Spring Boot (or Spring MVC) is
+   * consuming the servlet input stream (for example: filter or interceptor invoke getParameter() etc) before the servlet
+   * gets it, so the servlet will get empty string from input stream.
+   *
+   * from: https://github.com/jackielii/HTTP-Proxy-Servlet
+   * issues: https://github.com/mitre/HTTP-Proxy-Servlet/issues/83
+   *         https://github.com/mitre/HTTP-Proxy-Servlet/issues/54
+   *
+   * @param method
+   * @param proxyRequestUri
+   * @param servletRequest
+   * @return
+   * @throws IOException
+   */
+  protected HttpRequest newProxyRequestWithEntity(
+          String method, String proxyRequestUri, HttpServletRequest servletRequest) throws IOException {
+    HttpEntityEnclosingRequest eProxyRequest =
+            new BasicHttpEntityEnclosingRequest(method, proxyRequestUri);
+
+    String contentType = servletRequest.getContentType();
+
+    boolean isFormPost =
+            (contentType != null
+                    && contentType.contains("application/x-www-form-urlencoded")
+                    && "POST".equalsIgnoreCase(servletRequest.getMethod()));
+
+    if (isFormPost) {
+      List<NameValuePair> params = new ArrayList<>();
+
+      List<NameValuePair> queryParams = Collections.emptyList();
+      String queryString = servletRequest.getQueryString();
+      if (queryString != null) {
+        URLEncodedUtils.parse(queryString, Consts.UTF_8);
+      }
+      Map<String, String[]> form = servletRequest.getParameterMap();
+
+      OUTER_LOOP:
+      for (Iterator<String> nameIterator = form.keySet().iterator(); nameIterator.hasNext(); ) {
+        String name = nameIterator.next();
+        for (NameValuePair queryParam : queryParams) {
+          if (name.equals(queryParam.getName())) {
+            continue OUTER_LOOP;
+          }
+        }
+        String[] value = form.get(name);
+        if (value.length != 1) {
+          throw new RuntimeException("expecting one value in post form");
+        }
+        params.add(new BasicNameValuePair(name, value[0]));
+      }
+      eProxyRequest.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+
+    } else {
+      eProxyRequest.setEntity(
+              new InputStreamEntity(servletRequest.getInputStream(), getContentLength(servletRequest)));
+    }
     return eProxyRequest;
   }
 

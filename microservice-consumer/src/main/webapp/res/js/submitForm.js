@@ -1,6 +1,6 @@
 (function($){
     "use strict";
-    var preFormJson = "", preJson = "";
+    var preFormJson = "", preJson = "", preUrl = "";
     var submitSucc = false;
 
     $.fn.submitForm = function (url) {
@@ -17,7 +17,7 @@
             dataType: "json",
 
             beforeSend: function(){
-                if (preFormJson == formJson && submitSucc) {
+                if (preFormJson == formJson && preUrl == url && submitSucc) {
                     alert("不能重复提交");
                     return false;
                 }
@@ -35,13 +35,14 @@
         });
 
         preFormJson = formJson;
+        preUrl = url;
     },
 
     $.fn.submitForm = function (url, callBack, isShowResult) {
         if (!validator.checkAll(this)) {
             return;
         }
-        var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1"]}));
+        var formJson = JSON.stringify(this.serializeJSON({skipFalsyValuesForFields: ["charger[id]", "text1","tag[name]"]}));
         var mac = faultylabs.MD5(formJson + localStorage.getItem("hzg_sys_user_pin"));
         $.ajax({
             type: "post",
@@ -51,7 +52,7 @@
             dataType: "json",
 
             beforeSend: function(){
-                if (preFormJson == formJson && submitSucc) {
+                if (preFormJson == formJson && preUrl == url && submitSucc) {
                     alert("不能重复提交");
                     return false;
                 }
@@ -89,6 +90,7 @@
         });
 
         preFormJson = formJson;
+        preUrl = url;
     },
 
     $.fn.sendData = function (url, json, callBack, isShowResult) {
@@ -101,7 +103,7 @@
             dataType: "json",
 
             beforeSend: function(){
-                if (preJson == json && submitSucc) {
+                if (preJson == json && preUrl == url && submitSucc) {
                     alert("不能重复提交");
                     return false;
                 }
@@ -137,6 +139,7 @@
         });
 
         preJson = json;
+        preUrl = url;
     },
 
     $.fn.ajaxPost = function (url, json, callback) {
@@ -156,7 +159,7 @@
         });
     },
 
-    //生成凭证时条件查询的ajax请求
+    //条件查询时的ajax请求
     $.fn.ajaxPost1 = function (url, json,position, callback) {
         var mac = faultylabs.MD5(json + localStorage.getItem("hzg_sys_user_pin"));
         $.ajax({

@@ -84,9 +84,6 @@ public class OrderService {
         order.setDate(dateUtil.getSecondCurrentTimestamp());
 
         if (order.getType().compareTo(OrderConstant.order_type_selfService) == 0) {
-            order.setUser((User) orderDao.getFromRedis((String) orderDao.getFromRedis(
-                    CommonConstant.sessionId + CommonConstant.underline + order.getSessionId())));
-
             result += saveBaseOrder(order);
 
             Pay pay = new Pay();
@@ -121,8 +118,6 @@ public class OrderService {
              * 保存前台传递过来的代下单支付记录(支付、收款账号,支付金额等信息)
              */
             for (Pay pay : order.getPays()) {
-                pay.setPayDate(dateUtil.getSecondCurrentTimestamp());
-
                 pay.setState(PayConstants.pay_state_apply);
                 pay.setBalanceType(PayConstants.balance_type_income);
 
@@ -301,7 +296,8 @@ public class OrderService {
         }
 
         if (result.equals("")) {
-            if (order.getType().compareTo(OrderConstant.order_type_book) != 0) {
+            if (order.getType().compareTo(OrderConstant.order_type_book) != 0 &&
+                    order.getType().compareTo(OrderConstant.order_type_selfService) != 0) {
                 BigDecimal paysAmount = new BigDecimal(0);
                 for (Pay pay : order.getPays()) {
                     paysAmount = paysAmount.add(new BigDecimal(Float.toString(pay.getAmount())));
@@ -452,7 +448,7 @@ public class OrderService {
                  */
                 Product queryProduct = new Product();
                 queryProduct.setNo(acc.getProductNo());
-                queryProduct.setState(ErpConstant.product_state_stockIn);
+                queryProduct.setState(ErpConstant.product_state_onSale);
                 queryProduct.setUseType(ErpConstant.product_use_type_acc);
                 List<Product> products = writer.gson.fromJson(erpClient.query(queryProduct.getClass().getSimpleName(), writer.gson.toJson(queryProduct)),
                         new TypeToken<List<Product>>(){}.getType());
@@ -515,7 +511,7 @@ public class OrderService {
                     for (OrderPrivateAcc acc : detail.getOrderPrivate().getAccs()) {
                         Product accQueryProduct = new Product();
                         accQueryProduct.setNo(acc.getProductNo());
-                        accQueryProduct.setState(ErpConstant.product_state_stockIn);
+                        accQueryProduct.setState(ErpConstant.product_state_onSale);
                         accQueryProduct.setUseType(ErpConstant.product_use_type_acc);
 
                         acc.setUnit(((Map<String, String>)writer.gson.fromJson(
@@ -756,10 +752,15 @@ public class OrderService {
      * @param order
      */
     public String paidOfflineOrder(Order order) {
-        String result = paidOrder(order);
-        Map<String, String> paidResult = writer.gson.fromJson(payClient.offlinePaid(writer.gson.toJson(order.getPays())),
-                new TypeToken<Map<String, String>>(){}.getType());
-        result += paidResult.get(CommonConstant.result);
+        String result = CommonConstant.fail;
+        result += paidOrder(order);
+
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
+            Map<String, String> paidResult = writer.gson.fromJson(payClient.offlinePaid(writer.gson.toJson(order.getPays())),
+                    new TypeToken<Map<String, String>>(){}.getType());
+            result += paidResult.get(CommonConstant.result);
+        }
+
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
 
@@ -781,7 +782,9 @@ public class OrderService {
 
         order.getOrderBook().setState(OrderConstant.order_book_state_paid);
         result += orderDao.updateById(order.getOrderBook().getId(), order.getOrderBook());
-        result += payClient.offlinePaid(writer.gson.toJson(queryDepositPaysByOrderBook(order)));
+        if (!result.substring(CommonConstant.fail.length()).contains(CommonConstant.fail)) {
+            result += payClient.offlinePaid(writer.gson.toJson(queryDepositPaysByOrderBook(order)));
+        }
 
         return result.equals(CommonConstant.fail) ? result : result.substring(CommonConstant.fail.length());
     }
@@ -792,6 +795,13 @@ public class OrderService {
      */
     public String paidOrder(Order order) {
         String result = CommonConstant.fail;
+
+        if (order.getType().compareTo(OrderConstant.order_type_assist_process) == 0 || order.getType().compareTo(OrderConstant.order_type_private) == 0) {
+            String isAuthorizeMsg = isOrderPrivateAuthorize(order);
+            if (!isAuthorizeMsg.equals("")) {
+               return CommonConstant.fail + isAuthorizeMsg;
+            }
+        }
 
         for (OrderDetail detail : order.getDetails()) {
             detail.setState(OrderConstant.order_detail_state_sold);
@@ -1004,7 +1014,7 @@ public class OrderService {
         return  erpClient.save(stockOut.getClass().getSimpleName(), writer.gson.toJson(stockOut));
     }
 
-    private String sfExpressOrder(Order order) {
+    public String sfExpressOrder(Order order) {
         com.hzg.customer.User user = ((List<com.hzg.customer.User>)writer.gson.fromJson(
                 customerClient.unlimitedQuery(order.getUser().getClass().getSimpleName(), writer.gson.toJson(order.getUser())), new TypeToken<List<User>>(){}.getType())).get(0);
 
@@ -1024,7 +1034,7 @@ public class OrderService {
         ExpressDeliver expressDeliver = new ExpressDeliver();
         expressDeliver.setDeliver(ErpConstant.deliver_sfExpress);
         expressDeliver.setType(ErpConstant.deliver_sfExpress_type);
-        expressDeliver.setDate(expressDetail.getExpressDate());
+        expressDeliver.setDate(expressDetail.getExpressDate() == null ?  new java.sql.Timestamp(dateUtil.getDay(1).getTime()) : expressDetail.getExpressDate());
 
         expressDeliver.setReceiver(receiver.getReceiver());
         expressDeliver.setReceiverAddress(receiver.getAddress());
@@ -1097,7 +1107,8 @@ public class OrderService {
     }
 
     /**
-     * 每隔 2 个小时，查询出订金 < 50% 的预定订单，如果这些订单未支付时间超过 2 天，则修改订单状态为取消状态
+     * 每隔 2 个小时，查询出未支付的订单，如果是普通订单且 2 小时内未支付，则取消订单，
+     * 如果是预定订单，且订金 < 订单金额50%，且未支付时间超过 2 天，则取消订单
      */
     @Transactional
     @Scheduled(cron = "0 0 0/" + OrderConstant.order_session_time/CommonConstant.hour_seconds + " * * ?")
@@ -1107,16 +1118,32 @@ public class OrderService {
         String currentDay = dateUtil.getCurrentDayStr();
         parameters.put(OrderConstant.order_class_field_date, currentDay + " - " + currentDay);
         parameters.put(OrderConstant.order_class_field_state, String.valueOf(OrderConstant.order_detail_state_unSale));
-        parameters.put(OrderConstant.order_class_field_type, String.valueOf(OrderConstant.order_type_book));
 
         List<Order> orders = orderDao.complexQuery(Order.class, parameters, 0, -1);
 
         long currentTimeMillis = System.currentTimeMillis();
         for (Order order : orders) {
-            if ((currentTimeMillis - order.getDate().getTime())/1000 > OrderConstant.order_book_deposit_less_half_product_lock_time) {
-                order.setState(OrderConstant.order_state_cancel);
-                orderDao.updateById(order.getId(), order);
+            if (order.getType().compareTo(OrderConstant.order_type_book) != 0) {
+                if ((currentTimeMillis - order.getDate().getTime()) > OrderConstant.order_session_time_millisecond) {
+                    cancelOrder(order);
+                }
+
+            } else {
+                OrderBook queryOrderBook = new OrderBook();
+                queryOrderBook.setOrder(order);
+                List<OrderBook> orderBooks = orderDao.query(queryOrderBook);
+
+                if (!orderBooks.isEmpty()) {
+                    double proportion = new BigDecimal(Float.toString(orderBooks.get(0).getDeposit())).
+                            divide(new BigDecimal(Float.toString(order.getPayAmount())), 2, BigDecimal.ROUND_DOWN).doubleValue();
+                    if (proportion < 50d) {
+                        if ((currentTimeMillis - order.getDate().getTime())/1000 > OrderConstant.order_book_deposit_less_half_product_lock_time) {
+                            cancelOrder(order);
+                        }
+                    }
+                }
             }
+
         }
     }
 
@@ -1210,7 +1237,7 @@ public class OrderService {
 
             sql = "select distinct " + selectSql + " from " + fromSql + " where " + whereSql + " order by " + sortNumSql;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         return sql;
@@ -1229,6 +1256,18 @@ public class OrderService {
             OrderPrivate dbOrderPrivate = (OrderPrivate) orderDao.queryById(orderPrivate.getId(), orderPrivate.getClass());
             OrderDetail orderDetail = (OrderDetail)orderDao.queryById(orderPrivate.getDetail().getId(), orderPrivate.getDetail().getClass());
             Order order = orderDetail.getOrder();
+
+            if (dbOrderPrivate.getType().compareTo(OrderConstant.order_private_type_process) == 0) {
+                Float processAmount = getProcessAmount(orderDetail);
+                if (processAmount.compareTo(-1f) != 0) {
+                    if (orderPrivate.getAuthorize().getAmount().compareTo(processAmount) != 0) {
+                        return CommonConstant.fail + "核定的加工费与加工入库设定的销售加工费不一致，核定失败";
+                    }
+                } else {
+                    return CommonConstant.fail + "请先对要加工的商品做加工入库，确定加工费，再核定费用";
+                }
+
+            }
 
             if (orderDetail.getState().compareTo(OrderConstant.order_detail_state_unSale) == 0) {
                 /**
@@ -1310,5 +1349,47 @@ public class OrderService {
         pay.setEntityId(entityId);
 
         return writer.gson.fromJson(payClient.query(pay.getClass().getSimpleName(), writer.gson.toJson(pay)), new com.google.common.reflect.TypeToken<List<Pay>>(){}.getType());
+    }
+
+    /**
+     * 获取加工单商品对应加工入库的加工费
+     * 加工入库单只能入库一件或多件同一种商品，而订单明细可能有多件同一种商品，所以这里
+     * 订单明细里的每一件同类商品都要查询加工入库单的加工费，再做计算
+     * @param detail
+     * @return
+     */
+    public Float getProcessAmount(OrderDetail detail) {
+        Float processAmount = 0f;
+
+        OrderDetailProduct queryOrderDetailProduct = new OrderDetailProduct();
+        queryOrderDetailProduct.setOrderDetail(detail);
+        List<OrderDetailProduct> detailProducts = orderDao.query(queryOrderDetailProduct);
+
+        for (OrderDetailProduct orderDetailProduct : detailProducts) {
+            Map<String, Double> productProcessAmount = writer.gson.fromJson(erpClient.getStockInProcessAmount(writer.gson.toJson(orderDetailProduct.getProduct())),
+                    new TypeToken<Map<String, Double>>(){}.getType());
+
+            if (productProcessAmount.get(CommonConstant.amount) != null) {
+                processAmount = new BigDecimal(Float.toString(processAmount)).add(new BigDecimal(Double.toString(productProcessAmount.get(CommonConstant.amount)))).floatValue();
+            } else {
+                return -1f;
+            }
+        }
+
+        return processAmount;
+    }
+
+    public String isOrderPrivateAuthorize(Order order) {
+        for (OrderDetail detail : order.getDetails()) {
+            OrderPrivate queryOrderPrivate = new OrderPrivate();
+            queryOrderPrivate.setDetail(detail);
+            OrderPrivate dbOrderPrivate = (OrderPrivate) orderDao.query(queryOrderPrivate).get(0);
+
+            if (dbOrderPrivate.getAuthorize() == null) {
+                return "订单商品：" + detail.getProductNo() + "还没有核定费用";
+            }
+        }
+
+        return "";
     }
 }

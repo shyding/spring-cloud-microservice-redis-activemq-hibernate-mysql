@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
@@ -42,6 +41,12 @@ public class OrderController {
     @Autowired
     CustomerClient customerClient;
 
+    @Autowired
+    MacValidator macValidator;
+
+    @Autowired
+    StrUtil strUtil;
+
     /**
      * 使用消息队列保存用户订单
      * 订单消息队列里一有消息，就会把消息自动发送至该方法，该方法然后保存订单信息
@@ -51,11 +56,30 @@ public class OrderController {
     @JmsListener(destination = OrderConstant.queue_order)
     public void saveQueueOrder(String json) {
         logger.info("saveQueueOrder start, parameter:" + json);
+        String result = null;
 
-        Order order = writer.gson.fromJson(json, Order.class);
-        String result = saveOrder(order);
-        orderDao.storeToRedis(order.getOrderSessionId(), result, OrderConstant.order_session_time);
+        Map<String, Object> saveData = writer.gson.fromJson(json, new TypeToken<Map<String, Object>>() {}.getType());
 
+        try {
+            String orderStr = strUtil.getJsonValue(OrderConstant.order, json);
+            String sessionId = (String)saveData.get(CommonConstant.sessionId);
+            String mac = (String)saveData.get(CommonConstant.mac);
+
+            if (macValidator.md5Validate(mac, sessionId, orderStr)) {
+                Order order = writer.gson.fromJson(orderStr, Order.class);
+                order.setUser((User) orderDao.getFromRedis((String) orderDao.getFromRedis(
+                        CommonConstant.sessionId + CommonConstant.underline + sessionId)));
+                result = saveOrder(order);
+            } else {
+                result = "mac 校验不通过，不能保存订单";
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            result += CommonConstant.fail;
+        }
+
+        orderDao.storeToRedis((String)saveData.get(CommonConstant.orderSessionId), result, OrderConstant.order_session_time);
         logger.info("saveQueueOrder end, result:" + result);
     }
 
@@ -92,7 +116,7 @@ public class OrderController {
         try {
             result += orderService.saveOrder(order);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -100,7 +124,7 @@ public class OrderController {
 
         String saveInfo;
         if (result.equals(CommonConstant.success)) {
-            saveInfo =  "{\"" + CommonConstant.result + "\":\"" + CommonConstant.success + "\",\"" + OrderConstant.order_no + "\":\"" + order.getNo() + "\"}";
+            saveInfo =  "{\"" + CommonConstant.result + "\":\"" + CommonConstant.success + "\",\"" + CommonConstant.no + "\":\"" + order.getNo() + "\"}";
 
         } else {
             saveInfo = "{\"" + CommonConstant.result + "\":\"" + result + "\"}";
@@ -170,7 +194,7 @@ public class OrderController {
                 result +=  CommonConstant.fail + ",未支付订单才可以取消或确认收款";
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -190,42 +214,7 @@ public class OrderController {
 
         try {
             if (name.equals(OrderConstant.order_action_name_authorizeOrderPrivateAmount)) {
-                OrderPrivate orderPrivate = writer.gson.fromJson(json, OrderPrivate.class);
-
-                com.hzg.sys.User user = (com.hzg.sys.User)orderDao.getFromRedis(
-                        (String) orderDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + orderPrivate.getAuthorize().getSessionId()));
-
-                if (user != null) {
-                    orderPrivate.getAuthorize().setUser(user);
-                    orderPrivate.getAuthorize().setDate(dateUtil.getSecondCurrentTimestamp());
-
-                    OrderPrivate dbOrderPrivate = (OrderPrivate) orderDao.queryById(orderPrivate.getId(), orderPrivate.getClass());
-                    OrderDetail orderDetail = (OrderDetail)orderDao.queryById(orderPrivate.getDetail().getId(), orderPrivate.getDetail().getClass());
-                    Order order = orderDetail.getOrder();
-
-                    if (orderDetail.getState().compareTo(OrderConstant.order_detail_state_unSale) == 0) {
-                        if (dbOrderPrivate.getAuthorize() == null) {
-
-                            order.setAmount(new BigDecimal(Float.toString(order.getAmount())).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
-                            order.setPayAmount(new BigDecimal(Float.toString(order.getPayAmount())).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
-                        } else {
-
-                            order.setAmount(new BigDecimal(Float.toString(order.getAmount())).
-                                    subtract(new BigDecimal(Float.toString(dbOrderPrivate.getAuthorize().getAmount()))).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
-                            order.setPayAmount(new BigDecimal(Float.toString(order.getPayAmount())).
-                                    subtract(new BigDecimal(Float.toString(dbOrderPrivate.getAuthorize().getAmount()))).add(new BigDecimal(Float.toString(orderPrivate.getAuthorize().getAmount()))).floatValue());
-                        }
-
-                        result += orderDao.save(orderPrivate.getAuthorize());
-                        result += orderDao.updateById(orderPrivate.getId(), orderPrivate);
-                        result += orderDao.updateById(order.getId(), order);
-
-                    } else {
-                        result += CommonConstant.fail + ",已售商品不能核定金额，核定金额失败";
-                    }
-                } else {
-                    result += CommonConstant.fail + ",查询不到核定金额的用户，核定金额失败";
-                }
+                result += orderService.authorizeOrderPrivateAmount(writer.gson.fromJson(json, OrderPrivate.class));
 
             } else if (name.equals(OrderConstant.order_action_name_paidOnlineOrder)) {
                 result += orderService.paidOnlineOrder(orderService.queryOrder(writer.gson.fromJson(json, Order.class)).get(0));
@@ -250,7 +239,7 @@ public class OrderController {
 
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -327,7 +316,7 @@ public class OrderController {
         try {
             limitFields[0] = order.getClass().getDeclaredField("user");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
 
         writer.writeObjectToJson(response, orderDao.suggest(order, limitFields));

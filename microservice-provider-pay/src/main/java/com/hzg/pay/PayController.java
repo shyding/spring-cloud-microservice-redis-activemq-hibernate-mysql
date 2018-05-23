@@ -88,6 +88,7 @@ public class PayController {
 
             } else if (entity.equalsIgnoreCase(Account.class.getSimpleName())) {
                 Account account = writer.gson.fromJson(json, Account.class);
+                account.setInputDate(dateUtil.getSecondCurrentTimestamp());
                 result += payDao.save(account);
 
             } else if (entity.equalsIgnoreCase(Refund.class.getSimpleName())) {
@@ -95,7 +96,7 @@ public class PayController {
                 result += payDao.save(refund);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -126,7 +127,7 @@ public class PayController {
                 result += payDao.updateById(refund.getId(), refund);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -154,7 +155,7 @@ public class PayController {
                 result += payDao.delete(pay);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -251,6 +252,7 @@ public class PayController {
 
             for (Pay pay : pays) {
                 pay.setState(PayConstants.pay_state_success);
+                pay.setPayDate(dateUtil.getSecondCurrentTimestamp());
                 result += payDao.updateById(pay.getId(), pay);
 
                 /**
@@ -268,7 +270,7 @@ public class PayController {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -393,7 +395,7 @@ public class PayController {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -426,7 +428,7 @@ public class PayController {
         try {
             result += payService.saveSplitAmountPays(amount, writer.gson.fromJson(json, new TypeToken<List<Pay>>(){}.getType()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -461,13 +463,12 @@ public class PayController {
      * 支付宝即时到账交易接口快速通道
      *
      * @param no 支付号
-     * @param payType
      * @param response
      * @throws IOException
      */
     @RequestMapping(value = "/alipay/pay", produces = "text/html;charset=UTF-8", method = RequestMethod.POST)
-    public void alipay(String no, String payType, HttpServletResponse response) {
-        logger.info("alipay, no:" + no + ",payType:" + payType);
+    public void alipay(String no, HttpServletResponse response) {
+        logger.info("alipay, no:" + no);
 
         String payHtml = null;
 
@@ -476,7 +477,7 @@ public class PayController {
         Pay dbPay = (Pay)payDao.query(pay).get(0);
 
         if (dbPay.getState().compareTo(PayConstants.pay_state_apply) == 0) {
-            payHtml = alipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), payType);
+            payHtml = alipaySubmit.buildRequest(dbPay.getNo(), dbPay.getEntity() + CommonConstant.underline + dbPay.getEntityId(), dbPay.getAmount().toString(), PayConstants.pay_type_net+"");
         } else {
             payHtml = "支付记录：" + no + "不是未支付状态，不能支付";
         }
@@ -506,7 +507,7 @@ public class PayController {
         try {
             ImageIO.write(MatrixToImageWriter.writeInfoToJpgBuff(url.toString()), "JPEG", baos);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             response.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
         }
         writer.writeBytes(response, baos.toByteArray());
@@ -876,7 +877,7 @@ public class PayController {
                 refundResData = refundService.refund(new RefundReqData(dbRefund.getPay().getBankBillNo(),
                         dbRefund.getPay().getNo(), dbRefund.getNo(), (int)(dbRefund.getAmount()*100F), (int)(dbRefund.getAmount()*100F)));
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
 
             if (refundResData != null && refundResData.getReturn_code().equalsIgnoreCase(CommonConstant.success) &&
@@ -1181,9 +1182,9 @@ public class PayController {
         try {
             return openQuery.query(orderId, null);
         } catch (SignValidateFailException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } catch (HttpException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -1193,9 +1194,9 @@ public class PayController {
         try {
             return consumeSMS.request(orderId, txnAmt, token);
         } catch (SignValidateFailException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } catch (HttpException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -1205,9 +1206,9 @@ public class PayController {
         try {
             return consume.consume(orderId, txnAmt, token, smsCode, reqReserved);
         } catch (HttpException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } catch (SignValidateFailException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -1222,9 +1223,9 @@ public class PayController {
         try {
             return consumeStatusQuery.query(orderId, txnTime);
         } catch (SignValidateFailException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } catch (HttpException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -1234,9 +1235,9 @@ public class PayController {
         try {
             return deleteToken.delete(orderId, token);
         } catch (HttpException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         } catch (SignValidateFailException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }*/

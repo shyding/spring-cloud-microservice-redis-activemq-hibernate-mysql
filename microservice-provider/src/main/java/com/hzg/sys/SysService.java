@@ -21,6 +21,9 @@ public class SysService {
     private ErpClient erpClient;
 
     @Autowired
+    private FinanceClient financeClient;
+
+    @Autowired
     private Writer writer;
 
     @Autowired
@@ -119,60 +122,60 @@ public class SysService {
              * 获取当前流程节点
              */
             Set<AuditFlowNode> auditFlowNodes =  dbAuditFlow.getAuditFlowNodes();
-            if (!auditFlowNodes.isEmpty()) {
 
+            AuditFlowNode auditFlowNode = null;
+
+            for (AuditFlowNode temp : auditFlowNodes) {
+                if (temp.getPost().getId().compareTo(audit.getPost().getId()) == 0) {
+                    auditFlowNode = temp;
+                    break;
+                }
+            }
+
+            if (auditFlowNode == null) {
+                return null;
+            }
+
+            if (direct.equals(AuditFlowConstant.flow_direct_forward) && auditFlowNode.getNextPost() == null) {
+                return null;
+            }
+
+            if (!auditFlowNodes.isEmpty()) {
                 /**
                  * 获取下一个流程节点
                  */
                 AuditFlowNode nextAuditFlowNode = null;
 
-                /**
-                 * 如果事宜、审核节点不是被退回来的，则获取对应流程节点的下一个节点
-                 */
-                if (audit.getRefusePost() == null) {
-                    AuditFlowNode auditFlowNode = null;
 
+                if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
                     for (AuditFlowNode temp : auditFlowNodes) {
-                        if (temp.getPost().getId().compareTo(audit.getPost().getId()) == 0) {
-                            auditFlowNode = temp;
-                            break;
-                        }
-                    }
-
-                    if (auditFlowNode == null) {
-                        return null;
-                    }
-
-                    if (direct.equals(AuditFlowConstant.flow_direct_forward) && auditFlowNode.getNextPost() == null) {
-                        return null;
-                    }
-
-                    if (direct.equals(AuditFlowConstant.flow_direct_forward)) {
-                        for (AuditFlowNode temp : auditFlowNodes) {
-                            if (temp.getPost().getId().compareTo(auditFlowNode.getNextPost().getId()) == 0) {
-                                nextAuditFlowNode = temp;
-                                break;
-                            }
-                        }
-
-                    } else if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
-                        for (AuditFlowNode temp : auditFlowNodes) {
-                            if (temp.getNextPost().getId().compareTo(auditFlowNode.getNextPost().getId()) == 0) {
-                                nextAuditFlowNode = temp;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                /**
-                 * 如果是被退回来的事宜、审核节点，则获取退回这个节点的流程节点
-                 */
-                else {
-                    for (AuditFlowNode temp : auditFlowNodes) {
-                        if (temp.getPost().getId().compareTo(audit.getRefusePost().getId()) == 0) {
+                        if (temp.getPost().getId().compareTo(auditFlowNode.getNextPost().getId()) == 0) {
                             nextAuditFlowNode = temp;
                             break;
+                        }
+                    }
+
+                } else if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
+                    /**
+                     * 如果事宜、审核节点不是被退回来的，则获取对应流程节点的下一个节点
+                     */
+                    if (audit.getRefusePost() == null) {
+                        for (AuditFlowNode temp : auditFlowNodes) {
+                            if (temp.getNextPost().getId().compareTo(auditFlowNode.getPost().getId()) == 0) {
+                                nextAuditFlowNode = temp;
+                                break;
+                            }
+                        }
+
+                    /**
+                     * 如果是被退回来的事宜、审核节点，则获取退回这个节点的流程节点
+                     */
+                    } else {
+                        for (AuditFlowNode temp : auditFlowNodes) {
+                            if (temp.getPost().getId().compareTo(audit.getRefusePost().getId()) == 0) {
+                                nextAuditFlowNode = temp;
+                                break;
+                            }
                         }
                     }
                 }
@@ -187,15 +190,12 @@ public class SysService {
                     nextAudit.setInputDate(dateUtil.getSecondCurrentTimestamp());
 
                     nextAudit.setName(audit.getName());
+                    nextAudit.setContent(audit.getContent());
                     nextAudit.setAction(nextAuditFlowNode.getAction());
                     nextAudit.setRefusedAction(nextAuditFlowNode.getRefusedAction());
                     nextAudit.setPost(nextAuditFlowNode.getPost());
 
-                    if ((direct.equals(AuditFlowConstant.flow_direct_forward))) {
-                        if (audit.getRefusePost() != null) {
-                            nextAudit.setUser(audit.getRefuseUser());
-                        }
-                    } else if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
+                    if ((direct.equals(AuditFlowConstant.flow_direct_backwards))) {
                         nextAudit.setRefusePost(audit.getPost());
                         nextAudit.setRefuseUser(audit.getUser());
                     }
@@ -203,6 +203,7 @@ public class SysService {
                     nextAudit.setCompany(dbAuditFlow.getCompany());
                     nextAudit.setEntity(dbAuditFlow.getEntity());
                     nextAudit.setEntityId(audit.getEntityId());
+                    nextAudit.setEntityNo(audit.getEntityNo());
                     nextAudit.setPreFlowAuditNo(audit.getPreFlowAuditNo());
 
                     return nextAudit;
@@ -213,30 +214,25 @@ public class SysService {
         return null;
     }
 
-    public Post getPostByAuditUser(Audit audit) {
+    public Post getPostByAuditToRefuseUser(Audit audit) {
         Post post = null;
 
         User user = (User)sysDao.queryById(audit.getToRefuseUser().getId(), User.class);
 
         if (user != null) {
-            if (user.getPosts().size() == 1) {
-                post =  (Post) user.getPosts().toArray()[0];
+            AuditFlow auditFlow = getAuditFlow(audit);
 
-            } else {
-                AuditFlow auditFlow = getAuditFlow(audit);
+            for (Post post1 : user.getPosts()) {
+                for (AuditFlowNode auditFlowNode : auditFlow.getAuditFlowNodes()) {
 
-                for (Post post1 : user.getPosts()) {
-                    for (AuditFlowNode auditFlowNode : auditFlow.getAuditFlowNodes()) {
-
-                        if (auditFlowNode.getPost().getId().compareTo(post1.getId()) == 0) {
-                            post = auditFlowNode.getPost();
-                            break;
-                        }
-                    }
-
-                    if (post != null) {
+                    if (auditFlowNode.getPost().getId().compareTo(post1.getId()) == 0) {
+                        post = auditFlowNode.getPost();
                         break;
                     }
+                }
+
+                if (post != null) {
+                    break;
                 }
             }
         }
@@ -262,11 +258,16 @@ public class SysService {
         if (action != null) {
             String realAction = audit.getAction();
             audit.setAction(action);
-
-            Map<String, String> result1 = writer.gson.fromJson(erpClient.auditAction(writer.gson.toJson(audit)),
-                    new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
-            result = result1.get(CommonConstant.result);
-
+            if (action.equals("voucherVerifyPassModifyState")){
+                Map<String, String> result1 = writer.gson.fromJson(financeClient.auditAction(writer.gson.toJson(audit)),
+                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {}.getType());
+                result = result1.get(CommonConstant.result);
+            } else {
+                Map<String, String> result1 = writer.gson.fromJson(erpClient.auditAction(writer.gson.toJson(audit)),
+                        new com.google.gson.reflect.TypeToken<Map<String, String>>() {
+                        }.getType());
+                result = result1.get(CommonConstant.result);
+            }
             audit.setAction(realAction);
         } else {
             result = CommonConstant.success;
@@ -284,7 +285,7 @@ public class SysService {
 
         AuditFlow auditFlow = getAuditFlow(audit);
         if (auditFlow != null && auditFlow.getAction() != null) {
-            result = launchNotifyFlow(AuditFlowConstant.flow_action_entity_mapping.get(auditFlow.getAction()), audit);
+            result = launchNotifyFlow(auditFlow.getAction(), audit);
         } else {
             result = CommonConstant.success;
         }
@@ -341,6 +342,10 @@ public class SysService {
 
         audit.setName("入库采购单：" + purchaseInfo.get(0).get("no").toString() + "里的商品");
         audit.setContent("采购单：" + purchaseInfo.get(0).get("no").toString() + "已审核完毕，采购的商品可以入库");
+    }
+
+    public User getUserBySessionId(String sessionId){
+        return (User) sysDao.getFromRedis((String)sysDao.getFromRedis(CommonConstant.sessionId + CommonConstant.underline + sessionId));
     }
 
 }

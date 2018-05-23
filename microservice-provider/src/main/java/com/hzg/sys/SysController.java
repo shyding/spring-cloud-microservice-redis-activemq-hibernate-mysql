@@ -15,14 +15,6 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.*;
 
-/**
- * Copyright © 2012-2025 云南红掌柜珠宝有限公司 版权所有
- * 文件名: SysController.java
- *
- * @author smjie
- * @version 1.00
- * @Date 2017/3/16
- */
 @Controller
 @RequestMapping("/sys")
 public class SysController {
@@ -46,6 +38,9 @@ public class SysController {
 
     @Autowired
     private DateUtil dateUtil;
+
+    @Autowired
+    private StrUtil strUtil;
 
     /**
      * 保存实体
@@ -114,6 +109,7 @@ public class SysController {
                     sysDao.save(auditFlowNode);
                 }
             }else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+                json = json.substring(0,json.indexOf("articleTags")+13) + "[" +json.substring(json.indexOf("articleTags")+14,json.indexOf("seoTitle")-4) + "]" +json.substring(json.indexOf("seoTitle")-2);
                 Article article = writer.gson.fromJson(json, Article.class);
                 article.setInputDate(inputDate);
                 result = sysDao.save(article);
@@ -123,9 +119,14 @@ public class SysController {
                 articleCate.setInputDate(inputDate);
                 result = sysDao.save(articleCate);
 
+            }else if (entity.equalsIgnoreCase(ArticleTag.class.getSimpleName())) {
+                ArticleTag articleTag = writer.gson.fromJson(json, ArticleTag.class);
+                articleTag.setInputDate(inputDate);
+                result = sysDao.save(articleTag);
+
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -217,16 +218,41 @@ public class SysController {
                 result = sysDao.updateById(auditFlow.getId(), auditFlow);
 
             } else if (entity.equalsIgnoreCase(Article.class.getSimpleName())) {
+                if (json.indexOf("articleTags") != -1){
+                    json = json.substring(0,json.indexOf("articleTags")+13) + "[" +json.substring(json.indexOf("articleTags")+14,json.indexOf("seoTitle")-4) + "]" +json.substring(json.indexOf("seoTitle")-2);
+                }
                 Article article = writer.gson.fromJson(json, Article.class);
-                result = sysDao.updateById(article.getId(), article);
+
+                if (article.getArticleTags() != null) {
+                    List<Integer> relateIds = new ArrayList<>();
+                    for (ArticleTag articleTag : article.getArticleTags()) {
+                        relateIds.add(articleTag.getId());
+                    }
+
+                    Article dbArticle = (Article) sysDao.queryById(article.getId(), Article.class);
+                    List<Integer> unRelateIds = new ArrayList<>();
+                    if (dbArticle.getArticleTags() != null) {
+                        for (ArticleTag articleTag : dbArticle.getArticleTags()) {
+                            unRelateIds.add(articleTag.getId());
+                        }
+                    }
+
+                    result += sysDao.updateRelateId(article.getId(), relateIds, unRelateIds, Article.class);
+                }
+
+                result += sysDao.updateById(article.getId(), article);
 
             } else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
                 ArticleCate articleCate = writer.gson.fromJson(json, ArticleCate.class);
                 result = sysDao.updateById(articleCate.getId(), articleCate);
 
+            } else if (entity.equalsIgnoreCase(ArticleTag.class.getSimpleName())) {
+                ArticleTag articleTag = writer.gson.fromJson(json, ArticleTag.class);
+                result = sysDao.updateById(articleTag.getId(), articleTag);
+
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -235,6 +261,101 @@ public class SysController {
         writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
         logger.info("update end, result:" + result);
     }
+
+    @Transactional
+    @PostMapping("/business")
+    public void business(HttpServletResponse response, String name, @RequestBody String json){
+        logger.info("business start, parameter:" + name + ":" + json);
+
+        String result = CommonConstant.fail;
+
+        try {
+            if (name.equalsIgnoreCase(SysConstant.user_action_name_modifyPassword)) {
+                Action action = writer.gson.fromJson(json, Action.class);
+                User user = (User) sysDao.queryById(action.getEntityId(), User.class);
+
+                User sessionUser = sysService.getUserBySessionId(action.getSessionId());
+                if (sessionUser != null) {
+                    if (user.getPassword().equals(action.getOldPassword())) {
+                        user.setPassword(action.getNewPassword());
+                        result += sysDao.updateById(user.getId(), user);
+
+                        action.setEntity(SysConstant.user);
+                        action.setType(SysConstant.user_action_modifyPassword);
+                        action.setInputer(sessionUser);
+                        action.setInputDate(dateUtil.getSecondCurrentTimestamp());
+                        result += sysDao.save(action);
+
+                    } else {
+                        result += CommonConstant.fail + ",旧密码不对，不能修改密码";
+                    }
+
+                } else {
+                    result += CommonConstant.fail + ",用户没有登录或会话已过期，不能修改密码";
+                }
+
+            } else if (name.equalsIgnoreCase(SysConstant.user_action_name_resetPassword)) {
+                Action action = writer.gson.fromJson(json, Action.class);
+                User user = (User) sysDao.queryById(action.getEntityId(), User.class);
+
+                User sessionUser = sysService.getUserBySessionId(action.getSessionId());
+                if (sessionUser != null) {
+                    String newPassword = strUtil.generateRandomStr(8);
+                    user.setPassword(DigestUtils.md5Hex(newPassword).toUpperCase());
+                    result += sysDao.updateById(user.getId(), user);
+
+                    action.setEntity(SysConstant.user);
+                    action.setType(SysConstant.user_action_resetPassword);
+                    action.setInputer(sessionUser);
+                    action.setInputDate(dateUtil.getSecondCurrentTimestamp());
+                    result += sysDao.save(action);
+
+                    result = transcation.dealResult(result);
+                    writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\",\"newPassword\":\"" + newPassword + "\"}");
+                    logger.info("business end, result:" + result);
+                    return;
+
+                } else {
+                    result += CommonConstant.fail + ",用户没有登录或会话已过期，不能重置密码";
+                }
+
+            } else if (name.equalsIgnoreCase(SysConstant.user_action_name_privateModifyPassword)) {
+                Action action = writer.gson.fromJson(json, Action.class);
+                User user = (User) sysDao.queryById(action.getEntityId(), User.class);
+
+                User sessionUser = sysService.getUserBySessionId(action.getSessionId());
+                if (sessionUser != null && sessionUser.getId().compareTo(user.getId()) == 0) {
+                    if (user.getPassword().equals(action.getOldPassword())) {
+                        user.setPassword(action.getNewPassword());
+                        result += sysDao.updateById(user.getId(), user);
+
+                        action.setEntity(SysConstant.user);
+                        action.setType(SysConstant.user_action_privateModifyPassword);
+                        action.setInputer(sessionUser);
+                        action.setInputDate(dateUtil.getSecondCurrentTimestamp());
+                        result += sysDao.save(action);
+
+                    } else {
+                        result += CommonConstant.fail + ",旧密码不对，不能修改密码";
+                    }
+
+                } else {
+                    result += CommonConstant.fail + ",用户没有登录或会话已过期，不能修改密码";
+                }
+
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            result += CommonConstant.fail;
+        } finally {
+            result = transcation.dealResult(result);
+        }
+
+        writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\"}");
+        logger.info("business end, result:" + result);
+    }
+
 
     @Transactional
     @RequestMapping(value = "/delete", method = {RequestMethod.GET, RequestMethod.POST})
@@ -247,7 +368,7 @@ public class SysController {
                 result = sysDao.delete(writer.gson.fromJson(json, Audit.class));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
@@ -305,6 +426,10 @@ public class SysController {
         } else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
             ArticleCate articleCate = writer.gson.fromJson(json, ArticleCate.class);
             writer.writeObjectToJson(response, sysDao.query(articleCate));
+
+        } else if (entity.equalsIgnoreCase(ArticleTag.class.getSimpleName())) {
+            ArticleTag articleTag = writer.gson.fromJson(json, ArticleTag.class);
+            writer.writeObjectToJson(response, sysDao.query(articleTag));
 
         }
 
@@ -364,7 +489,7 @@ public class SysController {
             try {
                 limitFields[0] = user.getClass().getDeclaredField("state");
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
 
             writer.writeObjectToJson(response, sysDao.suggest(user, limitFields));
@@ -393,7 +518,7 @@ public class SysController {
             try {
                 limitFields[0] = auditFlow.getClass().getDeclaredField("state");
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
             writer.writeObjectToJson(response,  sysDao.suggest(auditFlow, limitFields));
         }
@@ -479,6 +604,10 @@ public class SysController {
             List<ArticleCate> articleCates = sysDao.complexQuery(ArticleCate.class, queryParameters, position, rowNum);
             writer.writeObjectToJson(response, articleCates);
 
+        } else if (entity.equalsIgnoreCase(ArticleTag.class.getSimpleName())) {
+            List<ArticleTag> articleTags = sysDao.complexQuery(ArticleTag.class, queryParameters, position, rowNum);
+            writer.writeObjectToJson(response, articleTags);
+
         }
 
         logger.info("complexQuery end");
@@ -520,6 +649,9 @@ public class SysController {
 
         }else if (entity.equalsIgnoreCase(ArticleCate.class.getSimpleName())) {
             recordsSum =  sysDao.recordsSum(ArticleCate.class, queryParameters);
+
+        } else if (entity.equalsIgnoreCase(ArticleTag.class.getSimpleName())) {
+            recordsSum =  sysDao.recordsSum(ArticleTag.class, queryParameters);
 
         }
 
@@ -574,7 +706,7 @@ public class SysController {
     @Transactional
     @PostMapping("/launchAuditFlow")
     public void launchAuditFlow(HttpServletResponse response, @RequestBody String json){
-        logger.info("audit start, parameter:" + json);
+        logger.info("launchAuditFlow start, parameter:" + json);
         String result = CommonConstant.fail, auditResult = CommonConstant.fail;
 
         Audit audit = writer.gson.fromJson(json, Audit.class);
@@ -590,14 +722,14 @@ public class SysController {
             auditResult = AuditFlowConstant.audit_do;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);
         }
 
         writer.writeStringToJson(response, "{\"" + CommonConstant.result + "\":\"" + result + "\", \"auditResult\":\"" + auditResult + "\"}");
-        logger.info("audit end");
+        logger.info("launchAuditFlow end");
     }
 
     /**
@@ -698,7 +830,7 @@ public class SysController {
                     refuseAudit.setPreFlowAuditNo(dbAudit.getPreFlowAuditNo());
 
                     dbAudit.setToRefuseUser(audit.getToRefuseUser());
-                    refuseAudit.setPost(sysService.getPostByAuditUser(dbAudit));
+                    refuseAudit.setPost(sysService.getPostByAuditToRefuseUser(dbAudit));
 
                     refuseAudit = sysService.getAudit(refuseAudit);
                     refuseAudit.setRefusePost(dbAudit.getPost());
@@ -721,7 +853,7 @@ public class SysController {
                 auditResult = AuditFlowConstant.audit_deny;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
             result += CommonConstant.fail;
         } finally {
             result = transcation.dealResult(result);

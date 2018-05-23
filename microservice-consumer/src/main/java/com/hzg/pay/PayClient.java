@@ -21,7 +21,7 @@ public interface PayClient extends Client {
     org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger(PayClient.class);
 
     @RequestMapping(value = "/alipay/pay", method = RequestMethod.POST)
-    String alipay(@RequestParam("no") String no, @RequestParam("payType") String payType);
+    String alipay(@RequestParam("no") String no);
 
     @RequestMapping(value = "/alipay/refund", method = RequestMethod.POST)
     String alipayRefund(@RequestParam("no") String no);
@@ -64,8 +64,8 @@ public interface PayClient extends Client {
 
     @Component
     class ErpClientFallback extends ClientFallback implements PayClient {
-        public String alipay(String no, String payType) {
-            logger.info("alipay 异常发生，进入fallback方法，接收的参数：" + no + "," + payType);
+        public String alipay(String no) {
+            logger.info("alipay 异常发生，进入fallback方法，接收的参数：" + no);
             return "<html><head><title>error</title></head><body>系统异常，支付宝即时到账交易失败</body></html>";
         }
 
@@ -95,7 +95,7 @@ public interface PayClient extends Client {
             try {
                 return ("{\"" + CommonConstant.result + "\":\"系统异常，获取支付宝支付二维码出错\"}").getBytes(CommonConstant.UTF8);
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
             return null;
         }
@@ -110,7 +110,7 @@ public interface PayClient extends Client {
             try {
                 return ("{\"" + CommonConstant.result + "\":\"系统异常，微信扫码支付出错\"}").getBytes(CommonConstant.UTF8);
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage(), e);
             }
             return null;
         }
